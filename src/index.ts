@@ -15,6 +15,19 @@ import {getDemoStatusData} from './demo-data';
 
 export {validateOptions} from './options';
 
+/**
+ * Returns a list of components that can be swizzled/ejected for customization.
+ * Docusaurus uses this to provide better swizzle command support.
+ */
+export function getSwizzleComponentList(): string[] {
+  return [
+    'StatusPage',
+    'StatusBoard',
+    'StatusItem',
+    'IncidentHistory',
+  ];
+}
+
 export default async function pluginStatus(
   context: LoadContext,
   options: PluginOptions
@@ -141,6 +154,10 @@ export default async function pluginStatus(
         exact: true,
         modules: {
           statusData: statusDataId,
+        },
+        // Metadata for better route management (e.g., sitemap lastmod)
+        metadata: {
+          lastUpdatedAt: new Date(content.lastUpdated).getTime(),
         },
       });
     },

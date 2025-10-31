@@ -1,8 +1,23 @@
+# Exclude source and build artifacts
 .npmignore
 src/
 tsconfig*.json
 .gitignore
 .github/
 templates/
+scripts/
+
+# Exclude tests and coverage
+__tests__/
+__mocks__/
+coverage/
+jest.config.js
+.eslintrc.js
+.prettierrc
+
+# Exclude documentation except README
 *.md
 !README.md
+
+# Exclude example/demo files
+example*.js

@@ -323,6 +323,9 @@ describe('docusaurus-plugin-stentorosaur', () => {
         modules: {
           statusData: 'status-data.json',
         },
+        metadata: {
+          lastUpdatedAt: new Date('2025-01-01T00:00:00Z').getTime(),
+        },
       });
     });
   });
