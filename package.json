@@ -1,5 +1,5 @@
 {
-  "name": "docusaurus-plugin-stentorosaur",
+  "name": "@amiable-dev/docusaurus-plugin-stentorosaur",
   "version": "0.1.0-beta.0",
   "description": "A Docusaurus plugin for displaying status monitoring dashboard powered by GitHub Issues and Actions, similar to Upptime",
   "main": "lib/index.js",

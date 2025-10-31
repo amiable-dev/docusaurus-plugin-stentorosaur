@@ -132,20 +132,20 @@ cd /tmp/test-plugin-beta
 npm init -y
 
 # Install beta version
-npm install docusaurus-plugin-stentorosaur@beta
+npm install @amiable-dev/docusaurus-plugin-stentorosaur@beta
 
 # Verify installation
-npm list docusaurus-plugin-stentorosaur
+npm list @amiable-dev/docusaurus-plugin-stentorosaur
 ```
 
 Test in actual Docusaurus project:
 
 ```bash
 # In your Docusaurus project
-npm install docusaurus-plugin-stentorosaur@beta
+npm install @amiable-dev/docusaurus-plugin-stentorosaur@beta
 
 # Or specify exact version
-npm install docusaurus-plugin-stentorosaur@0.1.0-beta.0
+npm install @amiable-dev/docusaurus-plugin-stentorosaur@0.1.0-beta.0
 ```
 
 ## Stable Release Process (1.0.0+)
@@ -228,19 +228,19 @@ npm login
 npm whoami
 
 # View package info
-npm view docusaurus-plugin-stentorosaur
+npm view @amiable-dev/docusaurus-plugin-stentorosaur
 
 # View all versions
-npm view docusaurus-plugin-stentorosaur versions
+npm view @amiable-dev/docusaurus-plugin-stentorosaur versions
 
 # View dist-tags
-npm view docusaurus-plugin-stentorosaur dist-tags
+npm view @amiable-dev/docusaurus-plugin-stentorosaur dist-tags
 
 # Unpublish (within 72 hours)
-npm unpublish docusaurus-plugin-stentorosaur@0.1.0-beta.0
+npm unpublish @amiable-dev/docusaurus-plugin-stentorosaur@0.1.0-beta.0
 
 # Deprecate a version
-npm deprecate docusaurus-plugin-stentorosaur@0.1.0-beta.0 "Use 0.1.0-beta.1 instead"
+npm deprecate @amiable-dev/docusaurus-plugin-stentorosaur@0.1.0-beta.0 "Use 0.1.0-beta.1 instead"
 ```
 
 ## Troubleshooting
@@ -260,7 +260,7 @@ npm deprecate docusaurus-plugin-stentorosaur@0.1.0-beta.0 "Use 0.1.0-beta.1 inst
 
 - Wait a few minutes for npm CDN propagation
 - Clear npm cache: `npm cache clean --force`
-- Try accessing via unpkg: `https://unpkg.com/docusaurus-plugin-stentorosaur@beta/`
+- Try accessing via unpkg: `https://unpkg.com/@amiable-dev/docusaurus-plugin-stentorosaur@beta/`
 
 ### Build files missing from package
 

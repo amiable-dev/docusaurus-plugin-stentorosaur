@@ -15,9 +15,9 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
 ## Installation
 
 ```bash
-npm install docusaurus-plugin-stentorosaur
+npm install @amiable-dev/docusaurus-plugin-stentorosaur
 # or
-yarn add docusaurus-plugin-stentorosaur
+yarn add @amiable-dev/docusaurus-plugin-stentorosaur
 ```
 
 ## Configuration
@@ -31,7 +31,7 @@ module.exports = {
   // ... other config
   plugins: [
     [
-      'docusaurus-plugin-stentorosaur',
+      '@amiable-dev/docusaurus-plugin-stentorosaur',
       {
         // GitHub repository (defaults to site's organizationName/projectName)
         owner: 'your-org',
@@ -83,7 +83,7 @@ Copy the workflow files from `templates/workflows/` to your `.github/workflows/`
 
 ```bash
 mkdir -p .github/workflows
-cp node_modules/docusaurus-plugin-stentorosaur/templates/workflows/*.yml .github/workflows/
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/*.yml .github/workflows/
 ```
 
 #### 2. Configure Monitoring
@@ -108,7 +108,7 @@ Copy the issue template for manual status reporting:
 
 ```bash
 mkdir -p .github/ISSUE_TEMPLATE
-cp node_modules/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMPLATE/*.yml .github/ISSUE_TEMPLATE/
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMPLATE/*.yml .github/ISSUE_TEMPLATE/
 ```
 
 ## Usage

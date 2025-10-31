@@ -221,10 +221,10 @@ Follow the instructions in `PUBLISHING.md`:
 
 ```bash
 # Install latest beta
-npm install docusaurus-plugin-stentorosaur@beta
+npm install @amiable-dev/docusaurus-plugin-stentorosaur@beta
 
 # Or install specific beta version
-npm install docusaurus-plugin-stentorosaur@0.1.0-beta.0
+npm install @amiable-dev/docusaurus-plugin-stentorosaur@0.1.0-beta.0
 ```
 
 ### Docusaurus Configuration
@@ -234,7 +234,7 @@ npm install docusaurus-plugin-stentorosaur@0.1.0-beta.0
 module.exports = {
   plugins: [
     [
-      'docusaurus-plugin-stentorosaur',
+      '@amiable-dev/docusaurus-plugin-stentorosaur',
       {
         owner: 'your-org',
         repo: 'status-tracking',
@@ -291,7 +291,7 @@ Potential future enhancements (post-1.0.0):
 
 - **Repository**: <https://github.com/amiable-dev/docusaurus-plugin-stentorosaur>
 - **Issues**: <https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues>
-- **npm**: <https://www.npmjs.com/package/docusaurus-plugin-stentorosaur> (after publishing)
+- **npm**: <https://www.npmjs.com/package/@amiable-dev/docusaurus-plugin-stentorosaur> (after publishing)
 
 ---
 
