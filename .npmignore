@@ -1,0 +1,8 @@
+.npmignore
+src/
+tsconfig*.json
+.gitignore
+.github/
+templates/
+*.md
+!README.md

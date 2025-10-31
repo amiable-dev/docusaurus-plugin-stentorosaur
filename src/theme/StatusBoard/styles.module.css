@@ -1,0 +1,78 @@
+.statusBoard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 2.5rem;
+}
+
+.description {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 1.125rem;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.overallStatus {
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  background: var(--ifm-color-emphasis-100);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+}
+
+.statusGood {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #10b981;
+}
+
+.statusIssue {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #f59e0b;
+}
+
+.statusDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.statusList {
+  margin-top: 2rem;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--ifm-color-emphasis-600);
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 8px;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 1.125rem;
+}

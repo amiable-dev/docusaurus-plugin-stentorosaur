@@ -1,0 +1,33 @@
+.statusPage {
+  min-height: calc(100vh - 60px);
+  padding: 2rem 0;
+}
+
+.footer {
+  max-width: 1200px;
+  margin: 4rem auto 2rem;
+  padding: 2rem 1rem 1rem;
+  border-top: 1px solid var(--ifm-color-emphasis-300);
+  text-align: center;
+}
+
+.lastUpdated {
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.poweredBy {
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+.poweredBy a {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+}
+
+.poweredBy a:hover {
+  text-decoration: underline;
+}

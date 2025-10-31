@@ -1,0 +1,44 @@
+name: Status Update
+
+on:
+  schedule:
+    # Runs every hour
+    - cron: '0 * * * *'
+  workflow_dispatch:
+  issues:
+    types: [opened, closed, labeled, unlabeled]
+
+jobs:
+  update-status:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          cd docusaurus-plugin-status
+          npm install
+          
+      - name: Fetch and update status data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd docusaurus-plugin-status
+          npm run update-status
+          
+      - name: Commit status updates
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add status-data/
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update status data [skip ci]"
+          git push

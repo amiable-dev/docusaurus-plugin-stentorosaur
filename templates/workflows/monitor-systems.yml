@@ -1,0 +1,117 @@
+name: Monitor Systems
+
+on:
+  schedule:
+    # Runs every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        # Define systems/endpoints to monitor
+        # This should be customized based on your needs
+        system: 
+          - name: 'api'
+            url: 'https://api.example.com/health'
+          - name: 'website'
+            url: 'https://example.com'
+          - name: 'database'
+            url: 'https://db.example.com/status'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Check ${{ matrix.system.name }} status
+        id: check
+        continue-on-error: true
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" -m 10 "${{ matrix.system.url }}")
+          echo "status_code=$response" >> $GITHUB_OUTPUT
+          
+          if [ "$response" -eq 200 ] || [ "$response" -eq 301 ] || [ "$response" -eq 302 ]; then
+            echo "status=up" >> $GITHUB_OUTPUT
+          else
+            echo "status=down" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Create issue for downtime
+        if: steps.check.outputs.status == 'down'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const systemName = '${{ matrix.system.name }}';
+            const statusCode = '${{ steps.check.outputs.status_code }}';
+            
+            // Check if there's already an open issue for this system
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['status', systemName, 'critical'],
+              state: 'open'
+            });
+            
+            if (issues.data.length === 0) {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `${systemName} is down`,
+                body: `## Incident Report
+                
+                **System:** ${systemName}
+                **Status:** Down
+                **HTTP Status Code:** ${statusCode}
+                **Time:** ${new Date().toISOString()}
+                **URL:** ${{ matrix.system.url }}
+                
+                The system is currently experiencing issues and is not responding as expected.
+                
+                ---
+                *This issue was automatically created by the monitoring workflow.*`,
+                labels: ['status', systemName, 'critical']
+              });
+            }
+            
+      - name: Close issue for recovery
+        if: steps.check.outputs.status == 'up'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const systemName = '${{ matrix.system.name }}';
+            
+            // Find open issues for this system
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['status', systemName],
+              state: 'open'
+            });
+            
+            // Close them with a recovery comment
+            for (const issue of issues.data) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `## ✅ Resolved
+                
+                The system has recovered and is now operational.
+                
+                **Time:** ${new Date().toISOString()}
+                
+                ---
+                *This update was automatically posted by the monitoring workflow.*`
+              });
+              
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed'
+              });
+            }

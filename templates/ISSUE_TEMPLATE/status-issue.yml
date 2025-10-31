@@ -1,0 +1,70 @@
+name: Issue Status Template
+description: Report a system or process status issue
+title: "[STATUS] "
+labels: ["status"]
+body:
+  - type: dropdown
+    id: system
+    attributes:
+      label: Affected System
+      description: Which system or process is affected?
+      options:
+        - API
+        - Website
+        - Database
+        - Authentication
+        - Deployment Pipeline
+        - CI/CD
+        - Documentation
+        - Other
+    validations:
+      required: true
+      
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this issue?
+      options:
+        - Critical (Complete outage)
+        - Major (Significant degradation)
+        - Minor (Partial issues)
+        - Maintenance (Planned work)
+    validations:
+      required: true
+      
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the issue or status change
+      placeholder: Tell us what's happening...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: What is the impact on users or systems?
+      placeholder: Describe the impact...
+    validations:
+      required: false
+      
+  - type: textarea
+    id: actions
+    attributes:
+      label: Actions Taken
+      description: What actions have been or are being taken?
+      placeholder: Describe any mitigation or resolution efforts...
+    validations:
+      required: false
+      
+  - type: input
+    id: eta
+    attributes:
+      label: Estimated Resolution Time
+      description: When do you expect this to be resolved?
+      placeholder: "e.g., 2 hours, by 3pm EST, tomorrow"
+    validations:
+      required: false
