@@ -8,6 +8,10 @@ on:
   issues:
     types: [opened, closed, labeled, unlabeled, edited]
 
+permissions:
+  contents: write  # Required to commit status data changes
+  issues: read     # Required to fetch status issues
+
 jobs:
   update-status:
     runs-on: ubuntu-latest
