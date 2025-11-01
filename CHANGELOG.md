@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2025-11-01
+
+### Fixed
+- Converted `scripts/update-status.js` from ES modules back to CommonJS for universal compatibility
+- Fixed "Cannot use import statement outside a module" error in CI/CD environments
+
 ## [0.1.6] - 2025-11-01
 
 ### Fixed
