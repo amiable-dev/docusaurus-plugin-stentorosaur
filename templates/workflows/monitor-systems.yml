@@ -155,11 +155,11 @@ jobs:
           script: |
             const systemName = '${{ matrix.system.name }}';
             
-            // Find open issues for this system
+            // Find open CRITICAL issues for this system (only auto-created downtime issues)
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              labels: ['status', systemName],
+              labels: ['status', systemName, 'critical'],
               state: 'open'
             });
             
