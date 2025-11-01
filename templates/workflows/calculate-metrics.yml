@@ -1,0 +1,113 @@
+name: Calculate Metrics
+
+on:
+  schedule:
+    # Runs every hour to calculate response time averages
+    - cron: '30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write  # Required to commit updated metrics
+
+jobs:
+  calculate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for time-series analysis
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Calculate response time averages
+        run: |
+          # Create systems directory if it doesn't exist
+          mkdir -p build/status-data/systems
+          
+          # Process each system JSON file
+          for system_file in build/status-data/systems/*.json; do
+            # Skip if no files exist
+            [ -e "$system_file" ] || continue
+            
+            # Skip example file
+            [[ "$system_file" == *"example-api.json" ]] && continue
+            
+            SYSTEM_NAME=$(basename "$system_file" .json)
+            
+            echo "📊 Calculating metrics for $SYSTEM_NAME..."
+            
+            # Extract response times from git history (last 24h, 7d, 30d)
+            # Get timestamps for time windows
+            NOW=$(date -u +%s)
+            DAY_AGO=$((NOW - 86400))      # 24 hours
+            WEEK_AGO=$((NOW - 604800))    # 7 days
+            MONTH_AGO=$((NOW - 2592000))  # 30 days
+            
+            # Extract response times from git log
+            # Looking for commits like: "🟩 api is up (200 in 145 ms)"
+            
+            # 24-hour average
+            TIME_DAY=$(git log --all --since="24 hours ago" --grep="$SYSTEM_NAME is up" --pretty=format:"%s" | \
+              grep -oE '\([0-9]+ in [0-9]+ ms\)' | \
+              grep -oE '[0-9]+ ms' | \
+              grep -oE '[0-9]+' | \
+              awk '{sum+=$1; count++} END {if(count>0) print int(sum/count); else print 0}')
+            
+            # 7-day average
+            TIME_WEEK=$(git log --all --since="7 days ago" --grep="$SYSTEM_NAME is up" --pretty=format:"%s" | \
+              grep -oE '\([0-9]+ in [0-9]+ ms\)' | \
+              grep -oE '[0-9]+ ms' | \
+              grep -oE '[0-9]+' | \
+              awk '{sum+=$1; count++} END {if(count>0) print int(sum/count); else print 0}')
+            
+            # 30-day average
+            TIME_MONTH=$(git log --all --since="30 days ago" --grep="$SYSTEM_NAME is up" --pretty=format:"%s" | \
+              grep -oE '\([0-9]+ in [0-9]+ ms\)' | \
+              grep -oE '[0-9]+ ms' | \
+              grep -oE '[0-9]+' | \
+              awk '{sum+=$1; count++} END {if(count>0) print int(sum/count); else print 0}')
+            
+            # Default to 0 if no data
+            TIME_DAY=${TIME_DAY:-0}
+            TIME_WEEK=${TIME_WEEK:-0}
+            TIME_MONTH=${TIME_MONTH:-0}
+            
+            echo "  📈 Averages: 24h=${TIME_DAY}ms, 7d=${TIME_WEEK}ms, 30d=${TIME_MONTH}ms"
+            
+            # Update the JSON file with calculated averages
+            if [ -f "$system_file" ]; then
+              jq --argjson day "$TIME_DAY" \
+                 --argjson week "$TIME_WEEK" \
+                 --argjson month "$TIME_MONTH" \
+                 '.timeDay = $day | .timeWeek = $week | .timeMonth = $month' \
+                 "$system_file" > "$system_file.tmp"
+              mv "$system_file.tmp" "$system_file"
+            fi
+          done
+      
+      - name: Check for changes
+        id: check
+        run: |
+          if [ -d "build/status-data/systems" ]; then
+            if ! git diff --quiet build/status-data/systems/; then
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit updated metrics
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add build/status-data/systems/
+          git commit -m "📊 Update response time averages [skip ci]"
+          git push

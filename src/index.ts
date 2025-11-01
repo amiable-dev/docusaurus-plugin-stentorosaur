@@ -38,9 +38,14 @@ async function readSystemFiles(systemsDir: string): Promise<Partial<StatusItem>[
         const filePath = path.join(systemsDir, file);
         const data: SystemStatusFile = await fs.readJson(filePath);
         
-        // Calculate average response time from recent history
+        // Calculate average response time from recent history (fallback if timeDay not set)
         let avgResponseTime: number | undefined;
-        if (data.history && data.history.length > 0) {
+        
+        // Prefer calculated time-window averages
+        if (data.timeDay !== undefined && data.timeDay > 0) {
+          avgResponseTime = data.timeDay;
+        } else if (data.history && data.history.length > 0) {
+          // Fallback: calculate from recent history
           const recentChecks = data.history.slice(0, 10); // Last 10 checks
           const sum = recentChecks.reduce((acc, check) => acc + check.responseTime, 0);
           avgResponseTime = Math.round(sum / recentChecks.length);
