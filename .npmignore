@@ -4,8 +4,6 @@ src/
 tsconfig*.json
 .gitignore
 .github/
-templates/
-scripts/
 
 # Exclude tests and coverage
 __tests__/
@@ -15,9 +13,20 @@ jest.config.js
 .eslintrc.js
 .prettierrc
 
-# Exclude documentation except README
+# Exclude documentation except essential docs
 *.md
 !README.md
+!CONFIGURATION.md
+!QUICKSTART.md
+
+# Exclude internal documentation
+BETA_RELEASE_SUMMARY.md
+CHANGELOG.md
+GAP_ANALYSIS.md
+PROJECT_SUMMARY.md
+PUBLISHING.md
+TESTING.md
+TRUSTED_PUBLISHING_SETUP.md
 
 # Exclude example/demo files
 example*.js
