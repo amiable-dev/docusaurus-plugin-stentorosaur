@@ -21,18 +21,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
           
       - name: Install dependencies
         run: |
-          cd docusaurus-plugin-status
+          cd docusaurus-plugin-stentorosaur
           npm install
           
       - name: Fetch and update status data
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd docusaurus-plugin-status
+          cd docusaurus-plugin-stentorosaur
           npm run update-status
           
       - name: Commit status updates
