@@ -542,85 +542,6 @@ labels:
 5. **Monitor Regularly**: Review your monitoring workflow frequency
 6. **Set Up Alerts**: Configure GitHub notifications for status issues
 
-## Testing & Development
-
-### Running Tests
-
-This plugin uses Jest for comprehensive testing with over 95% code coverage:
-
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage report
-npm run test:coverage
-```
-
-### Test Coverage Requirements
-
-The project maintains high test coverage standards:
-
-- **Statements**: > 70%
-- **Branches**: > 70%
-- **Functions**: > 70%
-- **Lines**: > 70%
-
-Current coverage:
-
-- Statements: 95.53%
-- Branches: 74.02%
-- Functions: 77.77%
-- Lines: 95.41%
-
-### Test Structure
-
-Tests are organized into four main suites:
-
-1. **Demo Data Tests** (`__tests__/demo-data.test.ts`)
-   - Validates demo data structure and content
-   - Ensures realistic test scenarios
-
-2. **Plugin Options Tests** (`__tests__/options.test.ts`)
-   - Validates configuration schemas
-   - Tests option combinations and edge cases
-
-3. **GitHub Service Tests** (`__tests__/github-service.test.ts`)
-   - Mocks GitHub API interactions
-   - Tests data fetching and transformation
-
-4. **Plugin Integration Tests** (`__tests__/plugin.test.ts`)
-   - Tests full plugin lifecycle
-   - Validates Docusaurus integration points
-
-### Continuous Integration
-
-GitHub Actions CI runs on every push and pull request:
-
-- Tests against Node.js 18.x and 20.x
-- Enforces code coverage thresholds
-- Validates TypeScript compilation
-- Checks code formatting and linting
-
-See [.github/workflows/test.yml](.github/workflows/test.yml) for CI configuration.
-
-### Development Workflow
-
-1. Make changes to source code in `src/`
-2. Add or update tests in `__tests__/`
-3. Run tests locally: `npm test`
-4. Verify coverage: `npm run test:coverage`
-5. Push changes - CI will validate
-
-### Testing Best Practices
-
-- **Mock External Services**: All GitHub API calls are mocked in tests
-- **Test Edge Cases**: Include error scenarios and edge cases
-- **Maintain Coverage**: Don't decrease test coverage
-- **Update Snapshots**: When intentionally changing output, update snapshots with `npm test -- -u`
-
 ## Troubleshooting
 
 ### Status page shows no data
@@ -641,27 +562,19 @@ See [.github/workflows/test.yml](.github/workflows/test.yml) for CI configuratio
 - Check TypeScript compilation succeeded
 - Verify theme path configuration
 
-## Comparison with Upptime
-
-This plugin is inspired by [Upptime](https://upptime.js.org) but designed for Docusaurus:
-
-| Feature | Upptime | This Plugin |
-|---------|---------|-------------|
-| Platform | Standalone site | Docusaurus plugin |
-| Status Page | Separate | Embedded in docs |
-| Data Source | GitHub Issues | GitHub Issues |
-| Monitoring | GitHub Actions | GitHub Actions |
-| UI Framework | Svelte | React |
-| Customization | Limited | Full Docusaurus theming |
-| Process Tracking | No | Yes |
-
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, testing guidelines, and pull request process.
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/discussions)
+- **Documentation**: See [CONFIGURATION.md](./CONFIGURATION.md) for detailed examples
 
 ## License
 
-MIT © [Your Organization]
+MIT © Amiable Development
 
 ## Credits
 
