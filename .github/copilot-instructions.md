@@ -181,11 +181,12 @@ Edit `src/github-service.ts` GitHubStatusService class:
 **Automated Publishing via GitHub Actions** - `.github/workflows/publish.yml` automatically publishes to npm when a git tag is pushed.
 
 ### Release Process
-1. Update `version` in `package.json` (e.g., `0.1.5`)
-2. Update `CHANGELOG.md`:
-   - Move `[Unreleased]` section to new version heading
-   - Add version link at bottom
-3. Commit: `git commit -m "chore: Bump version to X.Y.Z"`
+1. Update `version` in `package.json` following Semantic Versioning rules
+2. Update `CHANGELOG.md` following Keep a Changelog format:
+   - Move `[Unreleased]` section items to new version heading `## [X.Y.Z] - YYYY-MM-DD`
+   - Add version comparison link at bottom
+   - Keep `[Unreleased]` section for future changes
+3. Commit: `git commit -m "chore: Bump version to X.Y.Z"` or `git commit -m "fix: ..."` / `git commit -m "feat: ..."`
 4. Create and push tag: `git tag vX.Y.Z && git push && git push --tags`
 5. **GitHub Actions automatically publishes to npm** - no manual `npm publish` needed!
 
@@ -195,6 +196,107 @@ Edit `src/github-service.ts` GitHubStatusService class:
 - Never run `npm publish` locally - always use GitHub Actions workflow
 - Tag must match version in package.json (e.g., tag `v0.1.5` for version `"0.1.5"`)
 - Workflow triggered only on tag push, not regular commits
+
+### Semantic Versioning (SemVer) Rules
+
+Given version number **MAJOR.MINOR.PATCH** (e.g., `2.3.1`):
+
+1. **MAJOR** (X.0.0) - Increment when making **incompatible API changes**
+   - Breaking changes to public API
+   - Removing features or functionality
+   - Changing behavior in backward-incompatible ways
+   - Example: Removing a plugin option, changing required parameters
+   - Reset MINOR and PATCH to 0
+
+2. **MINOR** (x.Y.0) - Increment when adding **functionality in backward compatible manner**
+   - New features or options added
+   - Deprecating functionality (without removing it)
+   - Substantial improvements to internal code
+   - Example: Adding new CLI flags, new configuration options
+   - Reset PATCH to 0
+
+3. **PATCH** (x.y.Z) - Increment when making **backward compatible bug fixes**
+   - Bug fixes that don't change API
+   - Internal refactoring
+   - Documentation updates
+   - Example: Fixing workflow templates, ES module compatibility
+
+**Pre-release versions**: Use hyphen suffix (e.g., `1.0.0-alpha`, `1.0.0-beta.1`, `2.0.0-rc.1`)
+- Lower precedence than normal versions
+- Indicates unstable, might not satisfy compatibility requirements
+
+**Initial development**: Major version zero (`0.y.z`) is for initial development
+- Anything may change at any time
+- Public API should not be considered stable
+- Version `1.0.0` defines the first stable public API
+
+**Version `1.0.0`**: Release when:
+- Software is used in production
+- Stable API exists that users depend on
+- Backward compatibility becomes important
+
+### CHANGELOG.md Best Practices
+
+**Format**: Based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
+
+**Structure**:
+```markdown
+# Changelog
+
+## [Unreleased]
+### Added
+- New feature coming soon
+
+## [1.2.0] - 2025-11-01
+### Added
+- New feature description
+### Changed
+- Changes to existing functionality
+### Deprecated
+- Soon-to-be removed features
+### Removed
+- Now removed features
+### Fixed
+- Bug fixes
+### Security
+- Security vulnerability fixes
+
+[Unreleased]: https://github.com/owner/repo/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/owner/repo/compare/v1.1.0...v1.2.0
+```
+
+**Change Types** (in order):
+1. `Added` - New features
+2. `Changed` - Changes in existing functionality
+3. `Deprecated` - Soon-to-be removed features (use before Removed)
+4. `Removed` - Now removed features
+5. `Fixed` - Bug fixes
+6. `Security` - Vulnerability fixes
+
+**Guiding Principles**:
+- Changelogs are for **humans, not machines**
+- One entry per version
+- Group same types of changes together
+- Versions and sections should be linkable
+- Latest version comes first (reverse chronological)
+- Use ISO 8601 date format: `YYYY-MM-DD`
+- Reference issue numbers: `(#123)` or `(GH-123)`
+
+**What NOT to include**:
+- Git commit logs or diffs (too noisy)
+- Typo fixes or minor documentation tweaks (unless significant)
+- Internal refactoring that doesn't affect users
+- Changes to test files (unless affecting API)
+
+**Unreleased section**:
+- Keep at top to track upcoming changes
+- Helps people see what's coming
+- Easy to move to new version section at release time
+
+**Version links**:
+- Always include comparison links at bottom
+- Format: `[version]: https://github.com/owner/repo/compare/vPREV...vCURRENT`
+- Makes it easy to see exact code changes
 
 ## Key Documentation Files
 - `README.md` - User-facing installation/configuration guide
