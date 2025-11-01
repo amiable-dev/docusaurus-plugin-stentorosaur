@@ -178,14 +178,23 @@ Edit `src/github-service.ts` GitHubStatusService class:
 
 ## Publishing Workflow
 
-1. Update `version` in `package.json`
-2. Update `CHANGELOG.md` with version and changes
-3. Commit: `git commit -m "Release vX.Y.Z"`
-4. Tag: `git tag vX.Y.Z`
-5. Push: `git push && git push --tags`
-6. GitHub Actions auto-publishes to npm via `.github/workflows/publish.yml`
+**Automated Publishing via GitHub Actions** - `.github/workflows/publish.yml` automatically publishes to npm when a git tag is pushed.
 
-**Trusted Publishing**: Uses PyPI-style OIDC tokens (no manual npm token needed). See `TRUSTED_PUBLISHING_SETUP.md`.
+### Release Process
+1. Update `version` in `package.json` (e.g., `0.1.5`)
+2. Update `CHANGELOG.md`:
+   - Move `[Unreleased]` section to new version heading
+   - Add version link at bottom
+3. Commit: `git commit -m "chore: Bump version to X.Y.Z"`
+4. Create and push tag: `git tag vX.Y.Z && git push && git push --tags`
+5. **GitHub Actions automatically publishes to npm** - no manual `npm publish` needed!
+
+**Trusted Publishing**: Uses npm OIDC tokens (requires npm 11.5.1+ in workflow). No manual npm tokens needed.
+
+**Important**: 
+- Never run `npm publish` locally - always use GitHub Actions workflow
+- Tag must match version in package.json (e.g., tag `v0.1.5` for version `"0.1.5"`)
+- Workflow triggered only on tag push, not regular commits
 
 ## Key Documentation Files
 - `README.md` - User-facing installation/configuration guide
