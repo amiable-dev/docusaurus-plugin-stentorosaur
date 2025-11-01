@@ -86,52 +86,110 @@ When deploying with GitHub Actions, you **must explicitly pass** the `GITHUB_TOK
 
 **For GitHub Pages deployment**, use the standard Docusaurus deployment workflow:
 
+> 📚 **Reference:** [Docusaurus Deployment Documentation](https://docusaurus.io/docs/deployment#triggering-deployment-with-github-actions)
+
 ```yaml
 # .github/workflows/deploy.yml
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-permissions:
-  contents: write
+    branches:
+      - main
+    # Review gh actions docs if you want to further define triggers, paths, etc
+    # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
 
 jobs:
-  deploy:
+  build:
+    name: Build Docusaurus
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      
+
       - name: Install dependencies
         run: npm ci
-      
       - name: Build website
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Automatically provided
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build
-      
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/main'
+
+      - name: Upload Build Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
+          path: build
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+For **test deployments on pull requests**, create a separate workflow:
+
+```yaml
+# .github/workflows/test-deploy.yml
+name: Test deployment
+
+on:
+  pull_request:
+    branches:
+      - main
+    # Review gh actions docs if you want to further define triggers, paths, etc
+    # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
+
+jobs:
+  test-deploy:
+    name: Test deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+      - name: Test build website
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build
 ```
 
 **Key Points:**
 
-- ✅ **Local**: Optional - uses `process.env.GITHUB_TOKEN` from `.env` file or environment variables
-- ✅ **GitHub Actions**: Must pass via `env:` block - `GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`
-- ✅ **Demo Mode**: Works without any token (shows demo data for testing)
-- ✅ **Rate Limits**: Authenticated requests have higher rate limits (5,000/hour vs 60/hour)
+- ✅ **Separate workflows** - Use `deploy.yml` for deployments and `test-deploy.yml` for PR testing
+- ✅ **Modern actions** - Uses `actions/deploy-pages@v4` instead of deprecated peaceiris actions
+- ✅ **Proper permissions** - Configures `pages: write` and `id-token: write` for GitHub Pages
+- ✅ **Build artifacts** - Uses `actions/upload-pages-artifact@v3` to pass build between jobs
+- ✅ **GITHUB_TOKEN** - Must pass via `env:` block in build step
+- ✅ **Fetch depth** - Uses `fetch-depth: 0` for full git history (useful for git-based features)
+- ✅ **Node caching** - Enables npm caching with `cache: npm` (or `cache: yarn` for Yarn users)
+
+> 📖 **Using Yarn?** Replace `cache: npm` with `cache: yarn` and `npm ci` with `yarn install --frozen-lockfile`
 
 > 💡 **Tip:** If your production site shows demo data, you forgot to add the `env:` block to your build step!
 
