@@ -5,10 +5,27 @@ Get your status page up and running in minutes!
 ## Step 1: Install the Plugin
 
 ```bash
-npm install docusaurus-plugin-stentorosaur
+npm install @amiable-dev/docusaurus-plugin-stentorosaur
 ```
 
-## Step 2: Configure Docusaurus
+## Step 2: Setup GitHub Token (Optional)
+
+**For local development**, create a `.env` file:
+
+```bash
+# .env
+GITHUB_TOKEN=ghp_your_personal_access_token
+```
+
+Create a Personal Access Token at <https://github.com/settings/tokens> with `repo` or `public_repo` scope.
+
+> **Note:**
+>
+> - For **GitHub Actions deployments**, `secrets.GITHUB_TOKEN` is automatically provided - no setup needed!
+> - Without a token, the plugin shows **demo data** (useful for testing)
+> - See the [README](./README.md#github-token-setup) for detailed token setup
+
+## Step 3: Configure Docusaurus
 
 Add to your `docusaurus.config.js`:
 
@@ -16,7 +33,7 @@ Add to your `docusaurus.config.js`:
 module.exports = {
   plugins: [
     [
-      'docusaurus-plugin-stentorosaur',
+      '@amiable-dev/docusaurus-plugin-stentorosaur',
       {
         owner: 'your-github-org',
         repo: 'your-repo',
@@ -36,7 +53,7 @@ Copy the monitoring workflow:
 
 ```bash
 mkdir -p .github/workflows
-cp node_modules/docusaurus-plugin-stentorosaur/templates/workflows/monitor-systems.yml .github/workflows/
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/monitor-systems.yml .github/workflows/
 ```
 
 Edit the workflow to add your endpoints:
@@ -54,14 +71,14 @@ system:
 Copy the status update workflow:
 
 ```bash
-cp node_modules/docusaurus-plugin-stentorosaur/templates/workflows/status-update.yml .github/workflows/
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/status-update.yml .github/workflows/
 ```
 
 And optionally the issue template:
 
 ```bash
 mkdir -p .github/ISSUE_TEMPLATE
-cp node_modules/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMPLATE/status-issue.yml .github/ISSUE_TEMPLATE/
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMPLATE/status-issue.yml .github/ISSUE_TEMPLATE/
 ```
 
 ## Step 4: Create Your First Status Issue

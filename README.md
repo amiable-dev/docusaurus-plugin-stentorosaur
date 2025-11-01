@@ -23,6 +23,123 @@ npm install @amiable-dev/docusaurus-plugin-stentorosaur
 yarn add @amiable-dev/docusaurus-plugin-stentorosaur
 ```
 
+## GitHub Token Setup
+
+The plugin uses a GitHub token to fetch status data from your repository's issues. This token is used in **two different contexts**:
+
+### 1. Local Development & Build (Optional)
+
+For local development and builds, set `process.env.GITHUB_TOKEN` in your environment:
+
+**Create a Personal Access Token (PAT):**
+
+1. Go to [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
+2. Click "Generate new token (classic)"
+3. Give it a descriptive name (e.g., "Docusaurus Status Plugin")
+4. Select scopes:
+   - ✅ `repo` (for private repositories)
+   - ✅ `public_repo` (for public repositories only)
+5. Generate and copy the token
+
+**Set up locally:**
+
+Create a `.env` file in your Docusaurus project root:
+
+```bash
+# .env
+GITHUB_TOKEN=ghp_your_token_here
+```
+
+Then load it in your `docusaurus.config.js`:
+
+```javascript
+// If using dotenv
+require('dotenv').config();
+
+module.exports = {
+  plugins: [
+    [
+      '@amiable-dev/docusaurus-plugin-stentorosaur',
+      {
+        owner: 'your-org',
+        repo: 'your-repo',
+        token: process.env.GITHUB_TOKEN, // Uses .env token
+        systemLabels: ['api', 'website', 'database'],
+      },
+    ],
+  ],
+};
+```
+
+> **Note:** The token is **optional** for local development. Without it, the plugin will display demo data, which is useful for testing layouts and components.
+
+### 2. GitHub Actions Deployment (Automatic)
+
+When deploying with GitHub Actions, the `GITHUB_TOKEN` is **automatically provided** by GitHub. No manual setup required!
+
+**For GitHub Pages deployment**, use the standard Docusaurus deployment workflow:
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build website
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Automatically provided
+        run: npm run build
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+```
+
+The `secrets.GITHUB_TOKEN` is automatically available in all GitHub Actions workflows - no configuration needed!
+
+**Key Points:**
+
+- ✅ **Local**: Optional - uses `process.env.GITHUB_TOKEN` from `.env` file or environment variables
+- ✅ **GitHub Actions**: Automatic - uses `secrets.GITHUB_TOKEN` (no setup required)
+- ✅ **Demo Mode**: Works without any token (shows demo data for testing)
+- ✅ **Rate Limits**: Authenticated requests have higher rate limits (5,000/hour vs 60/hour)
+
+### 3. Other CI/CD Platforms
+
+For platforms like Netlify, Vercel, or custom CI/CD:
+
+1. Create a GitHub PAT (as described above)
+2. Add it as an environment variable in your platform's dashboard:
+   - **Netlify**: Site settings → Build & deploy → Environment → Environment variables
+   - **Vercel**: Project settings → Environment Variables
+   - **Custom CI**: Add to your CI platform's secrets/environment variables
+
+Set the variable name as `GITHUB_TOKEN` with your PAT value.
+
 ## Configuration
 
 ### Basic Setup
