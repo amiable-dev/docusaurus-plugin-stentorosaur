@@ -296,6 +296,45 @@ You can manually create status issues using:
 2. **API/CLI**: Create issues programmatically with appropriate labels
 3. **Automation**: Trigger from your monitoring tools (PagerDuty, DataDog, etc.)
 
+### CLI Tool
+
+The plugin includes a CLI tool for updating status data:
+
+```bash
+npx stentorosaur-update-status
+```
+
+**Options:**
+
+- `--help` - Show usage information and examples
+- `--output-dir <path>` - Specify custom output directory (default: `build/status-data`)
+- `--verbose` - Enable detailed logging for debugging
+- `--commit` - Auto-commit changes with emoji messages (🟩🟨🟥📊)
+
+**Examples:**
+
+```bash
+# Update status data with verbose logging
+npx stentorosaur-update-status --verbose
+
+# Update and commit changes automatically
+npx stentorosaur-update-status --commit
+
+# Custom output directory
+npx stentorosaur-update-status --output-dir ./public/status
+
+# Combine multiple options
+npx stentorosaur-update-status --verbose --commit --output-dir ./public/status
+```
+
+The CLI tool:
+
+- Fetches status issues from GitHub
+- Generates status data files (`summary.json` and `status.json`)
+- Optionally commits changes with descriptive emoji messages
+- Can be used in local development or CI/CD pipelines
+- Provides helpful error messages with examples
+
 ## Configuration Options
 
 ### Full Options Reference

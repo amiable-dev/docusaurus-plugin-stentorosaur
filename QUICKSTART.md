@@ -74,6 +74,32 @@ Copy the status update workflow:
 cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/status-update.yml .github/workflows/
 ```
 
+This workflow automatically updates status data when issues change using the CLI command:
+
+```bash
+npx stentorosaur-update-status
+```
+
+**CLI Options:**
+
+- `--help` - Show usage information
+- `--output-dir <path>` - Custom output directory (default: build/status-data)
+- `--verbose` - Enable detailed logging
+- `--commit` - Auto-commit changes with emoji messages (🟩🟨🟥📊)
+
+You can also run this command locally to update status data:
+
+```bash
+# Basic usage
+npx stentorosaur-update-status
+
+# With custom output directory
+npx stentorosaur-update-status --output-dir ./public/status
+
+# With verbose logging and auto-commit
+npx stentorosaur-update-status --verbose --commit
+```
+
 And optionally the issue template:
 
 ```bash
@@ -90,6 +116,7 @@ Create a new GitHub issue with these labels:
 - `critical` (or `major`, `minor`, `maintenance`)
 
 Example:
+
 - Title: "API experiencing high latency"
 - Labels: `status`, `api`, `major`
 - Body: Description of the issue

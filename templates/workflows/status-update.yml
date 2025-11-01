@@ -2,11 +2,11 @@ name: Status Update
 
 on:
   schedule:
-    # Runs every hour
+    # Runs every hour to keep status page fresh
     - cron: '0 * * * *'
   workflow_dispatch:
   issues:
-    types: [opened, closed, labeled, unlabeled]
+    types: [opened, closed, labeled, unlabeled, edited]
 
 jobs:
   update-status:
@@ -15,32 +15,65 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: '20'
           cache: 'npm'
           
       - name: Install dependencies
-        run: |
-          cd docusaurus-plugin-stentorosaur
-          npm install
+        run: npm ci
           
-      - name: Fetch and update status data
+      - name: Update status data
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx stentorosaur-update-status
+        
+      # Status data is now updated in build/status-data/ directory
+      # Commit changes to trigger deployment
+      
+      - name: Get status changes
+        id: status
         run: |
-          cd docusaurus-plugin-stentorosaur
-          npm run update-status
-          
-      - name: Commit status updates
+          if [ -d "build/status-data" ]; then
+            # Check if there are changes
+            if ! git diff --quiet build/status-data/; then
+              # Read summary to generate commit message
+              if [ -f "build/status-data/summary.json" ]; then
+                # Extract system statuses and generate emoji message
+                SYSTEMS_UP=$(jq -r '[.[] | select(.status == "up") | .name] | join(", ")' build/status-data/summary.json 2>/dev/null || echo "")
+                SYSTEMS_DOWN=$(jq -r '[.[] | select(.status == "down") | .name] | join(", ")' build/status-data/summary.json 2>/dev/null || echo "")
+                SYSTEMS_DEGRADED=$(jq -r '[.[] | select(.status == "degraded") | .name] | join(", ")' build/status-data/summary.json 2>/dev/null || echo "")
+                
+                # Build commit message with emojis
+                MSG="📊 Update status data"
+                if [ -n "$SYSTEMS_DOWN" ]; then
+                  MSG="🟥 Systems down: $SYSTEMS_DOWN"
+                elif [ -n "$SYSTEMS_DEGRADED" ]; then
+                  MSG="🟨 Systems degraded: $SYSTEMS_DEGRADED"
+                elif [ -n "$SYSTEMS_UP" ]; then
+                  MSG="🟩 All systems operational"
+                fi
+                
+                echo "commit_message=$MSG" >> $GITHUB_OUTPUT
+                echo "has_changes=true" >> $GITHUB_OUTPUT
+              else
+                echo "commit_message=📊 Update status data" >> $GITHUB_OUTPUT
+                echo "has_changes=true" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit updated status data
+        if: steps.status.outputs.has_changes == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add status-data/
-          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update status data [skip ci]"
+          git add build/status-data/
+          git commit -m "${{ steps.status.outputs.commit_message }} [skip ci]"
           git push
