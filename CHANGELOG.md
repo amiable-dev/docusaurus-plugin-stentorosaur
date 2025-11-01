@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Renamed `scripts/update-status.js` to `update-status.cjs` to ensure CommonJS compatibility in ES module projects
+- Script now works correctly in projects with `"type": "module"` in package.json
+
 ## [0.1.7] - 2025-11-01
 
 ### Fixed

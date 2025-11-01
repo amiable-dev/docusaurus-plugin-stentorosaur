@@ -6,7 +6,7 @@ import {execSync} from 'child_process';
 import fs from 'fs-extra';
 import path from 'path';
 
-const scriptPath = path.join(__dirname, '..', 'scripts', 'update-status.js');
+const scriptPath = path.join(__dirname, '..', 'scripts', 'update-status.cjs');
 const testFixturesDir = path.join(__dirname, 'fixtures');
 const testProjectDir = path.join(testFixturesDir, 'test-docusaurus-project');
 
