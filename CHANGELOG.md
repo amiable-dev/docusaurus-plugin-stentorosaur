@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-11-01
+
+### Added
+
+- Response time tracking for monitored systems (#1)
+  - Captures response time in milliseconds for each health check
+  - Stores response time data in per-system JSON files
+  - Displays response time in commit messages (e.g., "🟩 api is up (200 in 145 ms)")
+- Time-window response time averages (#1)
+  - 24-hour average response time (`timeDay`)
+  - 7-day average response time (`timeWeek`)
+  - 30-day average response time (`timeMonth`)
+  - Calculated hourly via git history analysis
+- Uptime percentage tracking (#1)
+  - 24-hour uptime percentage (`uptimeDay`)
+  - 7-day uptime percentage (`uptimeWeek`)
+  - 30-day uptime percentage (`uptimeMonth`)
+  - All-time uptime percentage (`uptime`)
+  - Calculated hourly from commit history patterns
+- New workflow: `calculate-metrics.yml` for computing time-series metrics
+- Per-system JSON files in `build/status-data/systems/` directory
+- TypeScript interfaces for system status files with metrics
+- Plugin now reads and merges system file data with GitHub issue data
+- Comprehensive system data documentation in `templates/status-data/systems/README.md`
+
+### Changed
+
+- `monitor-systems.yml` now captures response time using `curl -w "%{time_total}"`
+- System status data now stored in individual JSON files (one per system)
+- Plugin prioritizes calculated metrics over GitHub issue fallbacks
+- Commit messages include response time (e.g., "🟩 website is up (200 in 234 ms)")
+
+### Fixed
+
+- `monitor-systems.yml` recovery logic now uses `automated` label instead of `critical` (#12, #13)
+  - Prevents auto-closing of manually created status issues
+  - `critical` label now purely represents severity, not creation source
+  - Auto-created issues tagged with `automated` label for proper filtering
+  - Only workflow-generated issues are auto-closed on recovery
+
+### Documentation
+
+- Added complete monitoring features guide
+- Documented response time and uptime tracking
+- Example system JSON file structure
+
 ## [0.1.9] - 2025-11-01
 
 ### Changed
@@ -174,7 +220,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.9...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.9...v0.2.0
 [0.1.9]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.6...v0.1.7
