@@ -79,12 +79,57 @@ jobs:
             
             echo "  📈 Averages: 24h=${TIME_DAY}ms, 7d=${TIME_WEEK}ms, 30d=${TIME_MONTH}ms"
             
-            # Update the JSON file with calculated averages
+            # Calculate uptime percentages from git commit history
+            # Count total checks and successful checks for each time window
+            
+            # 24-hour uptime
+            TOTAL_24H=$(git log --all --since="24 hours ago" --grep="$SYSTEM_NAME is" --oneline | wc -l | tr -d ' ')
+            UP_24H=$(git log --all --since="24 hours ago" --grep="$SYSTEM_NAME is up" --oneline | wc -l | tr -d ' ')
+            if [ "$TOTAL_24H" -gt 0 ]; then
+              UPTIME_DAY=$(echo "scale=2; ($UP_24H / $TOTAL_24H) * 100" | bc)
+            else
+              UPTIME_DAY="100.00"
+            fi
+            
+            # 7-day uptime
+            TOTAL_7D=$(git log --all --since="7 days ago" --grep="$SYSTEM_NAME is" --oneline | wc -l | tr -d ' ')
+            UP_7D=$(git log --all --since="7 days ago" --grep="$SYSTEM_NAME is up" --oneline | wc -l | tr -d ' ')
+            if [ "$TOTAL_7D" -gt 0 ]; then
+              UPTIME_WEEK=$(echo "scale=2; ($UP_7D / $TOTAL_7D) * 100" | bc)
+            else
+              UPTIME_WEEK="100.00"
+            fi
+            
+            # 30-day uptime
+            TOTAL_30D=$(git log --all --since="30 days ago" --grep="$SYSTEM_NAME is" --oneline | wc -l | tr -d ' ')
+            UP_30D=$(git log --all --since="30 days ago" --grep="$SYSTEM_NAME is up" --oneline | wc -l | tr -d ' ')
+            if [ "$TOTAL_30D" -gt 0 ]; then
+              UPTIME_MONTH=$(echo "scale=2; ($UP_30D / $TOTAL_30D) * 100" | bc)
+            else
+              UPTIME_MONTH="100.00"
+            fi
+            
+            # All-time uptime
+            TOTAL_ALL=$(git log --all --grep="$SYSTEM_NAME is" --oneline | wc -l | tr -d ' ')
+            UP_ALL=$(git log --all --grep="$SYSTEM_NAME is up" --oneline | wc -l | tr -d ' ')
+            if [ "$TOTAL_ALL" -gt 0 ]; then
+              UPTIME_ALL=$(echo "scale=2; ($UP_ALL / $TOTAL_ALL) * 100" | bc)
+            else
+              UPTIME_ALL="100.00"
+            fi
+            
+            echo "  ⏱️  Uptime: 24h=${UPTIME_DAY}%, 7d=${UPTIME_WEEK}%, 30d=${UPTIME_MONTH}%, all=${UPTIME_ALL}%"
+            
+            # Update the JSON file with calculated averages and uptime
             if [ -f "$system_file" ]; then
               jq --argjson day "$TIME_DAY" \
                  --argjson week "$TIME_WEEK" \
                  --argjson month "$TIME_MONTH" \
-                 '.timeDay = $day | .timeWeek = $week | .timeMonth = $month' \
+                 --arg uptimeDay "${UPTIME_DAY}%" \
+                 --arg uptimeWeek "${UPTIME_WEEK}%" \
+                 --arg uptimeMonth "${UPTIME_MONTH}%" \
+                 --arg uptime "${UPTIME_ALL}%" \
+                 '.timeDay = $day | .timeWeek = $week | .timeMonth = $month | .uptimeDay = $uptimeDay | .uptimeWeek = $uptimeWeek | .uptimeMonth = $uptimeMonth | .uptime = $uptime' \
                  "$system_file" > "$system_file.tmp"
               mv "$system_file.tmp" "$system_file"
             fi

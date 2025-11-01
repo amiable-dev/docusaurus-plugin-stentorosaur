@@ -20,9 +20,13 @@ export interface SystemStatusFile {
   lastChecked: string;
   currentStatus: StatusItemStatus;
   history: StatusCheckHistory[];
-  timeDay?: number;    // 24-hour average response time in ms
-  timeWeek?: number;   // 7-day average response time in ms
-  timeMonth?: number;  // 30-day average response time in ms
+  timeDay?: number;       // 24-hour average response time in ms
+  timeWeek?: number;      // 7-day average response time in ms
+  timeMonth?: number;     // 30-day average response time in ms
+  uptimeDay?: string;     // 24-hour uptime percentage
+  uptimeWeek?: string;    // 7-day uptime percentage
+  uptimeMonth?: string;   // 30-day uptime percentage
+  uptime?: string;        // All-time uptime percentage
 }
 
 export interface StatusItem {

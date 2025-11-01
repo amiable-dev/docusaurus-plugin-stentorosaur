@@ -56,6 +56,7 @@ async function readSystemFiles(systemsDir: string): Promise<Partial<StatusItem>[
           status: data.currentStatus,
           lastChecked: data.lastChecked,
           responseTime: avgResponseTime,
+          uptime: data.uptime || data.uptimeDay, // Prefer all-time, fallback to 24h
         });
       } catch (error) {
         console.warn(`Failed to read system file ${file}:`, error);
