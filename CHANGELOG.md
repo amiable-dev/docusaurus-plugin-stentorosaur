@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2025-11-01
+
 ### Fixed
 - Renamed `scripts/update-status.js` to `update-status.cjs` to ensure CommonJS compatibility in ES module projects
 - Script now works correctly in projects with `"type": "module"` in package.json
+- Added required `permissions:` block to `monitor-systems.yml` workflow template to prevent "Resource not accessible by integration" errors
+
+### Changed
+- Split documentation into user-focused README.md and contributor-focused CONTRIBUTING.md
+- README.md now focuses exclusively on installation, configuration, and usage
+- CONTRIBUTING.md provides comprehensive development setup, testing guidelines, and release process
+
+### Added
+- CONTRIBUTING.md with detailed contributor guidelines
+- Workflow templates documentation in copilot-instructions.md
+- Support section in README.md with links to Issues and Discussions
 
 ## [0.1.7] - 2025-11-01
 
@@ -150,7 +163,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.4...v0.1.5
