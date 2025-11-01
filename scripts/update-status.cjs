@@ -241,8 +241,12 @@ async function updateStatus() {
       ? path.resolve(process.cwd(), options.outputDir)
       : defaultBuildDir;
 
-    // Only write to build directory if it exists or output-dir is specified
-    const shouldWriteBuild = options.outputDir || await fs.pathExists(path.join(process.cwd(), 'build'));
+    // Write to build directory if:
+    // 1. --output-dir is explicitly specified, OR
+    // 2. build/ directory exists, OR
+    // 3. Running in CI environment (GITHUB_ACTIONS, CI, etc.)
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+    const shouldWriteBuild = options.outputDir || await fs.pathExists(path.join(process.cwd(), 'build')) || isCI;
     
     if (shouldWriteBuild) {
       await fs.ensureDir(buildStatusDir);
