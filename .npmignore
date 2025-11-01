@@ -21,7 +21,6 @@ jest.config.js
 
 # Exclude internal documentation
 BETA_RELEASE_SUMMARY.md
-CHANGELOG.md
 GAP_ANALYSIS.md
 PROJECT_SUMMARY.md
 PUBLISHING.md
