@@ -298,6 +298,28 @@ Given version number **MAJOR.MINOR.PATCH** (e.g., `2.3.1`):
 - Format: `[version]: https://github.com/owner/repo/compare/vPREV...vCURRENT`
 - Makes it easy to see exact code changes
 
+## Workflow Templates
+
+The plugin provides GitHub Actions workflow templates in `templates/workflows/` that users can copy to their `.github/workflows/` directory:
+
+- `monitor-systems.yml` - Automated health check monitoring for systems/endpoints
+- `status-update.yml` - Updates status data files in build directory
+
+**Important**: These templates include required `permissions:` block:
+```yaml
+permissions:
+  issues: write   # Required for creating/closing issues and adding comments
+  contents: read  # Required for checking out repository
+```
+
+Without `issues: write` permission, workflows will fail with "Resource not accessible by integration" error when attempting to create issues, add comments, or close issues.
+
+**Template Usage**:
+1. Users copy template from `node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/`
+2. Customize system URLs, labels, and cron schedules
+3. Ensure `permissions:` block is included in workflow file
+4. Commit to `.github/workflows/` in their project
+
 ## Key Documentation Files
 - `README.md` - User-facing installation/configuration guide
 - `CONFIGURATION.md` - Detailed config examples
