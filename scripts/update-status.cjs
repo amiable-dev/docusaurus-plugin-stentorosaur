@@ -34,12 +34,40 @@ const options = {
   verbose: args.includes('--verbose'),
   commit: args.includes('--commit'),
   help: args.includes('--help') || args.includes('-h'),
+  owner: null,
+  repo: null,
+  statusLabel: null,
+  systemLabels: null,
 };
 
 // Extract --output-dir value
 const outputDirIndex = args.indexOf('--output-dir');
 if (outputDirIndex !== -1 && args[outputDirIndex + 1]) {
   options.outputDir = args[outputDirIndex + 1];
+}
+
+// Extract --owner value
+const ownerIndex = args.indexOf('--owner');
+if (ownerIndex !== -1 && args[ownerIndex + 1]) {
+  options.owner = args[ownerIndex + 1];
+}
+
+// Extract --repo value
+const repoIndex = args.indexOf('--repo');
+if (repoIndex !== -1 && args[repoIndex + 1]) {
+  options.repo = args[repoIndex + 1];
+}
+
+// Extract --status-label value
+const statusLabelIndex = args.indexOf('--status-label');
+if (statusLabelIndex !== -1 && args[statusLabelIndex + 1]) {
+  options.statusLabel = args[statusLabelIndex + 1];
+}
+
+// Extract --system-labels value
+const systemLabelsIndex = args.indexOf('--system-labels');
+if (systemLabelsIndex !== -1 && args[systemLabelsIndex + 1]) {
+  options.systemLabels = args[systemLabelsIndex + 1].split(',').map(s => s.trim());
 }
 
 function log(...args) {
@@ -109,21 +137,38 @@ async function updateStatus() {
 
     verbose('Loading Docusaurus config from:', configPath);
 
-    // Load Docusaurus config
-    const config = require(configPath);
+    // Load Docusaurus config using dynamic import (works for both CJS and ESM)
+    // Convert to file:// URL for cross-platform compatibility
+    const { pathToFileURL } = require('url');
+    const configModule = await import(pathToFileURL(configPath).href);
+    const config = configModule.default || configModule;
     const actualConfig = typeof config === 'function' ? await config() : config;
 
     // Find the plugin configuration
     const plugins = actualConfig.plugins || [];
     let pluginConfig = null;
 
+    verbose('Searching for plugin in', plugins.length, 'plugins');
+
     for (const plugin of plugins) {
+      // Handle array format: ['plugin-name', options]
       if (Array.isArray(plugin)) {
         const [pluginPath, options] = plugin;
+        verbose('Checking array plugin:', pluginPath);
         if (pluginPath === '@amiable-dev/docusaurus-plugin-stentorosaur' || 
             pluginPath === 'docusaurus-plugin-stentorosaur') {
-          pluginConfig = options;
+          pluginConfig = options || {};
           verbose('Found plugin config:', pluginConfig);
+          break;
+        }
+      }
+      // Handle string format: 'plugin-name' (no options)
+      else if (typeof plugin === 'string') {
+        verbose('Checking string plugin:', plugin);
+        if (plugin === '@amiable-dev/docusaurus-plugin-stentorosaur' || 
+            plugin === 'docusaurus-plugin-stentorosaur') {
+          pluginConfig = {};
+          verbose('Found plugin (no options)');
           break;
         }
       }

@@ -15,6 +15,11 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
 - 📱 **Responsive**: Works perfectly on all devices
 - 🔧 **Flexible**: Track both technical systems AND business/process issues
 
+## Requirements
+
+- **Node.js**: 20.0 or higher
+- **Docusaurus**: 3.0 or higher (recommended: 3.9+ for full ES module support)
+
 ## Installation
 
 ```bash

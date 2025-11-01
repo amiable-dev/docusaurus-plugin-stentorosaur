@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2025-11-01
+
+### Changed
+- Updated Node.js requirement to 20.0+ (aligns with Docusaurus 3.9)
+- README now documents Node.js 20+ and Docusaurus 3.0+ requirements
+
+### Fixed
+- Improved plugin detection in update-status script to handle both array and string plugin formats
+- Added verbose logging to aid troubleshooting plugin configuration issues
+- Script now correctly loads ES module Docusaurus configs via dynamic import
+
 ## [0.1.8] - 2025-11-01
 
 ### Fixed
@@ -163,7 +174,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.5...v0.1.6
