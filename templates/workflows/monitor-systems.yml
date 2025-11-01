@@ -118,11 +118,11 @@ jobs:
             const systemName = '${{ matrix.system.name }}';
             const statusCode = '${{ steps.check.outputs.status_code }}';
             
-            // Check if there's already an open issue for this system
+            // Check if there's already an open automated issue for this system
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              labels: ['status', systemName, 'critical'],
+              labels: ['status', systemName, 'automated'],
               state: 'open'
             });
             
@@ -144,7 +144,7 @@ jobs:
                 
                 ---
                 *This issue was automatically created by the monitoring workflow.*`,
-                labels: ['status', systemName, 'critical']
+                labels: ['status', systemName, 'critical', 'automated']
               });
             }
             
@@ -155,11 +155,11 @@ jobs:
           script: |
             const systemName = '${{ matrix.system.name }}';
             
-            // Find open CRITICAL issues for this system (only auto-created downtime issues)
+            // Find open automated issues for this system (only auto-created downtime issues)
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              labels: ['status', systemName, 'critical'],
+              labels: ['status', systemName, 'automated'],
               state: 'open'
             });
             
