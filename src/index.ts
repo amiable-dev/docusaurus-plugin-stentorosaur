@@ -80,6 +80,22 @@ export default async function pluginStatus(
 
       // Use demo data if explicitly requested or no token provided
       if (shouldUseDemoData) {
+        const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+        
+        if (isCI && !token && useDemoData !== true) {
+          console.warn(
+            '\n⚠️  [docusaurus-plugin-stentorosaur] GITHUB_TOKEN not found in CI environment.\n' +
+            '   Your production site will show DEMO DATA instead of real status.\n' +
+            '   \n' +
+            '   Fix: Add this to your build step in .github/workflows/deploy.yml:\n' +
+            '   \n' +
+            '   - name: Build website\n' +
+            '     env:\n' +
+            '       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n' +
+            '     run: npm run build\n'
+          );
+        }
+        
         console.log(
           useDemoData 
             ? '[docusaurus-plugin-stentorosaur] Using demo data (useDemoData=true)'

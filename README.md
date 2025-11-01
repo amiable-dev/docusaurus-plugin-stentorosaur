@@ -78,9 +78,11 @@ module.exports = {
 
 > **Note:** The token is **optional** for local development. Without it, the plugin will display demo data, which is useful for testing layouts and components.
 
-### 2. GitHub Actions Deployment (Automatic)
+### 2. GitHub Actions Deployment
 
-When deploying with GitHub Actions, the `GITHUB_TOKEN` is **automatically provided** by GitHub. No manual setup required!
+When deploying with GitHub Actions, you **must explicitly pass** the `GITHUB_TOKEN` to your build step via the `env:` block.
+
+> ⚠️ **Important:** While `secrets.GITHUB_TOKEN` is automatically available in GitHub Actions workflows, it is NOT automatically in `process.env.GITHUB_TOKEN` unless you explicitly pass it via `env:`.
 
 **For GitHub Pages deployment**, use the standard Docusaurus deployment workflow:
 
@@ -124,14 +126,14 @@ jobs:
           publish_dir: ./build
 ```
 
-The `secrets.GITHUB_TOKEN` is automatically available in all GitHub Actions workflows - no configuration needed!
-
 **Key Points:**
 
 - ✅ **Local**: Optional - uses `process.env.GITHUB_TOKEN` from `.env` file or environment variables
-- ✅ **GitHub Actions**: Automatic - uses `secrets.GITHUB_TOKEN` (no setup required)
+- ✅ **GitHub Actions**: Must pass via `env:` block - `GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`
 - ✅ **Demo Mode**: Works without any token (shows demo data for testing)
 - ✅ **Rate Limits**: Authenticated requests have higher rate limits (5,000/hour vs 60/hour)
+
+> 💡 **Tip:** If your production site shows demo data, you forgot to add the `env:` block to your build step!
 
 ### 3. Other CI/CD Platforms
 
@@ -548,6 +550,23 @@ labels:
 6. **Set Up Alerts**: Configure GitHub notifications for status issues
 
 ## Troubleshooting
+
+### Production site shows demo data instead of real status
+
+**Problem**: Your deployed site shows "Demo API", "Demo Website", etc. instead of your real systems.
+
+**Cause**: `GITHUB_TOKEN` is not available in `process.env` during the build.
+
+**Solution**: Add the `env:` block to your build step:
+
+```yaml
+- name: Build website
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # ← Add this!
+  run: npm run build
+```
+
+See the [GitHub Actions Deployment](#2-github-actions-deployment) section for full example.
 
 ### Status page shows no data
 

@@ -27,6 +27,8 @@ jobs:
           
       - name: Update status data
         env:
+          # Must explicitly pass token to make it available in process.env
+          # secrets.GITHUB_TOKEN exists but is NOT in process.env unless you pass it via env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx stentorosaur-update-status
         

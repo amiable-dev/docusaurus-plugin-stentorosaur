@@ -21,7 +21,7 @@ Create a Personal Access Token at <https://github.com/settings/tokens> with `rep
 
 > **Note:**
 >
-> - For **GitHub Actions deployments**, `secrets.GITHUB_TOKEN` is automatically provided - no setup needed!
+> - For **GitHub Actions deployments**, you must pass the token via `env:` - see [README](./README.md#github-token-setup)
 > - Without a token, the plugin shows **demo data** (useful for testing)
 > - See the [README](./README.md#github-token-setup) for detailed token setup
 
