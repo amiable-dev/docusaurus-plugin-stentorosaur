@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Status update workflow template now uses correct binary command (#6)
+  - Changed from non-existent `npm run update-status` to `npx stentorosaur-update-status`
+  - Added conditional execution based on `build/` directory existence
+  - Implemented emoji commit messages (🟩🟨🟥📊) based on system status
+  - Only commits `build/status-data/` (not `.docusaurus/`)
+  - Added jq-based status detection from `summary.json`
+
+### Added
+
+- CLI flags for `stentorosaur-update-status` command (#6)
+  - `--help` / `-h` - Show comprehensive usage documentation
+  - `--output-dir <path>` - Specify custom output directory
+  - `--verbose` - Enable detailed logging for debugging
+  - `--commit` - Auto-commit changes with emoji messages
+- Binary entry point in `package.json` for CLI command
+- Tests for CLI script (`__tests__/update-status.test.ts`)
+- CLI usage documentation in QUICKSTART.md and README.md
+
 ## [0.1.4] - 2025-11-01
 
 ### Added
