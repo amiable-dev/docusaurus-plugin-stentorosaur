@@ -9,11 +9,60 @@ import path from 'path';
 import fs from 'fs-extra';
 import {normalizeUrl} from '@docusaurus/utils';
 import type {LoadContext, Plugin} from '@docusaurus/types';
-import type {PluginOptions, StatusData} from './types';
+import type {PluginOptions, StatusData, StatusItem, SystemStatusFile} from './types';
 import {GitHubStatusService} from './github-service';
 import {getDemoStatusData} from './demo-data';
 
 export {validateOptions} from './options';
+
+/**
+ * Read system status files and calculate metrics
+ */
+async function readSystemFiles(systemsDir: string): Promise<Partial<StatusItem>[]> {
+  try {
+    if (!(await fs.pathExists(systemsDir))) {
+      return [];
+    }
+
+    const files = await fs.readdir(systemsDir);
+    if (!files || !Array.isArray(files)) {
+      return [];
+    }
+    
+    const systemFiles = files.filter(f => f.endsWith('.json') && f !== 'example-api.json');
+    
+    const systemData: Partial<StatusItem>[] = [];
+    
+    for (const file of systemFiles) {
+      try {
+        const filePath = path.join(systemsDir, file);
+        const data: SystemStatusFile = await fs.readJson(filePath);
+        
+        // Calculate average response time from recent history
+        let avgResponseTime: number | undefined;
+        if (data.history && data.history.length > 0) {
+          const recentChecks = data.history.slice(0, 10); // Last 10 checks
+          const sum = recentChecks.reduce((acc, check) => acc + check.responseTime, 0);
+          avgResponseTime = Math.round(sum / recentChecks.length);
+        }
+        
+        systemData.push({
+          name: data.name,
+          status: data.currentStatus,
+          lastChecked: data.lastChecked,
+          responseTime: avgResponseTime,
+        });
+      } catch (error) {
+        console.warn(`Failed to read system file ${file}:`, error);
+      }
+    }
+    
+    return systemData;
+  } catch (error) {
+    console.warn('Failed to read system files:', error);
+    return [];
+  }
+}
 
 /**
  * Returns a list of components that can be swizzled/ejected for customization.
@@ -117,6 +166,42 @@ export default async function pluginStatus(
           const result = await service.fetchStatusData();
           items = showServices ? result.items : [];
           incidents = showIncidents ? result.incidents : [];
+          
+          // Enhance items with data from system files
+          const systemsDir = path.join(context.siteDir, dataPath, 'systems');
+          const systemFileData = await readSystemFiles(systemsDir);
+          
+          if (systemFileData.length > 0) {
+            // Merge system file data with GitHub issue data
+            const systemDataMap = new Map(
+              systemFileData.map(s => [s.name, s])
+            );
+            
+            items = items.map(item => {
+              const systemData = systemDataMap.get(item.name);
+              if (systemData) {
+                return {
+                  ...item,
+                  responseTime: systemData.responseTime,
+                  lastChecked: systemData.lastChecked,
+                };
+              }
+              return item;
+            });
+            
+            // Add systems that are only in files (not in GitHub issues)
+            for (const systemData of systemFileData) {
+              if (!items.some(item => item.name === systemData.name)) {
+                items.push({
+                  name: systemData.name || 'Unknown',
+                  status: systemData.status || 'up',
+                  lastChecked: systemData.lastChecked,
+                  responseTime: systemData.responseTime,
+                  incidentCount: 0,
+                });
+              }
+            }
+          }
           
           // If no real data found and demo data not explicitly disabled, use demo data
           if (items.length === 0 && incidents.length === 0 && useDemoData !== false) {

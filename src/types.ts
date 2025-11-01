@@ -7,6 +7,21 @@
 
 export type StatusItemStatus = 'up' | 'down' | 'degraded' | 'maintenance';
 
+export interface StatusCheckHistory {
+  timestamp: string;
+  status: StatusItemStatus;
+  code: number;
+  responseTime: number;
+}
+
+export interface SystemStatusFile {
+  name: string;
+  url: string;
+  lastChecked: string;
+  currentStatus: StatusItemStatus;
+  history: StatusCheckHistory[];
+}
+
 export interface StatusItem {
   name: string;
   description?: string;
