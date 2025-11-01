@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2025-11-01
+
+### Fixed
+
+- CLI script now uses ES module syntax to work in projects with `"type": "module"` (#6)
+  - Converted `require()` to `import` statements
+  - Added `createRequire` for dynamic CommonJS module loading
+  - Maintains compatibility with both CommonJS and ES module projects
+
 ## [0.1.5] - 2025-11-01
 
 ### Fixed
@@ -131,7 +140,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.2...v0.1.3
