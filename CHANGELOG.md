@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2025-11-02
+
+### Fixed
+
+- Workflow template now uses `git add --force` to handle gitignored parent directory (#63)
+  - Required because `build/` is gitignored even though `build/status-data/` is excepted
+  - Without `--force`, git add fails with "ignored by .gitignore" error
+  - Works seamlessly with the gitignore negation pattern from v0.2.5
+
 ## [0.2.6] - 2025-11-02
 
 ### Fixed

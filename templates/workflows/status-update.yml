@@ -44,7 +44,8 @@ jobs:
         run: |
           if [ -d "build/status-data" ]; then
             # Stage files to detect both tracked changes AND untracked files
-            git add build/status-data/
+            # Use --force since build/ is gitignored (but build/status-data/ is excepted)
+            git add --force build/status-data/
             
             # Check if there are staged changes (works for new files too)
             if ! git diff --staged --quiet; then
