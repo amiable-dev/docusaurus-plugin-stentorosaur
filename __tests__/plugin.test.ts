@@ -364,4 +364,392 @@ describe('docusaurus-plugin-stentorosaur', () => {
       expect(plugin.getPathsToWatch!()).toEqual(['status-data/**/*.{json,yml,yaml}']);
     });
   });
+
+  describe('getSwizzleComponentList', () => {
+    it('should return list of swizzleable components', async () => {
+      const {getSwizzleComponentList} = await import('../src/index');
+      
+      const components = getSwizzleComponentList();
+      
+      expect(components).toEqual([
+        'StatusPage',
+        'StatusBoard',
+        'StatusItem',
+        'IncidentHistory',
+      ]);
+      expect(components.length).toBe(4);
+    });
+  });
+
+  describe('getThemePath', () => {
+    it('should return correct theme path', async () => {
+      const plugin = await pluginStatusPage(mockContext, defaultOptions);
+      
+      expect(plugin.getThemePath!()).toBe('../lib/theme');
+    });
+  });
+
+  describe('getTypeScriptThemePath', () => {
+    it('should return correct TypeScript theme path', async () => {
+      const plugin = await pluginStatusPage(mockContext, defaultOptions);
+      
+      expect(plugin.getTypeScriptThemePath!()).toBe('../src/theme');
+    });
+  });
+
+  describe('loadContent with system files', () => {
+    it('should merge GitHub data with system file data', async () => {
+      const mockGitHubData = {
+        items: [
+          {name: 'api', status: 'up', incidentCount: 0},
+        ],
+        incidents: [],
+      };
+
+      const mockSystemData = {
+        name: 'api',
+        currentStatus: 'up',
+        lastChecked: '2025-01-01T12:00:00Z',
+        timeDay: 150,
+        uptimeDay: 99.5,
+        history: [],
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(true);
+      (mockedFs.readdir as any).mockResolvedValue(['api.json']);
+      (mockedFs.readJson as any).mockResolvedValue(mockSystemData);
+
+      const plugin = await pluginStatusPage(mockContext, defaultOptions);
+      const content = await plugin.loadContent!();
+
+      expect(content.items[0].responseTime).toBe(150);
+      expect(content.items[0].lastChecked).toBe('2025-01-01T12:00:00Z');
+    });
+
+    it('should handle system files without timeDay using history fallback', async () => {
+      const mockGitHubData = {
+        items: [
+          {name: 'web', status: 'up', incidentCount: 0},
+        ],
+        incidents: [],
+      };
+
+      const mockSystemData = {
+        name: 'web',
+        currentStatus: 'up',
+        lastChecked: '2025-01-01T12:00:00Z',
+        history: [
+          {timestamp: '2025-01-01T12:00:00Z', status: 'up', responseTime: 100},
+          {timestamp: '2025-01-01T11:55:00Z', status: 'up', responseTime: 120},
+          {timestamp: '2025-01-01T11:50:00Z', status: 'up', responseTime: 80},
+        ],
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(true);
+      (mockedFs.readdir as any).mockResolvedValue(['web.json']);
+      (mockedFs.readJson as any).mockResolvedValue(mockSystemData);
+
+      const plugin = await pluginStatusPage(mockContext, defaultOptions);
+      const content = await plugin.loadContent!();
+
+      // Average of 100, 120, 80 = 100
+      expect(content.items[0].responseTime).toBe(100);
+    });
+
+    it('should add systems from files not in GitHub issues', async () => {
+      const mockGitHubData = {
+        items: [
+          {name: 'api', status: 'up', incidentCount: 0},
+        ],
+        incidents: [],
+      };
+
+      const mockSystemData = {
+        name: 'database',
+        currentStatus: 'up',
+        lastChecked: '2025-01-01T12:00:00Z',
+        timeDay: 50,
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(true);
+      (mockedFs.readdir as any).mockResolvedValue(['database.json']);
+      (mockedFs.readJson as any).mockResolvedValue(mockSystemData);
+
+      const plugin = await pluginStatusPage(mockContext, defaultOptions);
+      const content = await plugin.loadContent!();
+
+      expect(content.items.length).toBe(2);
+      expect(content.items.some(item => item.name === 'database')).toBe(true);
+    });
+
+    it('should handle systems directory not existing', async () => {
+      const mockGitHubData = {
+        items: [
+          {name: 'api', status: 'up', incidentCount: 0},
+        ],
+        incidents: [],
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(false);
+
+      const plugin = await pluginStatusPage(mockContext, defaultOptions);
+      const content = await plugin.loadContent!();
+
+      expect(content.items.length).toBe(1);
+      expect(content.items[0].name).toBe('api');
+    });
+
+    it('should skip example-api.json file', async () => {
+      const mockGitHubData = {
+        items: [],
+        incidents: [],
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(true);
+      (mockedFs.readdir as any).mockResolvedValue(['example-api.json', 'real-api.json']);
+      (mockedFs.readJson as any).mockResolvedValue({
+        name: 'real-api',
+        currentStatus: 'up',
+        timeDay: 100,
+      });
+
+      const plugin = await pluginStatusPage(mockContext, {
+        ...defaultOptions,
+        useDemoData: false,
+      });
+      const content = await plugin.loadContent!();
+
+      expect(mockedFs.readJson).toHaveBeenCalledTimes(1);
+      expect(mockedFs.readJson).not.toHaveBeenCalledWith(
+        expect.stringContaining('example-api.json')
+      );
+    });
+
+    it('should handle invalid JSON in system files gracefully', async () => {
+      const mockGitHubData = {
+        items: [],
+        incidents: [],
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(true);
+      (mockedFs.readdir as any).mockResolvedValue(['invalid.json']);
+      (mockedFs.readJson as any).mockRejectedValue(new Error('Invalid JSON'));
+
+      const plugin = await pluginStatusPage(mockContext, {
+        ...defaultOptions,
+        useDemoData: false,
+      });
+      const content = await plugin.loadContent!();
+
+      // Should handle error gracefully and use demo data as fallback
+      expect(content.items).toBeDefined();
+    });
+
+    it('should handle readdir returning non-array', async () => {
+      const mockGitHubData = {
+        items: [],
+        incidents: [],
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(true);
+      (mockedFs.readdir as any).mockResolvedValue(null);
+
+      const plugin = await pluginStatusPage(mockContext, {
+        ...defaultOptions,
+        useDemoData: false,
+      });
+      const content = await plugin.loadContent!();
+
+      expect(content.items).toBeDefined();
+    });
+
+    it('should merge responseTime and lastChecked from system files', async () => {
+      const mockGitHubData = {
+        items: [
+          {name: 'api', status: 'up', incidentCount: 0},
+        ],
+        incidents: [],
+      };
+
+      const mockSystemData = {
+        name: 'api',
+        currentStatus: 'up',
+        uptime: 95.0,
+        uptimeDay: 99.5,
+        timeDay: 100,
+        lastChecked: '2025-01-01T12:00:00Z',
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(true);
+      (mockedFs.readdir as any).mockResolvedValue(['api.json']);
+      (mockedFs.readJson as any).mockResolvedValue(mockSystemData);
+
+      const plugin = await pluginStatusPage(mockContext, defaultOptions);
+      const content = await plugin.loadContent!();
+
+      // Merge logic only includes responseTime and lastChecked, not uptime
+      expect(content.items[0].responseTime).toBe(100);
+      expect(content.items[0].lastChecked).toBe('2025-01-01T12:00:00Z');
+    });
+
+    it('should include uptime from system files for systems not in GitHub', async () => {
+      const mockGitHubData = {
+        items: [
+          {name: 'api', status: 'up', incidentCount: 0},
+        ],
+        incidents: [],
+      };
+
+      const mockSystemData = {
+        name: 'database',
+        currentStatus: 'up',
+        uptime: 95.0,
+        timeDay: 50,
+        lastChecked: '2025-01-01T12:00:00Z',
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(true);
+      (mockedFs.readdir as any).mockResolvedValue(['database.json']);
+      (mockedFs.readJson as any).mockResolvedValue(mockSystemData);
+
+      const plugin = await pluginStatusPage(mockContext, defaultOptions);
+      const content = await plugin.loadContent!();
+
+      const dbItem = content.items.find(item => item.name === 'database');
+      expect(dbItem).toBeDefined();
+      // For systems added from files only, uptime is undefined (not merged)
+      expect(dbItem?.uptime).toBeUndefined();
+    });
+
+    it('should handle readdir throwing error', async () => {
+      const mockGitHubData = {
+        items: [],
+        incidents: [],
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      (mockedFs.pathExists as any).mockResolvedValue(true);
+      (mockedFs.readdir as any).mockRejectedValue(new Error('Read error'));
+
+      const plugin = await pluginStatusPage(mockContext, {
+        ...defaultOptions,
+        useDemoData: false,
+      });
+      const content = await plugin.loadContent!();
+
+      expect(content.items).toBeDefined();
+    });
+
+    it('should warn about missing GITHUB_TOKEN in CI environment', async () => {
+      const originalCI = process.env.CI;
+      process.env.CI = 'true';
+      
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const optionsWithoutToken: PluginOptions = {
+        ...defaultOptions,
+        token: undefined,
+        useDemoData: undefined, // Not explicitly set
+      };
+
+      const plugin = await pluginStatusPage(mockContext, optionsWithoutToken);
+      await plugin.loadContent!();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('GITHUB_TOKEN not found in CI environment')
+      );
+
+      consoleWarnSpy.mockRestore();
+      process.env.CI = originalCI;
+    });
+
+    it('should limit incidents to 20 most recent', async () => {
+      const mockIncidents = Array.from({length: 30}, (_, i) => ({
+        id: i + 1,
+        title: `Incident ${i + 1}`,
+        status: 'closed' as const,
+        severity: 'minor' as const,
+        createdAt: `2025-01-${String(i + 1).padStart(2, '0')}T00:00:00Z`,
+        updatedAt: `2025-01-${String(i + 1).padStart(2, '0')}T01:00:00Z`,
+        url: `https://github.com/test/repo/issues/${i + 1}`,
+        labels: ['status'],
+        affectedSystems: [],
+      }));
+
+      const mockGitHubData = {
+        items: [],
+        incidents: mockIncidents,
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue(mockGitHubData),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      const plugin = await pluginStatusPage(mockContext, defaultOptions);
+      const content = await plugin.loadContent!();
+
+      expect(content.incidents.length).toBe(20);
+    });
+  });
 });

@@ -6,8 +6,9 @@
  */
 
 import {Joi} from '@docusaurus/utils-validation';
-import {DEFAULT_OPTIONS} from '../src/options';
+import {DEFAULT_OPTIONS, validateOptions} from '../src/options';
 import type {PluginOptions} from '../src/types';
+import type {OptionValidationContext} from '@docusaurus/types';
 
 // Create the same schema as in options.ts for testing
 const pluginOptionsSchema = Joi.object<PluginOptions>({
@@ -203,5 +204,46 @@ describe('plugin options validation', () => {
     expect(value.systemLabels).toEqual(['api', 'web']);
     expect(value.updateInterval).toBe(45);
     expect(value.title).toBe('My Status');
+  });
+
+  describe('validateOptions function', () => {
+    it('should validate options using the exported function', () => {
+      const mockValidate = jest.fn((schema, options) => options);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: {
+          owner: 'test-owner',
+          repo: 'test-repo',
+        } as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+
+      expect(mockValidate).toHaveBeenCalled();
+      expect(result).toEqual(mockContext.options);
+    });
+
+    it('should pass the schema to validate function', () => {
+      const mockValidate = jest.fn((schema, options) => ({
+        ...options,
+        statusLabel: 'status',
+        systemLabels: [],
+      }));
+      
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: {
+          owner: 'test-owner',
+          repo: 'test-repo',
+        } as PluginOptions,
+      };
+
+      validateOptions(mockContext);
+
+      expect(mockValidate).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockContext.options
+      );
+    });
   });
 });
