@@ -43,54 +43,20 @@ jobs:
         run: npx stentorosaur-update-status
         
       # Status data is now updated in build/status-data/ directory
-      # Commit changes - deployment will pick this up via scheduled build or next code push
-      
-      - name: Get status changes
-        id: status
-        run: |
-          if [ -d "build/status-data" ]; then
-            # Stage files to detect both tracked changes AND untracked files
-            # Use --force since build/ is gitignored (but build/status-data/ is excepted)
-            git add --force build/status-data/
-            
-            # Check if there are staged changes (works for new files too)
-            if ! git diff --staged --quiet; then
-              # Read summary to generate commit message
-              if [ -f "build/status-data/summary.json" ]; then
-                # Extract system statuses and generate emoji message
-                SYSTEMS_UP=$(jq -r '[.[] | select(.status == "up") | .name] | join(", ")' build/status-data/summary.json 2>/dev/null || echo "")
-                SYSTEMS_DOWN=$(jq -r '[.[] | select(.status == "down") | .name] | join(", ")' build/status-data/summary.json 2>/dev/null || echo "")
-                SYSTEMS_DEGRADED=$(jq -r '[.[] | select(.status == "degraded") | .name] | join(", ")' build/status-data/summary.json 2>/dev/null || echo "")
-                
-                # Build commit message with emojis
-                MSG="📊 Update status data"
-                if [ -n "$SYSTEMS_DOWN" ]; then
-                  MSG="🟥 Systems down: $SYSTEMS_DOWN"
-                elif [ -n "$SYSTEMS_DEGRADED" ]; then
-                  MSG="🟨 Systems degraded: $SYSTEMS_DEGRADED"
-                elif [ -n "$SYSTEMS_UP" ]; then
-                  MSG="🟩 All systems operational"
-                fi
-                
-                echo "commit_message=$MSG" >> $GITHUB_OUTPUT
-                echo "has_changes=true" >> $GITHUB_OUTPUT
-              else
-                echo "commit_message=📊 Update status data" >> $GITHUB_OUTPUT
-                echo "has_changes=true" >> $GITHUB_OUTPUT
-              fi
-            else
-              echo "has_changes=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Commit updated status data
-        if: steps.status.outputs.has_changes == 'true'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add --force build/status-data/
-          git commit -m "${{ steps.status.outputs.commit_message }}"
-          git push
+      # NOTE: We don't commit here to avoid polluting git history with incompatible commit messages
+      # 
+      # The calculate-metrics.yml workflow reads git history to extract response times from commits
+      # made by monitor-systems.yml (format: "🟩 website is up (200 in 145 ms)")
+      # 
+      # If we commit here with format "🟥 Systems down: website", it breaks metrics extraction.
+      # 
+      # Instead, status.json and summary.json are updated locally and will be deployed:
+      # - On next scheduled deployment (deploy-scheduled.yml runs daily)
+      # - On next code push (triggers deploy.yml)
+      # - On manual deployment trigger
+      #
+      # This ensures:
+      # 1. Issue changes are reflected in status data
+      # 2. Git history remains clean for metrics calculation
+      # 3. All three workflows (monitor-systems, calculate-metrics, status-update) work together
 
