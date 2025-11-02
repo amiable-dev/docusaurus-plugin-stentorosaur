@@ -133,97 +133,131 @@ export default async function pluginStatus(
       let incidents;
       let shouldUseDemoData = useDemoData ?? !token;
 
-      // Use demo data if explicitly requested or no token provided
-      if (shouldUseDemoData) {
-        const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-        
-        if (isCI && !token && useDemoData !== true) {
-          console.warn(
-            '\n⚠️  [docusaurus-plugin-stentorosaur] GITHUB_TOKEN not found in CI environment.\n' +
-            '   Your production site will show DEMO DATA instead of real status.\n' +
-            '   \n' +
-            '   Fix: Add this to your build step in .github/workflows/deploy.yml:\n' +
-            '   \n' +
-            '   - name: Build website\n' +
-            '     env:\n' +
-            '       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n' +
-            '     run: npm run build\n'
-          );
-        }
-        
-        console.log(
-          useDemoData 
-            ? '[docusaurus-plugin-stentorosaur] Using demo data (useDemoData=true)'
-            : '[docusaurus-plugin-stentorosaur] No GitHub token provided, using demo data'
-        );
-        const demoData = getDemoStatusData();
-        items = showServices ? demoData.items : [];
-        incidents = showIncidents ? demoData.incidents : [];
-      } else {
+      // First, try to read committed status data (Upptime-style)
+      const committedStatusFile = path.join(context.siteDir, 'build', 'status-data', 'status.json');
+      let useCommittedData = false;
+      
+      if (await fs.pathExists(committedStatusFile)) {
         try {
-          const service = new GitHubStatusService(
-            token,
-            owner,
-            repo,
-            statusLabel,
-            systemLabels
-          );
-
-          const result = await service.fetchStatusData();
-          items = showServices ? result.items : [];
-          incidents = showIncidents ? result.incidents : [];
+          const committedData = await fs.readJson(committedStatusFile);
+          const dataAge = Date.now() - new Date(committedData.lastUpdated).getTime();
+          const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
           
-          // Enhance items with data from system files
-          const systemsDir = path.join(context.siteDir, dataPath, 'systems');
-          const systemFileData = await readSystemFiles(systemsDir);
-          
-          if (systemFileData.length > 0) {
-            // Merge system file data with GitHub issue data
-            const systemDataMap = new Map(
-              systemFileData.map(s => [s.name, s])
+          if (dataAge < maxAge) {
+            console.log(
+              `[docusaurus-plugin-stentorosaur] Using committed status data (age: ${Math.round(dataAge / 1000 / 60)} minutes)`
             );
-            
-            items = items.map(item => {
-              const systemData = systemDataMap.get(item.name);
-              if (systemData) {
-                return {
-                  ...item,
-                  responseTime: systemData.responseTime,
-                  lastChecked: systemData.lastChecked,
-                };
-              }
-              return item;
-            });
-            
-            // Add systems that are only in files (not in GitHub issues)
-            for (const systemData of systemFileData) {
-              if (!items.some(item => item.name === systemData.name)) {
-                items.push({
-                  name: systemData.name || 'Unknown',
-                  status: systemData.status || 'up',
-                  lastChecked: systemData.lastChecked,
-                  responseTime: systemData.responseTime,
-                  incidentCount: 0,
-                });
-              }
-            }
-          }
-          
-          // If no real data found and demo data not explicitly disabled, use demo data
-          if (items.length === 0 && incidents.length === 0 && useDemoData !== false) {
-            console.log('[docusaurus-plugin-stentorosaur] No GitHub issues found, using demo data');
-            const demoData = getDemoStatusData();
-            items = showServices ? demoData.items : [];
-            incidents = showIncidents ? demoData.incidents : [];;
+            items = showServices ? committedData.items : [];
+            incidents = showIncidents ? committedData.incidents : [];
+            useCommittedData = true;
+          } else {
+            console.log(
+              `[docusaurus-plugin-stentorosaur] Committed status data is stale (age: ${Math.round(dataAge / 1000 / 60 / 60)} hours), fetching fresh data`
+            );
           }
         } catch (error) {
           console.warn(
-            '[docusaurus-plugin-stentorosaur] Failed to fetch from GitHub, using demo data:',
+            '[docusaurus-plugin-stentorosaur] Failed to read committed status data:',
             error instanceof Error ? error.message : String(error)
+          );
+        }
+      }
+
+      // If we didn't use committed data, fetch from GitHub or use demo data
+      if (!useCommittedData) {
+        // Use demo data if explicitly requested or no token provided
+        if (shouldUseDemoData) {
+          const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+          
+          if (isCI && !token && useDemoData !== true) {
+            console.warn(
+              '\n⚠️  [docusaurus-plugin-stentorosaur] GITHUB_TOKEN not found in CI environment.\n' +
+              '   Your production site will show DEMO DATA instead of real status.\n' +
+              '   \n' +
+              '   Fix: Add this to your build step in .github/workflows/deploy.yml:\n' +
+              '   \n' +
+              '   - name: Build website\n' +
+              '     env:\n' +
+              '       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n' +
+              '     run: npm run build\n'
+            );
+          }
+          
+          console.log(
+            useDemoData 
+              ? '[docusaurus-plugin-stentorosaur] Using demo data (useDemoData=true)'
+              : '[docusaurus-plugin-stentorosaur] No GitHub token provided, using demo data'
           );
           const demoData = getDemoStatusData();
           items = showServices ? demoData.items : [];
           incidents = showIncidents ? demoData.incidents : [];
+        } else {
+          try {
+            console.log('[docusaurus-plugin-stentorosaur] Fetching fresh status data from GitHub API');
+            const service = new GitHubStatusService(
+              token,
+              owner,
+              repo,
+              statusLabel,
+              systemLabels
+            );
+
+            const result = await service.fetchStatusData();
+            items = showServices ? result.items : [];
+            incidents = showIncidents ? result.incidents : [];
+            
+            // Enhance items with data from system files
+            const systemsDir = path.join(context.siteDir, dataPath, 'systems');
+            const systemFileData = await readSystemFiles(systemsDir);
+            
+            if (systemFileData.length > 0) {
+              // Merge system file data with GitHub issue data
+              const systemDataMap = new Map(
+                systemFileData.map(s => [s.name, s])
+              );
+              
+              items = items.map(item => {
+                const systemData = systemDataMap.get(item.name);
+                if (systemData) {
+                  return {
+                    ...item,
+                    responseTime: systemData.responseTime,
+                    lastChecked: systemData.lastChecked,
+                  };
+                }
+                return item;
+              });
+              
+              // Add systems that are only in files (not in GitHub issues)
+              for (const systemData of systemFileData) {
+                if (!items.some(item => item.name === systemData.name)) {
+                  items.push({
+                    name: systemData.name || 'Unknown',
+                    status: systemData.status || 'up',
+                    lastChecked: systemData.lastChecked,
+                    responseTime: systemData.responseTime,
+                    incidentCount: 0,
+                  });
+                }
+              }
+            }
+            
+            // If no real data found and demo data not explicitly disabled, use demo data
+            if (items.length === 0 && incidents.length === 0 && useDemoData !== false) {
+              console.log('[docusaurus-plugin-stentorosaur] No GitHub issues found, using demo data');
+              const demoData = getDemoStatusData();
+              items = showServices ? demoData.items : [];
+              incidents = showIncidents ? demoData.incidents : [];
+            }
+          } catch (error) {
+            console.warn(
+              '[docusaurus-plugin-stentorosaur] Failed to fetch from GitHub, using demo data:',
+              error instanceof Error ? error.message : String(error)
+            );
+            const demoData = getDemoStatusData();
+            items = showServices ? demoData.items : [];
+            incidents = showIncidents ? demoData.incidents : [];
+          }
         }
       }
 

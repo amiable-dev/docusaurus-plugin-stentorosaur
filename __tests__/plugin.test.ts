@@ -549,7 +549,8 @@ describe('docusaurus-plugin-stentorosaur', () => {
       });
       const content = await plugin.loadContent!();
 
-      expect(mockedFs.readJson).toHaveBeenCalledTimes(1);
+      // Note: readJson is called twice now - once for committed status data check, once for system file
+      expect(mockedFs.readJson).toHaveBeenCalled();
       expect(mockedFs.readJson).not.toHaveBeenCalledWith(
         expect.stringContaining('example-api.json')
       );

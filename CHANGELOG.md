@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-11-02
+
+### Changed
+
+- **BREAKING**: Plugin now reads committed status data (Upptime-style approach) (#63)
+  - Plugin first checks for `build/status-data/status.json` in the repository
+  - If data exists and is fresh (< 24 hours), uses committed data instead of fetching from GitHub API
+  - Falls back to GitHub API if committed data is missing or stale
+  - This enables proper workflow with protected branches and PR-based development
+  - Committed status data is now the primary source, GitHub API is fallback
+
+### Added
+
+- New scheduled deployment workflow template (`deploy-scheduled.yml`)
+  - Runs daily at 2 AM UTC to deploy committed status data
+  - Can be customized for different schedules
+  - Ensures status page updates even without code changes
+  
+### Fixed
+
+- Status update workflow no longer uses `[skip ci]` in commit messages
+  - Status data commits now trigger deployment workflow
+  - Path filtering prevents infinite loops (`!build/status-data/**`)
+  - Deployment picks up committed status data automatically
+
+### Migration Guide
+
+For existing users upgrading from v0.2.x:
+
+1. Update to v0.3.0: `npm install @amiable-dev/docusaurus-plugin-stentorosaur@latest`
+2. Copy new workflow templates from `node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/`
+3. Update `.github/workflows/status-update.yml` with the new version (removes `[skip ci]`)
+4. Optionally add `.github/workflows/deploy-scheduled.yml` for automatic daily deployments
+5. Your deploy workflow will now be triggered by status commits
+
+**For teams with protected branches**: The new approach works seamlessly:
+- Status updates commit data to `build/status-data/`
+- Manual deployments or scheduled deployments read this committed data
+- No need to merge status commits through PRs
+- Status data stays out of feature branches
+
 ## [0.2.8] - 2025-11-02
 
 ### Fixed

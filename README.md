@@ -555,30 +555,69 @@ See [CONFIGURATION.md](./CONFIGURATION.md) for detailed examples.
 
 ## How It Works
 
-### Architecture
+### Architecture Overview
+
+Stentorosaur uses an **Upptime-inspired architecture** where status data is committed to your repository and read during build time. This approach works seamlessly with protected branches and PR-based workflows.
 
 ```
 GitHub Issues (Status Tracking)
     ↓
-GitHub Actions (Monitoring + Data Collection)
+GitHub Actions (Status Update Workflow - Hourly)
     ↓
-Plugin API (GitHub Service)
+Commit Status Data (build/status-data/*.json)
     ↓
-Status Data (JSON)
+GitHub Actions (Deploy Workflow - On Push/Schedule)
     ↓
-React Components (UI)
+Plugin loadContent() - Reads Committed Data
     ↓
-Docusaurus Page (/status)
+Docusaurus Build - Bundles Status
+    ↓
+Static Site - Status Page (/status)
 ```
 
 ### Data Flow
 
-1. **Monitoring**: GitHub Actions run on schedule (every 5 min for system checks)
-2. **Issue Creation**: When a system goes down, an issue is automatically created
-3. **Data Collection**: Hourly action fetches all status issues via GitHub API
-4. **Status Generation**: Plugin processes issues and generates status items
-5. **Build Integration**: Status data is included in Docusaurus build
-6. **Display**: React components render the status dashboard
+#### Status Update Flow (Hourly + On Issue Changes)
+
+1. **Trigger**: Scheduled (hourly) or issue event (opened, closed, labeled)
+2. **Fetch**: Status update workflow fetches issues via GitHub API
+3. **Generate**: Creates `status.json` and `summary.json` in `build/status-data/`
+4. **Commit**: Commits status data to main branch (no `[skip ci]`)
+5. **Wait**: Deployment happens on next push or scheduled build
+
+#### Deployment Flow
+
+1. **Trigger**: Push to main, scheduled (daily), or manual
+2. **Checkout**: Gets repository including committed status data
+3. **Plugin Load**: 
+   - Checks for `build/status-data/status.json`
+   - If exists and fresh (< 24h), uses committed data
+   - Otherwise fetches fresh from GitHub API (fallback)
+4. **Build**: Docusaurus bundles status into static site
+5. **Deploy**: GitHub Pages serves updated status page
+
+### Key Benefits of This Architecture
+
+✅ **Works with Protected Branches**: Status commits don't need to go through PRs  
+✅ **PR Testing**: PRs can build with latest committed status data  
+✅ **Predictable Deployments**: Status data is versioned in git  
+✅ **Fallback Safety**: Plugin fetches fresh if committed data is stale  
+✅ **No Infinite Loops**: Path filtering prevents status commits from triggering themselves
+
+### Workflow Options
+
+You have two deployment strategies:
+
+**Option A: Deploy on Every Status Change** (Default)
+- Status commits trigger immediate deployment
+- Live site updates within minutes of status changes
+- Uses the updated `status-update.yml` (no `[skip ci]`)
+
+**Option B: Scheduled Deployments** (Recommended for High-Traffic Sites)
+- Status commits are made but don't trigger deployment
+- Separate scheduled workflow deploys daily (or your chosen interval)
+- Add `deploy-scheduled.yml` template
+- Add `[skip ci]` back to `status-update.yml` if desired
 
 ### Issue Lifecycle
 
@@ -586,11 +625,14 @@ Docusaurus Page (/status)
 graph LR
     A[System Check] -->|Down| B[Create Issue]
     B --> C[Label: critical]
-    C --> D[Status: down]
-    A -->|Up| E{Open Issues?}
-    E -->|Yes| F[Close Issue]
-    F --> G[Status: up]
-    E -->|No| G
+    C --> D[Status Update Workflow]
+    D --> E[Commit Status Data]
+    E --> F[Deploy Workflow]
+    F --> G[Status: down]
+    A -->|Up| H{Open Issues?}
+    H -->|Yes| I[Close Issue]
+    I --> D
+    H -->|No| J[Status: up]
 ```
 
 ## Configuration Options

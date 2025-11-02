@@ -7,6 +7,12 @@ on:
   workflow_dispatch:
   issues:
     types: [opened, closed, labeled, unlabeled, edited]
+  push:
+    branches:
+      - main
+    paths:
+      # Only run when non-status files change (prevents infinite loop)
+      - '!build/status-data/**'
 
 permissions:
   contents: write  # Required to commit status data changes
@@ -37,7 +43,7 @@ jobs:
         run: npx stentorosaur-update-status
         
       # Status data is now updated in build/status-data/ directory
-      # Commit changes to trigger deployment
+      # Commit changes - deployment will pick this up via scheduled build or next code push
       
       - name: Get status changes
         id: status
@@ -85,5 +91,6 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add --force build/status-data/
-          git commit -m "${{ steps.status.outputs.commit_message }} [skip ci]"
+          git commit -m "${{ steps.status.outputs.commit_message }}"
           git push
+
