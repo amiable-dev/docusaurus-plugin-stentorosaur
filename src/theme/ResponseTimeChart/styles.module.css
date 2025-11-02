@@ -1,0 +1,87 @@
+.chartContainer {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-radius: 8px;
+  background: var(--ifm-card-background-color);
+  box-shadow: var(--ifm-global-shadow-lw);
+}
+
+.periodSelector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.periodButton {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.periodButton:hover {
+  background: var(--ifm-color-emphasis-100);
+  border-color: var(--ifm-color-primary);
+}
+
+.periodButton.active {
+  background: var(--ifm-color-primary);
+  color: white;
+  border-color: var(--ifm-color-primary);
+}
+
+.stats {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--ifm-color-primary);
+}
+
+.chart {
+  width: 100%;
+  position: relative;
+}
+
+.noData {
+  padding: 2rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-600);
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .chartContainer {
+    padding: 1rem;
+  }
+  
+  .stats {
+    gap: 1rem;
+  }
+  
+  .statValue {
+    font-size: 1.25rem;
+  }
+}

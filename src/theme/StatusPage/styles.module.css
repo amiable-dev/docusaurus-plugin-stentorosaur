@@ -3,6 +3,68 @@
   padding: 2rem 0;
 }
 
+.chartsSection {
+  max-width: 1400px;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+.sectionTitle {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  color: var(--ifm-font-color-base);
+}
+
+.sectionDescription {
+  text-align: center;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 2rem;
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.chartCard {
+  background: var(--ifm-card-background-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--ifm-global-shadow-lw);
+}
+
+.chartCardTitle {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--ifm-font-color-base);
+  font-size: 1.25rem;
+}
+
+.viewDetails {
+  margin-top: 1rem;
+  text-align: right;
+}
+
+.viewDetailsLink {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.viewDetailsLink:hover {
+  text-decoration: underline;
+}
+
+.moreSystemsNote {
+  text-align: center;
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
 .footer {
   max-width: 1200px;
   margin: 4rem auto 2rem;
@@ -30,4 +92,15 @@
 
 .poweredBy a:hover {
   text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .chartCard {
+    padding: 1rem;
+  }
 }

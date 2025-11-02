@@ -161,3 +161,149 @@ npm start
 ```
 
 Then visit http://localhost:3000/status
+
+---
+
+## Chart Visualization Options (v0.3.0+)
+
+The plugin now includes interactive charts for visualizing response times and uptime data!
+
+### Chart Components
+
+Three new theme components are available for use in your status pages:
+
+1. **ResponseTimeChart** - Line chart showing response time trends over time
+2. **UptimeChart** - Bar chart or heatmap showing uptime percentages
+3. **StatusHistory** - Full page component combining both charts with detailed metrics
+
+### Using Charts in Your Status Page
+
+The charts automatically work with historical status data stored in `status-data/systems/*.json` files. You can swizzle the components to customize them:
+
+```bash
+npm run swizzle docusaurus-plugin-stentorosaur ResponseTimeChart -- --eject
+npm run swizzle docusaurus-plugin-stentorosaur UptimeChart -- --eject
+npm run swizzle docusaurus-plugin-stentorosaur StatusHistory -- --eject
+```
+
+### ResponseTimeChart Component
+
+```tsx
+import ResponseTimeChart from '@theme/ResponseTimeChart';
+
+<ResponseTimeChart
+  name="API Service"
+  history={historicalData}
+  period="7d"              // '24h' | '7d' | '30d' | '90d'
+  height={300}             // Chart height in pixels
+  showPeriodSelector={true} // Show time period buttons
+/>
+```
+
+**Features:**
+- Interactive line chart with hover tooltips
+- Multiple time period views (24h, 7d, 30d, 90d)
+- Color-coded data points based on status (green/yellow/red)
+- Average response time reference line
+- Automatic dark/light theme support
+- Mobile responsive
+
+### UptimeChart Component
+
+```tsx
+import UptimeChart from '@theme/UptimeChart';
+
+<UptimeChart
+  name="API Service"
+  history={historicalData}
+  chartType="bar"          // 'bar' | 'heatmap'
+  period="30d"             // '7d' | '30d' | '90d'
+  height={300}             // Chart height in pixels
+/>
+```
+
+**Features:**
+- Bar chart view: Daily uptime percentages with color coding
+- Heatmap view: GitHub-style calendar visualization
+- Color coding:
+  - Green: ≥99% uptime
+  - Yellow: 95-99% uptime
+  - Red: <95% uptime
+- Automatic dark/light theme support
+- Mobile responsive
+
+### StatusHistory Page Component
+
+A full-page component that displays comprehensive historical data for a single system:
+
+```tsx
+import StatusHistory from '@theme/StatusHistory';
+
+<StatusHistory
+  systemName="api-service"
+  dataPath="status-data"    // Optional, defaults to 'status-data'
+/>
+```
+
+**Features:**
+- System status overview with current state
+- Uptime metrics (all-time, 24h, 7d, 30d)
+- Average response time metrics
+- Response time trend chart
+- Uptime chart (bar or heatmap view)
+- Historical data statistics
+
+### Historical Data Format
+
+Charts require historical data in this format:
+
+```json
+{
+  "name": "API Service",
+  "url": "https://api.example.com",
+  "lastChecked": "2025-11-02T10:00:00Z",
+  "currentStatus": "up",
+  "history": [
+    {
+      "timestamp": "2025-11-01T10:00:00Z",
+      "status": "up",
+      "code": 200,
+      "responseTime": 145
+    }
+  ],
+  "timeDay": 145,
+  "timeWeek": 156,
+  "timeMonth": 148,
+  "uptimeDay": "99.98%",
+  "uptimeWeek": "99.95%",
+  "uptimeMonth": "99.92%",
+  "uptime": "99.90%"
+}
+```
+
+Store these files in `status-data/systems/{system-name}.json` in your site's build output.
+
+### Demo Data with Charts
+
+Demo mode includes sample historical data with ~30 days of checks:
+
+```typescript
+{
+  useDemoData: true,  // Automatically includes chart data
+}
+```
+
+### Theme Integration
+
+All charts automatically adapt to your Docusaurus theme:
+- Respect dark/light mode settings
+- Use theme CSS variables for colors
+- Match your site's design system
+- Fully responsive on mobile devices
+
+### Performance Considerations
+
+- Charts are lazy-loaded only when visible
+- Historical data is loaded client-side from JSON files
+- Data can be decimated for large datasets (thousands of points)
+- Consider limiting history to 30-90 days for optimal performance

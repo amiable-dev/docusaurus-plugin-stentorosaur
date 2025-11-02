@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Interactive Charts for Response Time and Uptime Visualization** (#2)
+  - Added Chart.js integration with `react-chartjs-2` for data visualization
+  - New `ResponseTimeChart` component for displaying response time trends
+    - Line charts with multiple time periods (24h, 7d, 30d, 90d)
+    - Color-coded data points based on status (green/yellow/red)
+    - Average response time reference line
+    - Interactive tooltips with detailed check information
+  - New `UptimeChart` component for uptime visualization
+    - Bar chart view with daily uptime percentages
+    - Calendar heatmap view (GitHub-style) for uptime overview
+    - Color coding: Green (≥99%), Yellow (95-99%), Red (<95%)
+  - New `StatusHistory` page component for comprehensive system history
+    - Combines response time and uptime charts
+    - Displays all-time, 24h, 7d, and 30d metrics
+    - Toggleable chart types (bar/heatmap)
+  - Historical data utilities for loading and aggregating status data
+    - `loadHistoricalData()` - Load data from status files
+    - `aggregateHistoricalData()` - Filter by time period
+    - `calculateAverageResponseTime()` - Calculate averages
+    - `calculateUptimePercentage()` - Calculate uptime
+    - `calculateDailyStats()` - Daily breakdown statistics
+    - `generateDemoHistory()` - Demo data with 30 days of sample checks
+  - Automatic dark/light theme support for all charts
+  - Mobile responsive design for all chart components
+  - Comprehensive test coverage for historical data utilities
+
 ## [0.3.1] - 2025-11-02
 
 ### Fixed

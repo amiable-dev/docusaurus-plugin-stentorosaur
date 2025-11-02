@@ -376,8 +376,11 @@ describe('docusaurus-plugin-stentorosaur', () => {
         'StatusBoard',
         'StatusItem',
         'IncidentHistory',
+        'ResponseTimeChart',
+        'UptimeChart',
+        'StatusHistory',
       ]);
-      expect(components.length).toBe(4);
+      expect(components.length).toBe(7);
     });
   });
 

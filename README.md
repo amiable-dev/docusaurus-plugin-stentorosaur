@@ -9,7 +9,12 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
 
 - 🎯 **Status Dashboard**: Beautiful, real-time status display for your systems and processes
 - 📊 **Incident Timeline**: Historical view of all incidents with severity tracking
-- 🔄 **GitHub-Powered**: Uses GitHub Issues for incident tracking and Actions for monitoring
+- � **Interactive Charts** (v0.3.0+): Visualize response times and uptime with Chart.js
+  - Line charts for response time trends
+  - Bar charts and heatmaps for uptime visualization
+  - Multiple time period views (24h, 7d, 30d, 90d)
+  - Automatic dark/light theme support
+- �🔄 **GitHub-Powered**: Uses GitHub Issues for incident tracking and Actions for monitoring
 - ⚡ **Real-time Updates**: Automatically updates status via GitHub Actions (hourly by default)
 - 🎨 **Customizable**: Fully themeable and configurable to match your site
 - 📱 **Responsive**: Works perfectly on all devices

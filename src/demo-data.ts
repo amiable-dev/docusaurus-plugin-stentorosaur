@@ -5,7 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type {StatusItem, StatusIncident} from './types';
+import type {StatusItem, StatusIncident, SystemStatusFile} from './types';
+import {generateDemoHistory} from './historical-data';
 
 export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusIncident[]} {
   const now = new Date().toISOString();
@@ -94,4 +95,58 @@ export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusInci
   ];
 
   return {items, incidents};
+}
+
+/**
+ * Get demo system status files with historical data
+ */
+export function getDemoSystemFiles(): SystemStatusFile[] {
+  const systemNames = [
+    'Main Website',
+    'API Service',
+    'Documentation',
+    'Build & CI/CD',
+    'CDN',
+  ];
+
+  return systemNames.map(name => {
+    const history = generateDemoHistory(name, 30);
+    const currentStatus = history.length > 0 
+      ? history[history.length - 1].status 
+      : 'up';
+    
+    // Calculate time-window averages
+    const last24h = history.filter(h => 
+      new Date(h.timestamp).getTime() > Date.now() - 24 * 60 * 60 * 1000
+    );
+    const last7d = history.filter(h => 
+      new Date(h.timestamp).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000
+    );
+    const last30d = history;
+    
+    const avgTime = (checks: typeof history) => 
+      checks.length > 0
+        ? Math.round(checks.reduce((sum, c) => sum + c.responseTime, 0) / checks.length)
+        : 0;
+    
+    const uptimeCalc = (checks: typeof history) => {
+      const upChecks = checks.filter(c => c.status === 'up' || c.status === 'maintenance').length;
+      return checks.length > 0 ? ((upChecks / checks.length) * 100).toFixed(2) + '%' : '100%';
+    };
+
+    return {
+      name,
+      url: `https://example.com/${name.toLowerCase().replace(/\s+/g, '-')}`,
+      lastChecked: new Date().toISOString(),
+      currentStatus,
+      history,
+      timeDay: avgTime(last24h),
+      timeWeek: avgTime(last7d),
+      timeMonth: avgTime(last30d),
+      uptimeDay: uptimeCalc(last24h),
+      uptimeWeek: uptimeCalc(last7d),
+      uptimeMonth: uptimeCalc(last30d),
+      uptime: uptimeCalc(history),
+    };
+  });
 }

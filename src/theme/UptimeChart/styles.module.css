@@ -1,0 +1,178 @@
+.chartContainer {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-radius: 8px;
+  background: var(--ifm-card-background-color);
+  box-shadow: var(--ifm-global-shadow-lw);
+}
+
+.periodSelector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.periodButton {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.periodButton:hover {
+  background: var(--ifm-color-emphasis-100);
+  border-color: var(--ifm-color-primary);
+}
+
+.periodButton.active {
+  background: var(--ifm-color-primary);
+  color: white;
+  border-color: var(--ifm-color-primary);
+}
+
+.stats {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--ifm-color-primary);
+}
+
+.chart {
+  width: 100%;
+  position: relative;
+}
+
+.noData {
+  padding: 2rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-600);
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 4px;
+}
+
+/* Heatmap styles */
+.heatmapHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.chartTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--ifm-font-color-base);
+}
+
+.heatmapGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 4px;
+  margin-bottom: 1rem;
+}
+
+.heatmapCell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  position: relative;
+}
+
+.heatmapCell:hover {
+  transform: scale(1.1);
+  opacity: 0.8;
+  z-index: 1;
+}
+
+.heatmapDate {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.heatmapLegend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.legendLabel {
+  font-weight: 600;
+  color: var(--ifm-font-color-base);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--ifm-font-color-base);
+}
+
+.legendColor {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+@media (max-width: 768px) {
+  .chartContainer {
+    padding: 1rem;
+  }
+  
+  .heatmapHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .heatmapGrid {
+    grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+    gap: 3px;
+  }
+  
+  .heatmapDate {
+    font-size: 0.65rem;
+  }
+  
+  .stats {
+    gap: 1rem;
+  }
+  
+  .statValue {
+    font-size: 1.25rem;
+  }
+}

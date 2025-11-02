@@ -9,9 +9,9 @@ import path from 'path';
 import fs from 'fs-extra';
 import {normalizeUrl} from '@docusaurus/utils';
 import type {LoadContext, Plugin} from '@docusaurus/types';
-import type {PluginOptions, StatusData, StatusItem, SystemStatusFile} from './types';
+import type{PluginOptions, StatusData, StatusItem, SystemStatusFile} from './types';
 import {GitHubStatusService} from './github-service';
-import {getDemoStatusData} from './demo-data';
+import {getDemoStatusData, getDemoSystemFiles} from './demo-data';
 
 export {validateOptions} from './options';
 
@@ -80,6 +80,9 @@ export function getSwizzleComponentList(): string[] {
     'StatusBoard',
     'StatusItem',
     'IncidentHistory',
+    'ResponseTimeChart',
+    'UptimeChart',
+    'StatusHistory',
   ];
 }
 
@@ -306,13 +309,34 @@ export default async function pluginStatus(
     async postBuild({outDir}) {
       // Copy status data to build output for client-side access
       const buildStatusDir = path.join(outDir, dataPath);
+      const buildSystemsDir = path.join(buildStatusDir, 'systems');
       await fs.ensureDir(buildStatusDir);
+      await fs.ensureDir(buildSystemsDir);
       
       if (await fs.pathExists(statusDataPath)) {
         await fs.copy(
           statusDataPath,
           path.join(buildStatusDir, 'status.json')
         );
+      }
+      
+      // If using demo data, write demo system files with historical data for charts
+      let shouldUseDemoData = useDemoData ?? !token;
+      if (shouldUseDemoData) {
+        console.log('[docusaurus-plugin-stentorosaur] Writing demo system files with historical data');
+        const demoSystemFiles = getDemoSystemFiles();
+        
+        for (const systemFile of demoSystemFiles) {
+          // Sanitize filename: remove special chars, replace spaces with hyphens
+          const fileName = systemFile.name
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+            .replace(/\s+/g, '-') // Replace spaces with hyphens
+            .replace(/-+/g, '-') // Replace multiple hyphens with single
+            + '.json';
+          const filePath = path.join(buildSystemsDir, fileName);
+          await fs.writeJson(filePath, systemFile, {spaces: 2});
+        }
       }
       
       // Always write .gitkeep to ensure directory is tracked by git
