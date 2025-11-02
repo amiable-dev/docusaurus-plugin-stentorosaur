@@ -1,0 +1,104 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+      
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          VERSION=${{ steps.get_version.outputs.version }}
+          # Mark versions < 1.0.0 as pre-release
+          if [[ "$VERSION" =~ ^0\. ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "Pre-release: true (version $VERSION is < 1.0.0)"
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "Pre-release: false (version $VERSION is >= 1.0.0)"
+          fi
+      
+      - name: Extract CHANGELOG for version
+        id: changelog
+        run: |
+          VERSION=${{ steps.get_version.outputs.version }}
+          
+          # Extract the section for this version from CHANGELOG.md
+          # Look for ## [X.Y.Z] or ## [vX.Y.Z]
+          CHANGELOG_CONTENT=$(awk -v version="$VERSION" '
+            /^## \['"$VERSION"'\]/ || /^## \[v'"$VERSION"'\]/ {
+              found=1
+              next
+            }
+            found && /^## \[/ {
+              exit
+            }
+            found {
+              print
+            }
+          ' CHANGELOG.md)
+          
+          # Trim leading/trailing whitespace
+          CHANGELOG_CONTENT=$(echo "$CHANGELOG_CONTENT" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+          
+          # If no changelog found, use a default message
+          if [ -z "$CHANGELOG_CONTENT" ]; then
+            CHANGELOG_CONTENT="See [CHANGELOG.md](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/blob/main/CHANGELOG.md) for details."
+          fi
+          
+          # Save to file to handle multiline content
+          echo "$CHANGELOG_CONTENT" > /tmp/changelog.txt
+          
+          # Also set a summary output for logging
+          echo "extracted=true" >> $GITHUB_OUTPUT
+          echo "Extracted changelog:"
+          cat /tmp/changelog.txt
+      
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=${{ steps.get_version.outputs.tag }}
+          VERSION=${{ steps.get_version.outputs.version }}
+          PRERELEASE=${{ steps.prerelease.outputs.prerelease }}
+          
+          # Build the gh release create command
+          CMD="gh release create $TAG"
+          CMD="$CMD --title 'Release $TAG'"
+          CMD="$CMD --notes-file /tmp/changelog.txt"
+          
+          # Add prerelease flag if needed
+          if [ "$PRERELEASE" = "true" ]; then
+            CMD="$CMD --prerelease"
+          fi
+          
+          # Execute the command
+          echo "Creating release with command: $CMD"
+          eval $CMD
+          
+          echo "✅ GitHub Release $TAG created successfully!"
+          if [ "$PRERELEASE" = "true" ]; then
+            echo "   Marked as pre-release (version < 1.0.0)"
+          fi
