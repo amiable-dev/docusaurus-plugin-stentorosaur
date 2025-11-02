@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-11-02
+
+### Changed
+
+- Increased test coverage thresholds to 80% across all metrics (#15)
+  - Branch coverage: 58.92% → 80.35%
+  - Function coverage: 60% → 96%
+  - Line coverage: 77.33% → 98.66%
+  - Statement coverage: 76.28% → 98.71%
+
+### Added
+
+- Comprehensive test suite expansion (56 → 73 tests) (#15)
+  - Tests for `validateOptions` function
+  - Tests for plugin lifecycle methods (`getSwizzleComponentList`, `getThemePath`, `getTypeScriptThemePath`)
+  - Tests for system file merging and data enhancement
+  - Tests for error handling (invalid JSON, missing directories, readdir failures)
+  - Tests for CI environment detection and warnings
+  - Tests for incident limiting to 20 most recent
+  - Tests for response time calculation with history fallback
+
+### Infrastructure
+
+- Updated `jest.config.js` to enforce 80% coverage thresholds
+- All 73 tests passing with strict coverage requirements
+
 ## [0.2.1] - 2025-11-01
 
 ### Fixed
@@ -230,7 +256,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.9...v0.2.0
 [0.1.9]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.1.8...v0.1.9
