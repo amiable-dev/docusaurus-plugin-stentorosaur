@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-11-02
+
+### Fixed
+
+- Status update workflow no longer commits changes to git (#18)
+  - Removed all git commit/push steps from `status-update.yml` template
+  - Prevents incompatible commit message formats from polluting git history
+  - Preserves clean git history needed by `calculate-metrics.yml` to extract response time data
+  - Status data files are updated locally and deployed via scheduled deployment or next code push
+  - Allows all three workflows (monitor-systems, calculate-metrics, status-update) to work in concert
+
 ## [0.3.0] - 2025-01-02
 
 ### Changed
@@ -360,7 +371,13 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.8...v0.3.0
+[0.2.8]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.7...v0.2.8
+[0.2.7]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.6...v0.2.7
+[0.2.6]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.5...v0.2.6
+[0.2.5]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.1...v0.2.2
