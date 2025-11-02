@@ -261,6 +261,11 @@ async function updateStatus() {
       await fs.writeJson(statusPath, statusData, {spaces: 2});
       verbose('Wrote status data to:', statusPath);
 
+      // Write .gitkeep to ensure directory is tracked by git
+      const gitkeepPath = path.join(buildStatusDir, '.gitkeep');
+      await fs.writeFile(gitkeepPath, '');
+      verbose('Wrote .gitkeep to:', gitkeepPath);
+
       log(`✓ Status data updated in ${path.relative(process.cwd(), buildStatusDir)}/`);
     } else {
       verbose('Skipped build directory write (build/ does not exist)');

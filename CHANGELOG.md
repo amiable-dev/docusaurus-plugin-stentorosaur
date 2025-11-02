@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2025-11-02
+
+### Fixed
+
+- First-time initialization issue with status data directory (#63)
+  - Plugin now writes `.gitkeep` file to `build/status-data/` directory
+  - Ensures directory is tracked by git from the first build
+  - Fixes issue where workflows couldn't detect changes for initial commit
+  - Eliminates need for manual directory initialization
+  - Works automatically for all users without requiring setup steps
+
 ## [0.2.4] - 2025-11-02
 
 ### Added

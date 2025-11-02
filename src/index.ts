@@ -280,6 +280,9 @@ export default async function pluginStatus(
           path.join(buildStatusDir, 'status.json')
         );
       }
+      
+      // Always write .gitkeep to ensure directory is tracked by git
+      await fs.writeFile(path.join(buildStatusDir, '.gitkeep'), '');
     },
 
     getPathsToWatch() {
