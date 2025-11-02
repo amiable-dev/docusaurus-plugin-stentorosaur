@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2025-11-02
+
+### Fixed
+
+- Workflow template now uses `--force` in commit step as well (#63)
+  - v0.2.7 only added `--force` to the detection step
+  - The actual commit step also needs `--force` to add gitignored files
+  - Now both `git add` commands use `--force` flag
+
 ## [0.2.7] - 2025-11-02
 
 ### Fixed

@@ -84,6 +84,6 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add build/status-data/
+          git add --force build/status-data/
           git commit -m "${{ steps.status.outputs.commit_message }} [skip ci]"
           git push
