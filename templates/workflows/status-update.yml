@@ -43,8 +43,11 @@ jobs:
         id: status
         run: |
           if [ -d "build/status-data" ]; then
-            # Check if there are changes
-            if ! git diff --quiet build/status-data/; then
+            # Stage files to detect both tracked changes AND untracked files
+            git add build/status-data/
+            
+            # Check if there are staged changes (works for new files too)
+            if ! git diff --staged --quiet; then
               # Read summary to generate commit message
               if [ -f "build/status-data/summary.json" ]; then
                 # Extract system statuses and generate emoji message

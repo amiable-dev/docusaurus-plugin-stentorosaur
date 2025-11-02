@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2025-11-02
+
+### Fixed
+
+- Workflow template change detection now handles first-time initialization (#63)
+  - Updated `status-update.yml` template to use `git add` before checking for changes
+  - Uses `git diff --staged --quiet` instead of `git diff --quiet`
+  - Properly detects both tracked changes AND newly created untracked files
+  - Eliminates the chicken-and-egg problem where initial files couldn't be committed
+  - Works seamlessly with v0.2.5's `.gitkeep` file generation
+  - Users should update their workflow file with the improved template
+
 ## [0.2.5] - 2025-11-02
 
 ### Fixed
