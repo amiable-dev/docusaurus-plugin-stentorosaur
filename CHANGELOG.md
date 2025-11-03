@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2025-11-03
+
+### Fixed
+
+- Fixed demo data fallback when GitHub API returns empty results
+  - When GitHub returns no issues and `useDemoData` is not explicitly `false`, plugin now correctly falls back to demo data
+  - Prevents showing empty status page when repository exists but has no status issues yet
+  - Fixes test: "should fallback to demo data when GitHub returns empty results"
+
 ## [0.3.6] - 2025-11-03
 
 ### Fixed

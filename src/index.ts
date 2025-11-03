@@ -275,7 +275,7 @@ export default async function pluginStatus(
             }
             
             // If no real data found and demo data not explicitly disabled, use demo data
-            if (items.length === 0 && incidents.length === 0 && useDemoData !== false && shouldUseDemoData) {
+            if (items.length === 0 && incidents.length === 0 && useDemoData !== false) {
               console.log('[docusaurus-plugin-stentorosaur] No GitHub issues found, using demo data');
               const demoData = getDemoStatusData();
               items = showServices ? demoData.items : [];
