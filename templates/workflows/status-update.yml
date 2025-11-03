@@ -50,13 +50,24 @@ jobs:
       # 
       # If we commit here with format "🟥 Systems down: website", it breaks metrics extraction.
       # 
-      # Instead, status.json and summary.json are updated locally and will be deployed:
-      # - On next scheduled deployment (deploy-scheduled.yml runs daily)
-      # - On next code push (triggers deploy.yml)
-      # - On manual deployment trigger
+      # DEPLOYMENT OPTIONS:
+      # 
+      # Option A (Default): Delayed deployment - simpler, uses fewer Actions minutes
+      # Status updates deploy via:
+      # - Scheduled deployment (deploy-scheduled.yml runs daily)
+      # - Code pushes (triggers deploy.yml)
+      # - Manual workflow dispatch
+      # Trade-off: Status may be stale for up to 24 hours
+      # 
+      # Option B: Instant deployment - uncomment the step below
+      # Triggers deploy.yml immediately after status update
+      # Trade-off: More GitHub Actions minutes, requires deploy.yml configuration
+      # 
+      # - name: Trigger deployment
+      #   uses: peter-evans/repository-dispatch@v3
+      #   with:
+      #     event-type: status-updated
+      #     token: ${{ secrets.GITHUB_TOKEN }}
       #
-      # This ensures:
-      # 1. Issue changes are reflected in status data
-      # 2. Git history remains clean for metrics calculation
-      # 3. All three workflows (monitor-systems, calculate-metrics, status-update) work together
+      # Note: If using Option B, also uncomment repository_dispatch in deploy.yml
 
