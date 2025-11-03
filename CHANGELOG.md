@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2025-11-03
+
+### Fixed
+
+- **CRITICAL**: Fixed `useDemoData: true` being ignored when committed status data exists from previous builds
+  - Production sites with `useDemoData: true` were showing real GitHub data instead of demo data
+  - Caused React hydration errors (#418, #423, #425) due to server/client mismatch
+  - Caused 404 errors for missing demo system files
+  - Now prioritizes explicit `useDemoData: true` setting over all other data sources
+  - Load priority is now: 1) `useDemoData: true` → 2) committed data → 3) GitHub API → 4) fallback demo
+
 ## [0.3.5] - 2025-11-03
 
 ### Added

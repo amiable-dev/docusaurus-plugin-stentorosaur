@@ -28,10 +28,9 @@ type ChartType = 'response' | 'uptime' | 'sli' | 'error-budget';
 
 export default function PerformanceMetrics({
   systemFile,
-  incidents,
+  incidents = [],
   isVisible,
   onClose,
-  useDemoData = false,
 }: PerformanceMetricsProps): JSX.Element | null {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('7d');
   const [fullscreenChart, setFullscreenChart] = useState<ChartType | null>(null);

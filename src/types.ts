@@ -151,5 +151,4 @@ export interface StatusData {
   showServices?: boolean;
   showIncidents?: boolean;
   showPerformanceMetrics?: boolean;
-  useDemoData?: boolean;
 }

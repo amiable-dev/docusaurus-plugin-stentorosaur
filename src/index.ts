@@ -154,7 +154,6 @@ export default async function pluginStatus(
           showServices,
           showIncidents,
           showPerformanceMetrics,
-          useDemoData: shouldUseDemoData,
         };
 
         // Ensure directory exists
@@ -202,7 +201,7 @@ export default async function pluginStatus(
         if (shouldUseDemoData) {
           const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
           
-          if (isCI && !token && useDemoData !== true) {
+          if (isCI && !token && (useDemoData === undefined || useDemoData === false)) {
             console.warn(
               '\n⚠️  [docusaurus-plugin-stentorosaur] GITHUB_TOKEN not found in CI environment.\n' +
               '   Your production site will show DEMO DATA instead of real status.\n' +
@@ -276,7 +275,7 @@ export default async function pluginStatus(
             }
             
             // If no real data found and demo data not explicitly disabled, use demo data
-            if (items.length === 0 && incidents.length === 0 && useDemoData !== false) {
+            if (items.length === 0 && incidents.length === 0 && useDemoData !== false && shouldUseDemoData) {
               console.log('[docusaurus-plugin-stentorosaur] No GitHub issues found, using demo data');
               const demoData = getDemoStatusData();
               items = showServices ? demoData.items : [];
@@ -301,7 +300,6 @@ export default async function pluginStatus(
         showServices,
         showIncidents,
         showPerformanceMetrics,
-        useDemoData: shouldUseDemoData,
       };
 
       // Ensure directory exists
