@@ -307,6 +307,40 @@ strategy:
         url: 'https://db.example.com/status'
 ```
 
+**Alternative: Use a config file**
+
+Create `.monitorrc.json` in your repository root:
+
+```json
+{
+  "systems": [
+    {
+      "system": "api",
+      "url": "https://api.example.com/health",
+      "method": "GET",
+      "timeout": 10000,
+      "expectedCodes": [200, 301, 302],
+      "maxResponseTime": 30000
+    },
+    {
+      "system": "website",
+      "url": "https://example.com",
+      "method": "GET",
+      "timeout": 10000,
+      "expectedCodes": [200],
+      "maxResponseTime": 30000
+    }
+  ]
+}
+```
+
+Then update your workflow:
+
+```yaml
+- name: Monitor systems
+  run: node scripts/monitor.js --config .monitorrc.json
+```
+
 #### 3. Setup Issue Templates (Optional)
 
 Copy the issue template for manual status reporting:
@@ -540,6 +574,41 @@ The CLI tool:
 - Optionally commits changes with descriptive emoji messages
 - Can be used in local development or CI/CD pipelines
 - Provides helpful error messages with examples
+
+## Monitoring Architecture (v0.4.0+)
+
+### New Append-Only Data Storage
+
+As of v0.4.0, the plugin uses an **append-only monitoring architecture** that eliminates Git history pollution and improves performance:
+
+**Key Features:**
+- 📝 **Append-only JSONL files** - One line per check, no file rewrites
+- ⚡ **Hot file (current.json)** - 14-day rolling window (~200-400 KB)
+- 🗜️ **Automatic compression** - Daily gzip of old archives (80-90% reduction)
+- 🚀 **Fast site loads** - Small current.json file loads quickly
+- 🧹 **Clean Git history** - Minimal commits, no data pollution
+
+**Data Structure:**
+```
+build/status-data/
+├── current.json                           # Hot file (rolling 14-day window)
+└── archives/
+    └── 2025/11/
+        ├── history-2025-11-01.jsonl.gz   # Compressed (yesterday and older)
+        ├── history-2025-11-02.jsonl.gz   # Compressed
+        └── history-2025-11-03.jsonl      # Uncompressed (today)
+```
+
+**Setup:**
+```bash
+# Copy monitoring workflows
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/monitor-systems.yml .github/workflows/
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/compress-archives.yml .github/workflows/
+
+# Configure your endpoints in monitor-systems.yml
+```
+
+See [MONITORING_SYSTEM.md](./MONITORING_SYSTEM.md) for complete documentation.
 
 ## Status Data Storage Patterns
 

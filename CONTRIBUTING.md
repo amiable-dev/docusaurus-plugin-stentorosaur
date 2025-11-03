@@ -61,7 +61,8 @@ docusaurus-plugin-stentorosaur/
 │       ├── StatusItem/
 │       └── IncidentHistory/
 ├── scripts/                      # CLI tools
-│   └── update-status.cjs         # Status update CLI
+│   ├── update-status.cjs         # Status update CLI
+│   └── monitor.js                # Monitoring script (v0.4.0+)
 ├── templates/                    # User-facing templates
 │   ├── workflows/                # GitHub Actions workflows
 │   └── ISSUE_TEMPLATE/           # GitHub issue templates
@@ -97,6 +98,20 @@ npm run test:watch
 
 # Generate coverage report
 npm run test:coverage
+```
+
+### Testing the Monitoring Script (v0.4.0+)
+
+```bash
+# Test single endpoint
+node scripts/monitor.js --system test --url https://www.google.com --verbose
+
+# Test with config file
+node scripts/monitor.js --config .monitorrc.json
+
+# Verify data files
+cat build/status-data/current.json | jq '.'
+cat build/status-data/archives/2025/11/history-2025-11-03.jsonl
 ```
 
 ### Test Structure

@@ -47,16 +47,17 @@ module.exports = {
 
 ## Step 3: Set up GitHub Actions
 
-### Option A: Automated Monitoring
+### Option A: Automated Monitoring (New in v0.4.0)
 
-Copy the monitoring workflow:
+Copy the monitoring workflows:
 
 ```bash
 mkdir -p .github/workflows
 cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/monitor-systems.yml .github/workflows/
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/compress-archives.yml .github/workflows/
 ```
 
-Edit the workflow to add your endpoints:
+**Configure your endpoints** - edit `monitor-systems.yml`:
 
 ```yaml
 system: 
@@ -65,6 +66,29 @@ system:
   - name: 'website'
     url: 'https://example.com'
 ```
+
+**Or use a config file** - create `.monitorrc.json`:
+
+```json
+{
+  "systems": [
+    {
+      "system": "api",
+      "url": "https://api.example.com/health",
+      "expectedCodes": [200],
+      "maxResponseTime": 30000
+    }
+  ]
+}
+```
+
+**Benefits of the new system:**
+- ✅ Append-only data storage (no Git history pollution)
+- ✅ Fast site loads (small current.json file)
+- ✅ Automatic compression of old data
+- ✅ Minimal Git commits with emoji messages (🟩/🟨/🟥)
+
+See [MONITORING_SYSTEM.md](./MONITORING_SYSTEM.md) for details.
 
 ### Option B: Manual Status Updates
 
