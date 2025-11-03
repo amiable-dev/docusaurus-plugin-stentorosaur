@@ -13,14 +13,12 @@ import type { SystemStatusFile } from '../../types';
 import styles from './styles.module.css';
 
 export interface Props {
-  readonly systemName: string;
   readonly dataPath?: string;
 }
 
 export default function StatusHistory({
-  systemName,
   dataPath = 'status-data',
-}: Props): JSX.Element {
+}: Props = {}): JSX.Element {
   const [systemData, setSystemData] = useState<SystemStatusFile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +27,14 @@ export default function StatusHistory({
   useEffect(() => {
     async function loadSystemData() {
       try {
+        // Extract system name from URL path
+        const pathParts = window.location.pathname.split('/');
+        const systemName = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2];
+        
+        if (!systemName) {
+          throw new Error('System name not found in URL');
+        }
+
         const response = await fetch(`/${dataPath}/systems/${systemName}.json`);
         if (!response.ok) {
           throw new Error(`Failed to load data: ${response.statusText}`);
@@ -43,11 +49,11 @@ export default function StatusHistory({
     }
 
     loadSystemData();
-  }, [systemName, dataPath]);
+  }, [dataPath]);
 
   if (loading) {
     return (
-      <Layout title={`${systemName} - History`}>
+      <Layout title="System History">
         <main className={styles.historyPage}>
           <div className={styles.loading}>Loading historical data...</div>
         </main>
@@ -57,7 +63,7 @@ export default function StatusHistory({
 
   if (error || !systemData) {
     return (
-      <Layout title={`${systemName} - History`}>
+      <Layout title="System History">
         <main className={styles.historyPage}>
           <div className={styles.error}>
             <h2>Error Loading Data</h2>
@@ -76,7 +82,7 @@ export default function StatusHistory({
   };
 
   return (
-    <Layout title={`${systemName} - History`}>
+    <Layout title={`${systemData.name} - History`}>
       <main className={styles.historyPage}>
         <div className={styles.header}>
           <h1>{systemData.name}</h1>

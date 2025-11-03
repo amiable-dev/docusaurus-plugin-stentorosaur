@@ -304,6 +304,25 @@ export default async function pluginStatus(
           lastUpdatedAt: new Date(content.lastUpdated).getTime(),
         },
       });
+
+      // Add StatusHistory routes for each system (if demo data)
+      let shouldUseDemoData = useDemoData ?? !token;
+      if (shouldUseDemoData) {
+        const demoSystemFiles = getDemoSystemFiles();
+        demoSystemFiles.forEach(systemFile => {
+          const systemSlug = systemFile.name
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-');
+          
+          addRoute({
+            path: normalizeUrl([baseUrl, 'status', 'history', systemSlug]),
+            component: '@theme/StatusHistory',
+            exact: true,
+          });
+        });
+      }
     },
 
     async postBuild({outDir}) {

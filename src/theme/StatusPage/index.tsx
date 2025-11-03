@@ -76,7 +76,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
             </p>
             
             <div className={styles.chartsGrid}>
-              {systemFiles.slice(0, 3).map((systemFile) => (
+              {systemFiles.map((systemFile) => (
                 <div key={systemFile.name} className={styles.chartCard}>
                   <h3 className={styles.chartCardTitle}>{systemFile.name}</h3>
                   
@@ -98,7 +98,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
                   
                   <div className={styles.viewDetails}>
                     <a 
-                      href={`/status/history/${systemFile.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      href={`/status/history/${systemFile.name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')}`}
                       className={styles.viewDetailsLink}
                     >
                       View detailed history →
@@ -108,9 +108,9 @@ export default function StatusPage({statusData}: Props): JSX.Element {
               ))}
             </div>
             
-            {systemFiles.length > 3 && (
+            {systemFiles.length > 0 && (
               <p className={styles.moreSystemsNote}>
-                Showing {Math.min(3, systemFiles.length)} of {systemFiles.length} systems with historical data
+                Showing {systemFiles.length} system{systemFiles.length !== 1 ? 's' : ''} with historical data
               </p>
             )}
           </section>
