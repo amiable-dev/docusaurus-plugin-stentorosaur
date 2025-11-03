@@ -30,55 +30,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
       - name: Check ${{ matrix.system.name }} status
         id: check
         continue-on-error: true
         run: |
-          # Capture both response time and status code
-          # time_total is in seconds with decimal precision (e.g., 0.145)
-          response=$(curl -s -o /dev/null -w "%{http_code}\n%{time_total}" -m 10 "${{ matrix.system.url }}")
-          status_code=$(echo "$response" | head -n1)
-          time_seconds=$(echo "$response" | tail -n1)
-          
-          # Convert seconds to milliseconds (e.g., 0.145 -> 145)
-          response_time=$(echo "$time_seconds * 1000" | bc | cut -d. -f1)
-          
-          echo "status_code=$status_code" >> $GITHUB_OUTPUT
-          echo "response_time=$response_time" >> $GITHUB_OUTPUT
-          
-          if [ "$status_code" -eq 200 ] || [ "$status_code" -eq 301 ] || [ "$status_code" -eq 302 ]; then
-            echo "status=up" >> $GITHUB_OUTPUT
-          else
-            echo "status=down" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Save response time data
-        run: |
-          # Create systems directory if it doesn't exist
-          mkdir -p build/status-data/systems
-          
-          # Generate system file name (lowercase, replace spaces with dashes)
-          SYSTEM_FILE="build/status-data/systems/${{ matrix.system.name }}.json"
-          
-          # Read existing data or create new structure
-          if [ -f "$SYSTEM_FILE" ]; then
-            # Append to existing history (keep last 50 entries)
-            cat "$SYSTEM_FILE" | jq --arg time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              --arg status "${{ steps.check.outputs.status }}" \
-              --argjson code "${{ steps.check.outputs.status_code }}" \
-              --argjson ms "${{ steps.check.outputs.response_time }}" \
-              '.history = ([{timestamp: $time, status: $status, code: $code, responseTime: $ms}] + .history) | .history = .history[:50] | .lastChecked = $time | .currentStatus = $status' > "$SYSTEM_FILE.tmp"
-            mv "$SYSTEM_FILE.tmp" "$SYSTEM_FILE"
-          else
-            # Create new file
-            jq -n --arg name "${{ matrix.system.name }}" \
-              --arg url "${{ matrix.system.url }}" \
-              --arg time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              --arg status "${{ steps.check.outputs.status }}" \
-              --argjson code "${{ steps.check.outputs.status_code }}" \
-              --argjson ms "${{ steps.check.outputs.response_time }}" \
-              '{name: $name, url: $url, lastChecked: $time, currentStatus: $status, history: [{timestamp: $time, status: $status, code: $code, responseTime: $ms}]}' > "$SYSTEM_FILE"
-          fi
+          node scripts/monitor.js \
+            --system "${{ matrix.system.name }}" \
+            --url "${{ matrix.system.url }}" \
+            --output-dir build/status-data
           
       - name: Commit response time data
         uses: actions/github-script@v7
@@ -94,19 +58,10 @@ jobs:
             const status = execSync('git status --porcelain build/status-data/').toString();
             
             if (status) {
-              const systemName = '${{ matrix.system.name }}';
-              const responseTime = '${{ steps.check.outputs.response_time }}';
-              const statusCode = '${{ steps.check.outputs.status_code }}';
-              const isUp = '${{ steps.check.outputs.status }}' === 'up';
-              
-              // Generate emoji commit message
-              const emoji = isUp ? '🟩' : '🟥';
-              const message = isUp 
-                ? `${emoji} ${systemName} is up (${statusCode} in ${responseTime} ms) [skip ci]`
-                : `${emoji} ${systemName} is down (${statusCode}) [skip ci]`;
+              const commitMessage = '${{ steps.check.outputs.commit_message }}' || 'Update status data [skip ci]';
               
               execSync('git add build/status-data/');
-              execSync(`git commit -m "${message}"`);
+              execSync(`git commit -m "${commitMessage}"`);
               execSync('git push origin HEAD:${{ github.ref_name }}');
             }
           

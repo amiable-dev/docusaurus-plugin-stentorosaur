@@ -1,0 +1,57 @@
+name: Compress Archives
+
+on:
+  schedule:
+    # Run daily at 00:05 UTC to compress yesterday's files
+    - cron: '5 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  compress:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compress yesterday's JSONL files
+        run: |
+          # Calculate yesterday's date
+          yesterday=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d)
+          year=$(echo "$yesterday" | cut -d- -f1)
+          month=$(echo "$yesterday" | cut -d- -f2)
+          day=$(echo "$yesterday" | cut -d- -f3)
+          
+          archive_dir="build/status-data/archives/$year/$month"
+          
+          if [ -d "$archive_dir" ]; then
+            # Find uncompressed JSONL files from yesterday
+            file="$archive_dir/history-$yesterday.jsonl"
+            
+            if [ -f "$file" ]; then
+              echo "Compressing $file..."
+              gzip "$file"
+              echo "Created ${file}.gz"
+            else
+              echo "No file found for yesterday ($yesterday)"
+            fi
+          else
+            echo "Archive directory does not exist: $archive_dir"
+          fi
+
+      - name: Commit compressed files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add build/status-data/archives/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            yesterday=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d)
+            git commit -m "📦 Compress archive for $yesterday [skip ci]"
+            git push
+          fi

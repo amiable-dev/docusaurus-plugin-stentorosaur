@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "description": "Configuration file for status monitoring script",
+  "systems": [
+    {
+      "system": "api",
+      "url": "https://api.example.com/health",
+      "method": "GET",
+      "timeout": 10000,
+      "expectedCodes": [200, 301, 302],
+      "maxResponseTime": 30000
+    },
+    {
+      "system": "website",
+      "url": "https://example.com",
+      "method": "GET",
+      "timeout": 10000,
+      "expectedCodes": [200],
+      "maxResponseTime": 30000
+    },
+    {
+      "system": "admin",
+      "url": "https://admin.example.com",
+      "method": "GET",
+      "timeout": 10000,
+      "expectedCodes": [200],
+      "maxResponseTime": 30000
+    }
+  ]
+}

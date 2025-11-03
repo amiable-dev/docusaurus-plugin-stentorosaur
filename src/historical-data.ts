@@ -8,7 +8,32 @@
 import type { StatusCheckHistory, SystemStatusFile } from './types';
 
 /**
- * Load historical status data from a system status file
+ * Reading from new data format (Issue #19):
+ * - current.json: Rolling 14-day window with compact format
+ * - archives/YYYY/MM/history-YYYY-MM-DD.jsonl: Daily JSONL files
+ * 
+ * Reading format:
+ * {
+ *   t: timestamp (ms since epoch)
+ *   svc: service name
+ *   state: 'up' | 'down' | 'degraded'
+ *   code: HTTP status code
+ *   lat: latency in ms
+ *   err?: error message (optional)
+ * }
+ */
+
+interface CompactReading {
+  t: number;
+  svc: string;
+  state: 'up' | 'down' | 'degraded' | 'maintenance';
+  code: number;
+  lat: number;
+  err?: string;
+}
+
+/**
+ * Load historical status data from current.json (rolling 14-day window)
  */
 export async function loadHistoricalData(
   systemName: string,
@@ -17,13 +42,39 @@ export async function loadHistoricalData(
   try {
     // In browser environment, fetch from built data
     if (typeof window !== 'undefined') {
-      const response = await fetch(`/${dataPath}/systems/${systemName}.json`);
-      if (!response.ok) {
-        console.warn(`Failed to load historical data for ${systemName}: ${response.statusText}`);
-        return [];
+      // Try new format first (current.json)
+      try {
+        const response = await fetch(`/${dataPath}/current.json`);
+        if (response.ok) {
+          const readings: CompactReading[] = await response.json();
+          
+          // Filter by system name and convert to legacy format
+          return readings
+            .filter(r => r.svc === systemName)
+            .map(r => ({
+              timestamp: new Date(r.t).toISOString(),
+              status: r.state,
+              code: r.code,
+              responseTime: r.lat,
+            }));
+        }
+      } catch (error) {
+        console.warn(`New format (current.json) not available, trying legacy format...`);
       }
-      const data: SystemStatusFile = await response.json();
-      return data.history || [];
+      
+      // Fall back to legacy format (systems/*.json)
+      try {
+        const response = await fetch(`/${dataPath}/systems/${systemName}.json`);
+        if (response.ok) {
+          const data: SystemStatusFile = await response.json();
+          return data.history || [];
+        }
+      } catch (error) {
+        console.warn(`Legacy format also failed for ${systemName}`);
+      }
+      
+      console.warn(`Failed to load historical data for ${systemName}`);
+      return [];
     }
     
     // In Node environment (build time), this would require fs
