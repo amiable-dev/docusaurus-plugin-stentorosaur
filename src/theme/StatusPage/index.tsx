@@ -43,6 +43,55 @@ export default function StatusPage({statusData}: Props): JSX.Element {
       
       const files: SystemStatusFile[] = [];
       
+      // Try new format first (current.json - v0.4.0+)
+      try {
+        const response = await fetch('/status-data/current.json');
+        if (response.ok) {
+          const readings: Array<{
+            t: number;
+            svc: string;
+            state: 'up' | 'down' | 'degraded' | 'maintenance';
+            code: number;
+            lat: number;
+            err?: string;
+          }> = await response.json();
+          
+          // Group readings by service
+          const serviceMap = new Map<string, typeof readings>();
+          for (const reading of readings) {
+            if (!serviceMap.has(reading.svc)) {
+              serviceMap.set(reading.svc, []);
+            }
+            serviceMap.get(reading.svc)!.push(reading);
+          }
+          
+          // Convert to SystemStatusFile format
+          for (const item of items) {
+            const serviceReadings = serviceMap.get(item.name.toLowerCase());
+            if (serviceReadings && serviceReadings.length > 0) {
+              files.push({
+                name: item.name,
+                url: '', // URL not available in current.json format
+                lastChecked: new Date(Math.max(...serviceReadings.map(r => r.t))).toISOString(),
+                currentStatus: serviceReadings[serviceReadings.length - 1].state,
+                history: serviceReadings.map(r => ({
+                  timestamp: new Date(r.t).toISOString(),
+                  status: r.state,
+                  code: r.code,
+                  responseTime: r.lat,
+                })),
+              });
+            }
+          }
+          
+          setSystemFiles(files);
+          return; // Success, don't try legacy format
+        }
+      } catch (error) {
+        // Fall through to legacy format
+      }
+      
+      // Fallback to legacy format (systems/*.json)
       for (const item of items) {
         try {
           // Use same slug generation as plugin to ensure filename matches
