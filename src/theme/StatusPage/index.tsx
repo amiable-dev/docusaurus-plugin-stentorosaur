@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@theme/Layout';
 import StatusBoard from '../StatusBoard';
-import IncidentHistory from '@theme/IncidentHistory';
+import IncidentHistory from '../IncidentHistory';
 import PerformanceMetrics from '../PerformanceMetrics';
 import type {StatusData, SystemStatusFile} from '../../types';
 import styles from './styles.module.css';
@@ -25,12 +25,13 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     showServices = true, 
     showIncidents = true,
     showPerformanceMetrics = true,
+    useDemoData = false,
   } = statusData;
   const [systemFiles, setSystemFiles] = useState<SystemStatusFile[]>([]);
   const [activeSystemIndex, setActiveSystemIndex] = useState<number | null>(null);
   
   // Default values if not provided
-  const title = 'System Status';
+  const title = useDemoData ? 'Demo Data: System Status' : 'System Status';
   const description = 'Current operational status of our systems';
 
   // Load system files with historical data for charts
@@ -115,11 +116,12 @@ export default function StatusPage({statusData}: Props): JSX.Element {
             incidents={incidents}
             isVisible={true}
             onClose={() => setActiveSystemIndex(null)}
+            useDemoData={useDemoData}
           />
         )}
         
         {showIncidents && incidents && incidents.length > 0 && (
-          <IncidentHistory incidents={incidents} />
+          <IncidentHistory incidents={incidents} useDemoData={useDemoData} />
         )}
 
         <div className={styles.footer}>

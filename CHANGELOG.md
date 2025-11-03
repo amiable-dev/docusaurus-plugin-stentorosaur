@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.8] - 2025-11-03
+
+### Added
+
+- **Demo Data Awareness**: Added visual indicators when viewing demo data
+  - Status page title shows "Demo Data: System Status" when `useDemoData: true`
+  - Incident History shows "Demo Data: Recent Incidents" or "Demo Data: Incident History"
+  - Makes it immediately clear to users when they're viewing demo/example data vs real system status
+  - Helps prevent confusion during development, testing, and demos
+
+### Technical
+
+- Added `useDemoData` field to `StatusData` interface
+- Plugin now passes `useDemoData` flag to all theme components
+- Fixed IncidentHistory import in StatusPage to use relative path instead of `@theme` alias
+
 ## [0.3.7] - 2025-11-03
 
 ### Fixed

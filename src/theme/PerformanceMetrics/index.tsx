@@ -21,6 +21,8 @@ export interface PerformanceMetricsProps {
   isVisible: boolean;
   /** Callback when close/collapse is requested */
   onClose?: () => void;
+  /** Whether demo data is being displayed */
+  useDemoData?: boolean;
 }
 
 type TimePeriod = '24h' | '7d' | '30d' | '90d';
@@ -28,9 +30,10 @@ type ChartType = 'response' | 'uptime' | 'sli' | 'error-budget';
 
 export default function PerformanceMetrics({
   systemFile,
-  incidents = [],
+  incidents,
   isVisible,
   onClose,
+  useDemoData = false,
 }: PerformanceMetricsProps): JSX.Element | null {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('7d');
   const [fullscreenChart, setFullscreenChart] = useState<ChartType | null>(null);
