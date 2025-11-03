@@ -140,6 +140,32 @@ export default async function pluginStatus(
       let incidents;
       let shouldUseDemoData = useDemoData ?? !token;
 
+      // If useDemoData is explicitly true, skip committed data and use demo data
+      if (useDemoData === true) {
+        console.log('[docusaurus-plugin-stentorosaur] Using demo data (useDemoData=true)');
+        const demoData = getDemoStatusData();
+        items = showServices ? demoData.items : [];
+        incidents = showIncidents ? demoData.incidents : [];
+        
+        const statusData: StatusData = {
+          items,
+          incidents: incidents.slice(0, 20), // Limit to most recent 20 incidents
+          lastUpdated: new Date().toISOString(),
+          showServices,
+          showIncidents,
+          showPerformanceMetrics,
+          useDemoData: shouldUseDemoData,
+        };
+
+        // Ensure directory exists
+        await fs.ensureDir(statusDataDir);
+        
+        // Write status data to file
+        await fs.writeJson(statusDataPath, statusData, {spaces: 2});
+
+        return statusData;
+      }
+
       // First, try to read committed status data (Upptime-style)
       const committedStatusFile = path.join(context.siteDir, 'build', 'status-data', 'status.json');
       let useCommittedData = false;
