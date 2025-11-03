@@ -44,7 +44,12 @@ export default function StatusPage({statusData}: Props): JSX.Element {
       
       for (const item of items) {
         try {
-          const fileName = item.name.toLowerCase().replace(/\s+/g, '-');
+          // Use same slug generation as plugin to ensure filename matches
+          const fileName = item.name
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+            .replace(/\s+/g, '-') // Replace spaces with hyphens
+            .replace(/-+/g, '-'); // Replace multiple hyphens with single
           const response = await fetch(`/status-data/systems/${fileName}.json`);
           
           if (response.ok) {
@@ -95,7 +100,8 @@ export default function StatusPage({statusData}: Props): JSX.Element {
       <main className={styles.statusPage}>
         {showServices && (
           <StatusBoard 
-            items={items} 
+            items={items}
+            incidents={incidents}
             title={title} 
             description={description}
             onSystemClick={showPerformanceMetrics && systemFiles.length > 0 ? handleSystemClick : undefined}
@@ -106,6 +112,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
         {showPerformanceMetrics && activeSystemIndex !== null && systemFiles[activeSystemIndex] && (
           <PerformanceMetrics
             systemFile={systemFiles[activeSystemIndex]}
+            incidents={incidents}
             isVisible={true}
             onClose={() => setActiveSystemIndex(null)}
           />

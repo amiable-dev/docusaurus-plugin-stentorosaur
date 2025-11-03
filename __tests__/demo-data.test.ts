@@ -133,9 +133,9 @@ describe('getDemoSystemFiles', () => {
       expect(Array.isArray(file.history)).toBe(true);
       expect(file.history.length).toBeGreaterThan(0);
       
-      // Should have approximately 30 days of data (288 checks per day)
-      expect(file.history.length).toBeGreaterThan(8000);
-      expect(file.history.length).toBeLessThan(9000);
+      // Should have approximately 90 days of data (288 checks per day)
+      expect(file.history.length).toBeGreaterThan(24000);
+      expect(file.history.length).toBeLessThan(27000);
     });
   });
 

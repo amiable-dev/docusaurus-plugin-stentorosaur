@@ -5,8 +5,25 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type {StatusItem, StatusIncident, SystemStatusFile} from './types';
+import type {StatusItem, StatusIncident, SystemStatusFile, StatusCheckHistory} from './types';
 import {generateDemoHistory} from './historical-data';
+
+// Cache for demo history to ensure consistency between status items and system files
+const demoHistoryCache = new Map<string, StatusCheckHistory[]>();
+
+// Consistent base timestamp (rounded to nearest hour) for all demo data generation
+const DEMO_BASE_TIMESTAMP = Math.floor(Date.now() / (60 * 60 * 1000)) * (60 * 60 * 1000);
+
+/**
+ * Get cached demo history for a system, or generate if not cached
+ */
+function getCachedDemoHistory(systemName: string, days: number): StatusCheckHistory[] {
+  const cacheKey = `${systemName}:${days}`;
+  if (!demoHistoryCache.has(cacheKey)) {
+    demoHistoryCache.set(cacheKey, generateDemoHistory(systemName, days, DEMO_BASE_TIMESTAMP));
+  }
+  return demoHistoryCache.get(cacheKey)!;
+}
 
 export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusIncident[]} {
   const now = new Date().toISOString();
@@ -22,6 +39,7 @@ export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusInci
       uptime: '99.98%',
       responseTime: 145,
       lastChecked: now,
+      history: getCachedDemoHistory('Main Website', 90),
     },
     {
       name: 'API Service',
@@ -29,6 +47,7 @@ export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusInci
       uptime: '99.95%',
       responseTime: 89,
       lastChecked: now,
+      history: getCachedDemoHistory('API Service', 90),
     },
     {
       name: 'Documentation',
@@ -36,6 +55,7 @@ export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusInci
       uptime: '100%',
       responseTime: 123,
       lastChecked: now,
+      history: getCachedDemoHistory('Documentation', 90),
     },
     {
       name: 'Build & CI/CD',
@@ -43,6 +63,7 @@ export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusInci
       uptime: '98.2%',
       responseTime: 456,
       lastChecked: now,
+      history: getCachedDemoHistory('Build & CI/CD', 90),
     },
     {
       name: 'CDN',
@@ -50,6 +71,7 @@ export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusInci
       uptime: '99.99%',
       responseTime: 34,
       lastChecked: now,
+      history: getCachedDemoHistory('CDN', 90),
     },
   ];
 
@@ -110,7 +132,7 @@ export function getDemoSystemFiles(): SystemStatusFile[] {
   ];
 
   return systemNames.map(name => {
-    const history = generateDemoHistory(name, 30);
+    const history = getCachedDemoHistory(name, 90);
     const currentStatus = history.length > 0 
       ? history[history.length - 1].status 
       : 'up';
@@ -122,7 +144,9 @@ export function getDemoSystemFiles(): SystemStatusFile[] {
     const last7d = history.filter(h => 
       new Date(h.timestamp).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000
     );
-    const last30d = history;
+    const last30d = history.filter(h => 
+      new Date(h.timestamp).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000
+    );
     
     const avgTime = (checks: typeof history) => 
       checks.length > 0

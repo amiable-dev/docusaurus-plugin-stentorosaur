@@ -9,12 +9,14 @@ import React, { useState, useCallback } from 'react';
 import ResponseTimeChart from '../ResponseTimeChart';
 import UptimeChart from '../UptimeChart';
 import SLIChart from '../SLIChart';
-import type { SystemStatusFile } from '../../types';
+import type { SystemStatusFile, StatusIncident } from '../../types';
 import styles from './styles.module.css';
 
 export interface PerformanceMetricsProps {
   /** System status file with historical data */
   systemFile: SystemStatusFile;
+  /** Incidents that may affect this system */
+  incidents?: StatusIncident[];
   /** Whether to show the metrics (controlled externally) */
   isVisible: boolean;
   /** Callback when close/collapse is requested */
@@ -26,6 +28,7 @@ type ChartType = 'response' | 'uptime' | 'sli' | 'error-budget';
 
 export default function PerformanceMetrics({
   systemFile,
+  incidents = [],
   isVisible,
   onClose,
 }: PerformanceMetricsProps): JSX.Element | null {
@@ -124,6 +127,7 @@ export default function PerformanceMetrics({
             <UptimeChart
               name={systemFile.name}
               history={systemFile.history}
+              incidents={incidents}
               chartType={uptimeChartType}
               period={selectedPeriod}
               height={280}
@@ -206,6 +210,7 @@ export default function PerformanceMetrics({
                   <UptimeChart
                     name={systemFile.name}
                     history={systemFile.history}
+                    incidents={incidents}
                     chartType={uptimeChartType}
                     period={selectedPeriod}
                     height={600}

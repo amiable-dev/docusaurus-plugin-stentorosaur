@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -21,6 +21,7 @@ import {
 import { Line, Bar } from 'react-chartjs-2';
 import type { StatusCheckHistory } from '../../types';
 import { aggregateHistoricalData } from '../../historical-data';
+import { useChartExport } from '../hooks/useChartExport';
 import styles from './styles.module.css';
 
 // Register Chart.js components
@@ -80,6 +81,8 @@ export default function SLIChart({
 }: SLIChartProps): JSX.Element {
   const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+  const chartRef = useRef<ChartJS<'line' | 'bar'>>(null);
+  const { exportPNG, exportJPEG } = useChartExport();
   
   // Use internal state only if period selector is shown, otherwise use prop
   const activePeriod = showPeriodSelector ? internalPeriod : period;
@@ -291,11 +294,29 @@ export default function SLIChart({
             ))}
           </div>
         )}
+        <div className={styles.chartHeader}>
+          <div className={styles.exportButtons}>
+            <button
+              className={styles.exportButton}
+              onClick={() => exportPNG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-${showErrorBudget ? 'error-budget' : 'sli'}`)}
+              title="Export as PNG"
+            >
+              PNG
+            </button>
+            <button
+              className={styles.exportButton}
+              onClick={() => exportJPEG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-${showErrorBudget ? 'error-budget' : 'sli'}`)}
+              title="Export as JPEG"
+            >
+              JPG
+            </button>
+          </div>
+        </div>
       <div className={styles.chart} style={{ height: `${height}px` }}>
         {showErrorBudget ? (
-          <Bar data={data} options={options} />
+          <Bar ref={chartRef as any} data={data} options={options} />
         ) : (
-          <Line data={data} options={options} />
+          <Line ref={chartRef as any} data={data} options={options} />
         )}
       </div>
       {showErrorBudget && (

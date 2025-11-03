@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -19,6 +19,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import type { StatusCheckHistory } from '../../types';
+import { useChartExport } from '../hooks/useChartExport';
 import styles from './styles.module.css';
 
 // Register Chart.js components
@@ -71,6 +72,8 @@ export default function ResponseTimeChart({
 }: ResponseTimeChartProps): JSX.Element {
   const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+  const chartRef = useRef<ChartJS<'line'>>(null);
+  const { exportPNG, exportJPEG } = useChartExport();
   
   // Use internal state only if period selector is shown, otherwise use prop
   const activePeriod = showPeriodSelector ? internalPeriod : period;
@@ -94,24 +97,24 @@ export default function ResponseTimeChart({
   }, []);
 
   // Filter data by selected period
-  const getFilteredData = () => {
+  const filteredData = useMemo(() => {
     const now = new Date();
     const cutoff = new Date(now.getTime() - PERIOD_HOURS[activePeriod] * 60 * 60 * 1000);
     
     return history
       .filter(check => new Date(check.timestamp) >= cutoff)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  };
-
-  const filteredData = getFilteredData();
+  }, [history, activePeriod]);
 
   // Calculate average response time
-  const avgResponseTime = filteredData.length > 0
-    ? Math.round(filteredData.reduce((sum, check) => sum + check.responseTime, 0) / filteredData.length)
-    : 0;
+  const avgResponseTime = useMemo(() => {
+    return filteredData.length > 0
+      ? Math.round(filteredData.reduce((sum, check) => sum + check.responseTime, 0) / filteredData.length)
+      : 0;
+  }, [filteredData]);
 
   // Prepare chart data
-  const chartData = {
+  const chartData = useMemo(() => ({
     labels: filteredData.map(check => {
       const date = new Date(check.timestamp);
       if (activePeriod === '24h') {
@@ -154,7 +157,7 @@ export default function ResponseTimeChart({
         fill: false,
       },
     ],
-  };
+  }), [filteredData, isDarkTheme, activePeriod, avgResponseTime]);
 
   const options = {
     responsive: true,
@@ -256,19 +259,37 @@ export default function ResponseTimeChart({
         </div>
       )}
       
-      <div className={styles.stats}>
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>Average Response Time:</span>
-          <span className={styles.statValue}>{avgResponseTime} ms</span>
+      <div className={styles.chartHeader}>
+        <div className={styles.stats}>
+          <div className={styles.stat}>
+            <span className={styles.statLabel}>Average Response Time:</span>
+            <span className={styles.statValue}>{avgResponseTime} ms</span>
+          </div>
+          <div className={styles.stat}>
+            <span className={styles.statLabel}>Data Points:</span>
+            <span className={styles.statValue}>{filteredData.length}</span>
+          </div>
         </div>
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>Data Points:</span>
-          <span className={styles.statValue}>{filteredData.length}</span>
+        <div className={styles.exportButtons}>
+          <button
+            className={styles.exportButton}
+            onClick={() => exportPNG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-response-time`)}
+            title="Export as PNG"
+          >
+            PNG
+          </button>
+          <button
+            className={styles.exportButton}
+            onClick={() => exportJPEG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-response-time`)}
+            title="Export as JPEG"
+          >
+            JPG
+          </button>
         </div>
       </div>
 
       <div className={styles.chart} style={{ height: `${height}px` }}>
-        <Line data={chartData} options={options} />
+        <Line key={activePeriod} ref={chartRef} data={chartData} options={options} />
       </div>
     </div>
   );

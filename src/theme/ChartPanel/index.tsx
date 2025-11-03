@@ -9,7 +9,7 @@ import React, { useState, useEffect } from 'react';
 import ResponseTimeChart from '../ResponseTimeChart';
 import UptimeChart from '../UptimeChart';
 import SLIChart from '../SLIChart';
-import type { SystemStatusFile } from '../../types';
+import type { SystemStatusFile, StatusIncident } from '../../types';
 import styles from './styles.module.css';
 
 export interface ChartPanelProps {
@@ -54,6 +54,7 @@ export default function ChartPanel({
   dataPath = 'status-data',
 }: ChartPanelProps): JSX.Element {
   const [systemData, setSystemData] = useState<SystemStatusFile | null>(null);
+  const [incidents, setIncidents] = useState<StatusIncident[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState(period);
@@ -61,15 +62,27 @@ export default function ChartPanel({
   useEffect(() => {
     async function loadData() {
       try {
-        const fileName = systemName.toLowerCase().replace(/\s+/g, '-');
-        const response = await fetch(`/${dataPath}/systems/${fileName}.json`);
+        const fileName = systemName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+        const systemResponse = await fetch(`/${dataPath}/systems/${fileName}.json`);
         
-        if (!response.ok) {
+        if (!systemResponse.ok) {
           throw new Error(`Failed to load data for ${systemName}`);
         }
         
-        const data: SystemStatusFile = await response.json();
+        const data: SystemStatusFile = await systemResponse.json();
         setSystemData(data);
+
+        // Try to load incidents
+        try {
+          const incidentsResponse = await fetch(`/${dataPath}/status.json`);
+          if (incidentsResponse.ok) {
+            const statusData = await incidentsResponse.json();
+            setIncidents(statusData.incidents || []);
+          }
+        } catch {
+          // Incidents are optional, don't fail if not available
+          setIncidents([]);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
@@ -137,6 +150,7 @@ export default function ChartPanel({
             <UptimeChart
               name={systemData.name}
               history={systemData.history}
+              incidents={incidents}
               chartType="bar"
               period={selectedPeriod}
               height={height}

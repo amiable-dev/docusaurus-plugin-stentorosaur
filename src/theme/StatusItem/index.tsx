@@ -6,13 +6,16 @@
  */
 
 import React from 'react';
-import type {StatusItem as StatusItemType} from '../../types';
+import type {StatusItem as StatusItemType, StatusIncident} from '../../types';
+import MiniHeatmap from './MiniHeatmap';
 import styles from './styles.module.css';
 
 export interface Props {
   item: StatusItemType;
+  incidents?: StatusIncident[];
   showResponseTime?: boolean;
   showUptime?: boolean;
+  showMiniChart?: boolean;
   onClick?: () => void;
 }
 
@@ -41,8 +44,10 @@ const statusConfig = {
 
 export default function StatusItem({
   item,
+  incidents = [],
   showResponseTime = true,
   showUptime = true,
+  showMiniChart = true,
   onClick,
 }: Props): JSX.Element {
   const config = statusConfig[item.status];
@@ -110,6 +115,10 @@ export default function StatusItem({
           </div>
         )}
       </div>
+
+      {showMiniChart && item.history && item.history.length > 0 && (
+        <MiniHeatmap history={item.history} incidents={incidents} systemName={item.name} days={90} />
+      )}
     </div>
   );
 }

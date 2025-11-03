@@ -152,41 +152,116 @@ export function calculateDailyStats(
 }
 
 /**
+ * Simple seeded random number generator
+ * Based on mulberry32 PRNG for deterministic output
+ */
+function seededRandom(seed: number): () => number {
+  return function() {
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
  * Generate sample historical data for demo purposes
+ * Uses system name as seed for consistent data across builds
+ * 
+ * @param systemName - Name of the system (used as seed)
+ * @param days - Number of days of history to generate
+ * @param baseTimestamp - Optional base timestamp (for consistency across calls)
  */
 export function generateDemoHistory(
   systemName: string,
-  days: number = 30
+  days: number = 30,
+  baseTimestamp?: number
 ): StatusCheckHistory[] {
   const history: StatusCheckHistory[] = [];
-  const now = Date.now();
+  // Use provided timestamp or round current time to nearest hour for consistency
+  const now = baseTimestamp || (Math.floor(Date.now() / (60 * 60 * 1000)) * (60 * 60 * 1000));
   const checksPerDay = 288; // Every 5 minutes
+  
+  // Create deterministic seed from system name
+  let seed = 0;
+  for (let i = 0; i < systemName.length; i++) {
+    seed = ((seed << 5) - seed) + systemName.charCodeAt(i);
+    seed |= 0; // Convert to 32-bit integer
+  }
+  
+  const random = seededRandom(seed);
+  
+  // System-specific reliability profiles
+  const reliability = systemName.includes('CDN') ? 0.9995 : // 99.95%
+                     systemName.includes('Documentation') ? 0.999 : // 99.9%
+                     systemName.includes('Build') ? 0.982 : // 98.2% (degraded)
+                     systemName.includes('API') ? 0.9995 : // 99.95%
+                     0.9998; // 99.98% for Main Website
+  
+  // Simulate outage periods for more realistic patterns
+  const outages: Array<{start: number; duration: number}> = [];
+  
+  // Generate 2-4 outage periods for systems with lower reliability
+  if (reliability < 0.999) {
+    const outageCount = 2 + Math.floor(random() * 3); // 2-4 outages
+    for (let i = 0; i < outageCount; i++) {
+      const dayOffset = Math.floor(random() * days);
+      const duration = 30 + Math.floor(random() * 120); // 30-150 minutes
+      outages.push({
+        start: dayOffset * 24 * 60 + Math.floor(random() * 24 * 60),
+        duration
+      });
+    }
+  }
   
   for (let d = days - 1; d >= 0; d--) {
     for (let c = 0; c < checksPerDay; c++) {
       const timestamp = new Date(now - (d * 24 * 60 * 60 * 1000) - (c * 5 * 60 * 1000));
+      const minuteOffset = (days - 1 - d) * 24 * 60 + c * 5;
       
-      // Generate mostly successful checks with occasional issues
-      const random = Math.random();
+      // Check if this time is during an outage
+      const inOutage = outages.some(outage => 
+        minuteOffset >= outage.start && 
+        minuteOffset < outage.start + outage.duration
+      );
+      
       let status: 'up' | 'down' | 'degraded' | 'maintenance';
       let code: number;
       let responseTime: number;
       
-      if (random < 0.97) {
-        // 97% uptime
-        status = 'up';
-        code = 200;
-        responseTime = Math.floor(50 + Math.random() * 150); // 50-200ms
-      } else if (random < 0.99) {
-        // 2% degraded
-        status = 'degraded';
-        code = 200;
-        responseTime = Math.floor(500 + Math.random() * 1000); // 500-1500ms
+      if (inOutage) {
+        // During outage: higher chance of failures
+        const r = random();
+        if (r < 0.7) {
+          // 70% of outage time is down
+          status = 'down';
+          code = [500, 502, 503, 504][Math.floor(random() * 4)];
+          responseTime = Math.floor(2000 + random() * 3000);
+        } else {
+          // 30% is degraded
+          status = 'degraded';
+          code = 200;
+          responseTime = Math.floor(500 + random() * 1000);
+        }
       } else {
-        // 1% down
-        status = 'down';
-        code = [500, 502, 503, 504][Math.floor(Math.random() * 4)];
-        responseTime = Math.floor(2000 + Math.random() * 3000); // 2000-5000ms
+        // Outside outages: normal reliability pattern
+        const r = random();
+        if (r < reliability) {
+          // Normal operation
+          status = 'up';
+          code = 200;
+          responseTime = Math.floor(50 + random() * 150); // 50-200ms
+        } else if (r < reliability + ((1 - reliability) * 0.3)) {
+          // Occasional degradation (30% of failures)
+          status = 'degraded';
+          code = 200;
+          responseTime = Math.floor(500 + random() * 1000);
+        } else {
+          // Occasional downtime (70% of failures)
+          status = 'down';
+          code = [500, 502, 503, 504][Math.floor(random() * 4)];
+          responseTime = Math.floor(2000 + random() * 3000);
+        }
       }
       
       history.push({

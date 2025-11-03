@@ -38,6 +38,7 @@ export interface StatusItem {
   uptime?: string;
   responseTime?: number;
   incidentCount?: number;
+  history?: StatusCheckHistory[];
 }
 
 export interface StatusIncident {
