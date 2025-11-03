@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.11] - 2025-11-03
+
+### Fixed
+
+- **Monitoring Workflows Not Committing Data** (Issue amiable-dev/amiable-docusaurus#67)
+  - Fixed `monitor-systems.yml` git push failing in detached HEAD state
+  - Fixed `calculate-metrics.yml` git push failing in detached HEAD state
+  - Changed from `git push` to `git push origin HEAD:${{ github.ref_name }}`
+  - Workflows were creating system metrics files but commits weren't being pushed
+  - Resolves missing uptime percentages, response times, and heatmap data on status pages
+
 ## [0.3.10] - 2025-11-03
 
 ### Fixed

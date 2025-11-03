@@ -107,7 +107,7 @@ jobs:
               
               execSync('git add build/status-data/');
               execSync(`git commit -m "${message}"`);
-              execSync('git push');
+              execSync('git push origin HEAD:${{ github.ref_name }}');
             }
           
       - name: Create issue for downtime

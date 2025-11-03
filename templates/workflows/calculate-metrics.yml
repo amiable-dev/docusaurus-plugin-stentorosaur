@@ -155,4 +155,4 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add build/status-data/systems/
           git commit -m "📊 Update response time averages [skip ci]"
-          git push
+          git push origin HEAD:${{ github.ref_name }}
