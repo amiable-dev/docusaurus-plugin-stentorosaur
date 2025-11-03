@@ -27,6 +27,7 @@ export interface SystemStatusFile {
   uptimeWeek?: string;    // 7-day uptime percentage
   uptimeMonth?: string;   // 30-day uptime percentage
   uptime?: string;        // All-time uptime percentage
+  sloTarget?: number;     // SLO target percentage (e.g., 99.9)
 }
 
 export interface StatusItem {
@@ -124,6 +125,22 @@ export interface PluginOptions {
    * Whether to show the incident history
    */
   showIncidents?: boolean;
+
+  /**
+   * Whether to show performance metrics (charts, graphs)
+   */
+  showPerformanceMetrics?: boolean;
+
+  /**
+   * SLO targets for each system (in percentage, e.g., 99.9)
+   * Key is the system name, value is the target percentage
+   */
+  systemSLOs?: Record<string, number>;
+
+  /**
+   * Default SLO target for systems not specified in systemSLOs
+   */
+  defaultSLO?: number;
 }
 
 export interface StatusData {
@@ -132,4 +149,5 @@ export interface StatusData {
   lastUpdated: string;
   showServices?: boolean;
   showIncidents?: boolean;
+  showPerformanceMetrics?: boolean;
 }

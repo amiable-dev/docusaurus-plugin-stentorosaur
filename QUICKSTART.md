@@ -143,7 +143,57 @@ Edit the plugin configuration to customize:
   description: 'Real-time status of all our services',
   showResponseTimes: true,
   showUptime: true,
+  showPerformanceMetrics: true,  // v0.3.1+: Enable interactive charts
 }
+```
+
+### Explore Interactive Features (v0.3.1+)
+
+**Click System Cards**: When `showPerformanceMetrics` is enabled (default), click any system card to reveal detailed performance charts:
+
+- Response time trends
+- Uptime visualization
+- SLI/SLO compliance tracking
+- Error budget consumption
+
+**Period Selection**: Toggle between 24h, 7d, 30d, or 90d views - all charts update simultaneously.
+
+**Fullscreen Zoom**: Click any chart to view it fullscreen for detailed analysis.
+
+**Keyboard Navigation**: Use Tab, Enter, and Space keys for full accessibility.
+
+### Embed Charts in Your Docs (v0.3.1+)
+
+Use the new `ChartPanel` component to embed performance charts anywhere:
+
+```mdx
+---
+title: API Performance
+---
+
+import ChartPanel from '@theme/ChartPanel';
+
+# API Monitoring
+
+<ChartPanel 
+  systemName="api"
+  showCharts={['response', 'uptime', 'sli', 'errorBudget']}
+  defaultPeriod="7d"
+  layout="horizontal"
+/>
+```
+
+**Individual Chart Types:**
+
+```mdx
+<!-- Response Time Only -->
+<ChartPanel systemName="api" showCharts={['response']} />
+
+<!-- SLI/SLO Compliance -->
+<ChartPanel systemName="api" showCharts={['sli']} sloTarget={99.95} />
+
+<!-- Error Budget -->
+<ChartPanel systemName="api" showCharts={['errorBudget']} />
 ```
 
 ### Set Up Authentication
@@ -176,8 +226,13 @@ Use the components in your docs:
 
 ```mdx
 import StatusBoard from '@theme/StatusBoard';
+import ChartPanel from '@theme/ChartPanel';
 
+<!-- Status overview -->
 <StatusBoard items={yourStatusItems} />
+
+<!-- Performance charts (v0.3.1+) -->
+<ChartPanel systemName="api" defaultPeriod="7d" />
 ```
 
 ## Troubleshooting

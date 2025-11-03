@@ -4,6 +4,29 @@
   margin: 0 auto;
 }
 
+.backButton {
+  margin-bottom: 1.5rem;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+  border: 1px solid var(--ifm-color-primary);
+  border-radius: 4px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.backLink:hover {
+  background-color: var(--ifm-color-primary);
+  color: white;
+  text-decoration: none;
+}
+
 .header {
   margin-bottom: 2rem;
   padding-bottom: 1rem;
@@ -74,6 +97,51 @@
 .chartSection h2 {
   margin-bottom: 1rem;
   color: var(--ifm-font-color-base);
+}
+
+.periodSelector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--ifm-card-background-color);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.periodLabel {
+  font-weight: 600;
+  color: var(--ifm-font-color-base);
+}
+
+.periodButtons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.periodButton {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background-color: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.periodButton:hover {
+  border-color: var(--ifm-color-primary);
+  background-color: var(--ifm-color-primary-lightest);
+}
+
+.periodButton.active {
+  background-color: var(--ifm-color-primary);
+  color: white;
+  border-color: var(--ifm-color-primary);
+  font-weight: 600;
 }
 
 .chartHeader {

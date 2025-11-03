@@ -7,10 +7,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Layout from '@theme/Layout';
-import StatusBoard from '@theme/StatusBoard';
+import StatusBoard from '../StatusBoard';
 import IncidentHistory from '@theme/IncidentHistory';
-import ResponseTimeChart from '../ResponseTimeChart';
-import UptimeChart from '../UptimeChart';
+import PerformanceMetrics from '../PerformanceMetrics';
 import type {StatusData, SystemStatusFile} from '../../types';
 import styles from './styles.module.css';
 
@@ -19,9 +18,16 @@ export interface Props {
 }
 
 export default function StatusPage({statusData}: Props): JSX.Element {
-  const {items, incidents, lastUpdated, showServices = true, showIncidents = true} = statusData;
+  const {
+    items, 
+    incidents, 
+    lastUpdated, 
+    showServices = true, 
+    showIncidents = true,
+    showPerformanceMetrics = true,
+  } = statusData;
   const [systemFiles, setSystemFiles] = useState<SystemStatusFile[]>([]);
-  const [showCharts, setShowCharts] = useState(false);
+  const [activeSystemIndex, setActiveSystemIndex] = useState<number | null>(null);
   
   // Default values if not provided
   const title = 'System Status';
@@ -30,6 +36,10 @@ export default function StatusPage({statusData}: Props): JSX.Element {
   // Load system files with historical data for charts
   useEffect(() => {
     async function loadSystemFiles() {
+      if (!showPerformanceMetrics) {
+        return;
+      }
+      
       const files: SystemStatusFile[] = [];
       
       for (const item of items) {
@@ -49,13 +59,36 @@ export default function StatusPage({statusData}: Props): JSX.Element {
       }
       
       setSystemFiles(files);
-      setShowCharts(files.length > 0);
     }
     
     if (items.length > 0) {
       loadSystemFiles();
     }
-  }, [items]);
+  }, [items, showPerformanceMetrics]);
+
+  // Handle system card click to toggle performance metrics
+  const handleSystemClick = (systemName: string) => {
+    if (!showPerformanceMetrics || systemFiles.length === 0) {
+      return;
+    }
+
+    const index = systemFiles.findIndex(
+      (file) => file.name === systemName
+    );
+
+    if (index === -1) {
+      // System doesn't have data, don't toggle
+      return;
+    }
+
+    // Toggle: if clicking the same system, hide metrics; otherwise show new system
+    setActiveSystemIndex(activeSystemIndex === index ? null : index);
+  };
+
+  // Check if a system has data (for determining if it should be clickable)
+  const hasSystemData = (systemName: string): boolean => {
+    return systemFiles.some((file) => file.name === systemName);
+  };
 
   return (
     <Layout title={title} description={description}>
@@ -64,56 +97,18 @@ export default function StatusPage({statusData}: Props): JSX.Element {
           <StatusBoard 
             items={items} 
             title={title} 
-            description={description} 
+            description={description}
+            onSystemClick={showPerformanceMetrics && systemFiles.length > 0 ? handleSystemClick : undefined}
+            hasSystemData={showPerformanceMetrics ? hasSystemData : undefined}
           />
         )}
         
-        {showCharts && systemFiles.length > 0 && (
-          <section className={styles.chartsSection}>
-            <h2 className={styles.sectionTitle}>Performance Metrics</h2>
-            <p className={styles.sectionDescription}>
-              Historical response time and uptime data for our systems
-            </p>
-            
-            <div className={styles.chartsGrid}>
-              {systemFiles.map((systemFile) => (
-                <div key={systemFile.name} className={styles.chartCard}>
-                  <h3 className={styles.chartCardTitle}>{systemFile.name}</h3>
-                  
-                  <ResponseTimeChart
-                    name={systemFile.name}
-                    history={systemFile.history}
-                    period="7d"
-                    height={250}
-                    showPeriodSelector={false}
-                  />
-                  
-                  <UptimeChart
-                    name={systemFile.name}
-                    history={systemFile.history}
-                    chartType="bar"
-                    period="7d"
-                    height={200}
-                  />
-                  
-                  <div className={styles.viewDetails}>
-                    <a 
-                      href={`/status/history/${systemFile.name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')}`}
-                      className={styles.viewDetailsLink}
-                    >
-                      View detailed history →
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {systemFiles.length > 0 && (
-              <p className={styles.moreSystemsNote}>
-                Showing {systemFiles.length} system{systemFiles.length !== 1 ? 's' : ''} with historical data
-              </p>
-            )}
-          </section>
+        {showPerformanceMetrics && activeSystemIndex !== null && systemFiles[activeSystemIndex] && (
+          <PerformanceMetrics
+            systemFile={systemFiles[activeSystemIndex]}
+            isVisible={true}
+            onClose={() => setActiveSystemIndex(null)}
+          />
         )}
         
         {showIncidents && incidents && incidents.length > 0 && (

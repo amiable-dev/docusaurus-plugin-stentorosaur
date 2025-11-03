@@ -37,20 +37,22 @@ export interface UptimeChartProps {
   /** Chart type */
   chartType?: 'bar' | 'heatmap';
   /** Time period to display */
-  period?: '7d' | '30d' | '90d';
+  period?: '24h' | '7d' | '30d' | '90d';
   /** Chart height in pixels */
   height?: number;
 }
 
-type TimePeriod = '7d' | '30d' | '90d';
+type TimePeriod = '24h' | '7d' | '30d' | '90d';
 
 const PERIOD_LABELS: Record<TimePeriod, string> = {
+  '24h': '24 Hours',
   '7d': '7 Days',
   '30d': '30 Days',
   '90d': '90 Days',
 };
 
 const PERIOD_DAYS: Record<TimePeriod, number> = {
+  '24h': 1,
   '7d': 7,
   '30d': 30,
   '90d': 90,
@@ -70,7 +72,6 @@ export default function UptimeChart({
   period = '30d',
   height = 300,
 }: UptimeChartProps): JSX.Element {
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>(period);
   const [isDarkTheme, setIsDarkTheme] = useState(false);
 
   // Detect dark mode from document
@@ -94,7 +95,7 @@ export default function UptimeChart({
   // Calculate daily uptime percentages
   const calculateDailyUptime = (): DayUptime[] => {
     const now = new Date();
-    const days = PERIOD_DAYS[selectedPeriod];
+    const days = PERIOD_DAYS[period];
     const dailyData: Map<string, { upChecks: number; totalChecks: number }> = new Map();
 
     // Initialize all days
@@ -146,17 +147,6 @@ export default function UptimeChart({
       <div className={styles.chartContainer}>
         <div className={styles.heatmapHeader}>
           <h3 className={styles.chartTitle}>{name} - Uptime Heatmap</h3>
-          <div className={styles.periodSelector}>
-            {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map((p) => (
-              <button
-                key={p}
-                className={`${styles.periodButton} ${selectedPeriod === p ? styles.active : ''}`}
-                onClick={() => setSelectedPeriod(p)}
-              >
-                {PERIOD_LABELS[p]}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className={styles.heatmapGrid}>
@@ -302,18 +292,6 @@ export default function UptimeChart({
 
   return (
     <div className={styles.chartContainer}>
-      <div className={styles.periodSelector}>
-        {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map((p) => (
-          <button
-            key={p}
-            className={`${styles.periodButton} ${selectedPeriod === p ? styles.active : ''}`}
-            onClick={() => setSelectedPeriod(p)}
-          >
-            {PERIOD_LABELS[p]}
-          </button>
-        ))}
-      </div>
-      
       <div className={styles.stats}>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Average Uptime:</span>

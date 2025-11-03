@@ -69,8 +69,11 @@ export default function ResponseTimeChart({
   height = 300,
   showPeriodSelector = true,
 }: ResponseTimeChartProps): JSX.Element {
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>(period);
+  const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+  
+  // Use internal state only if period selector is shown, otherwise use prop
+  const activePeriod = showPeriodSelector ? internalPeriod : period;
 
   // Detect dark mode from document
   useEffect(() => {
@@ -93,7 +96,7 @@ export default function ResponseTimeChart({
   // Filter data by selected period
   const getFilteredData = () => {
     const now = new Date();
-    const cutoff = new Date(now.getTime() - PERIOD_HOURS[selectedPeriod] * 60 * 60 * 1000);
+    const cutoff = new Date(now.getTime() - PERIOD_HOURS[activePeriod] * 60 * 60 * 1000);
     
     return history
       .filter(check => new Date(check.timestamp) >= cutoff)
@@ -111,7 +114,7 @@ export default function ResponseTimeChart({
   const chartData = {
     labels: filteredData.map(check => {
       const date = new Date(check.timestamp);
-      if (selectedPeriod === '24h') {
+      if (activePeriod === '24h') {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       } else {
         return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
@@ -142,9 +145,9 @@ export default function ResponseTimeChart({
       {
         label: 'Average',
         data: filteredData.map(() => avgResponseTime),
-        borderColor: isDarkTheme ? 'rgba(153, 102, 255, 0.5)' : 'rgba(153, 102, 255, 0.5)',
-        borderDash: [5, 5],
-        borderWidth: 2,
+        borderColor: isDarkTheme ? 'rgba(153, 102, 255, 0.9)' : 'rgba(255, 99, 132, 0.9)',
+        borderDash: [8, 4],
+        borderWidth: 3,
         pointRadius: 0,
         pointHoverRadius: 0,
         tension: 0,
@@ -244,8 +247,8 @@ export default function ResponseTimeChart({
           {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map((p) => (
             <button
               key={p}
-              className={`${styles.periodButton} ${selectedPeriod === p ? styles.active : ''}`}
-              onClick={() => setSelectedPeriod(p)}
+              className={`${styles.periodButton} ${internalPeriod === p ? styles.active : ''}`}
+              onClick={() => setInternalPeriod(p)}
             >
               {PERIOD_LABELS[p]}
             </button>

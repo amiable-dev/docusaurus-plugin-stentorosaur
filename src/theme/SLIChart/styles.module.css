@@ -1,0 +1,81 @@
+/**
+ * Copyright (c) Your Organization
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+.sliChart {
+  width: 100%;
+}
+
+.chartContainer {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-radius: 8px;
+  background: var(--ifm-card-background-color);
+  box-shadow: var(--ifm-global-shadow-lw);
+}
+
+.periodSelector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.periodButton {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background-color: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.periodButton:hover {
+  border-color: var(--ifm-color-primary);
+  background-color: var(--ifm-color-primary-lightest);
+}
+
+.periodButton.active {
+  background-color: var(--ifm-color-primary);
+  color: white;
+  border-color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+.chartContainer {
+  position: relative;
+  width: 100%;
+}
+
+.noData {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--ifm-color-emphasis-600);
+  font-style: italic;
+}
+
+.budgetInfo {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: var(--ifm-color-emphasis-100);
+  border-radius: 4px;
+  border-left: 4px solid var(--ifm-color-info);
+}
+
+.budgetNote {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ifm-font-color-base);
+  line-height: 1.5;
+}
+
+[data-theme='dark'] .budgetInfo {
+  background-color: var(--ifm-color-emphasis-200);
+}

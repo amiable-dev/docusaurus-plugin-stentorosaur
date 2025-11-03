@@ -13,6 +13,7 @@ export interface Props {
   item: StatusItemType;
   showResponseTime?: boolean;
   showUptime?: boolean;
+  onClick?: () => void;
 }
 
 const statusConfig = {
@@ -42,11 +43,23 @@ export default function StatusItem({
   item,
   showResponseTime = true,
   showUptime = true,
+  onClick,
 }: Props): JSX.Element {
   const config = statusConfig[item.status];
 
   return (
-    <div className={styles.statusItem}>
+    <div 
+      className={`${styles.statusItem} ${onClick ? styles.clickable : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      } : undefined}
+    >
       <div className={styles.statusHeader}>
         <div className={styles.statusName}>
           <span

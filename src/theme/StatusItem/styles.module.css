@@ -4,11 +4,31 @@
   border-radius: 8px;
   margin-bottom: 1rem;
   background: var(--ifm-background-surface-color);
-  transition: box-shadow 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .statusItem:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.statusItem.clickable {
+  cursor: pointer;
+}
+
+.statusItem.clickable:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  border-color: var(--ifm-color-primary-light);
+}
+
+.statusItem.clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.statusItem.clickable:focus {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
 }
 
 .statusHeader {

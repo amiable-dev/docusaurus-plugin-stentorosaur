@@ -14,12 +14,16 @@ export interface Props {
   items: StatusItemType[];
   title?: string;
   description?: string;
+  onSystemClick?: (systemName: string) => void;
+  hasSystemData?: (systemName: string) => boolean;
 }
 
 export default function StatusBoard({
   items,
   title = 'System Status',
   description,
+  onSystemClick,
+  hasSystemData,
 }: Props): JSX.Element {
   const allOperational = items.every((item) => item.status === 'up');
 
@@ -50,9 +54,16 @@ export default function StatusBoard({
             <p>No systems configured for monitoring.</p>
           </div>
         ) : (
-          items.map((item, index) => (
-            <StatusItem key={`${item.name}-${index}`} item={item} />
-          ))
+          items.map((item, index) => {
+            const isClickable = onSystemClick && (!hasSystemData || hasSystemData(item.name));
+            return (
+              <StatusItem 
+                key={`${item.name}-${index}`} 
+                item={item}
+                onClick={isClickable ? () => onSystemClick(item.name) : undefined}
+              />
+            );
+          })
         )}
       </div>
     </div>

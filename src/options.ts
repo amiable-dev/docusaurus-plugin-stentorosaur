@@ -20,6 +20,9 @@ export const DEFAULT_OPTIONS: Partial<PluginOptions> = {
   showUptime: true,
   showServices: true,
   showIncidents: true,
+  showPerformanceMetrics: true,
+  defaultSLO: 99.9,
+  systemSLOs: {},
 };
 
 const pluginOptionsSchema = Joi.object<PluginOptions>({
@@ -37,6 +40,9 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
   useDemoData: Joi.boolean(),
   showServices: Joi.boolean().default(DEFAULT_OPTIONS.showServices),
   showIncidents: Joi.boolean().default(DEFAULT_OPTIONS.showIncidents),
+  showPerformanceMetrics: Joi.boolean().default(DEFAULT_OPTIONS.showPerformanceMetrics),
+  defaultSLO: Joi.number().min(0).max(100).default(DEFAULT_OPTIONS.defaultSLO),
+  systemSLOs: Joi.object().pattern(Joi.string(), Joi.number().min(0).max(100)).default(DEFAULT_OPTIONS.systemSLOs),
 });
 
 export function validateOptions({

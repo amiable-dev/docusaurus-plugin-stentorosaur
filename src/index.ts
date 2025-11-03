@@ -83,6 +83,9 @@ export function getSwizzleComponentList(): string[] {
     'ResponseTimeChart',
     'UptimeChart',
     'StatusHistory',
+    'PerformanceMetrics',
+    'SLIChart',
+    'ChartPanel',
   ];
 }
 
@@ -115,6 +118,7 @@ export default async function pluginStatus(
     useDemoData,
     showServices = true,
     showIncidents = true,
+    showPerformanceMetrics = true,
   } = options;
 
   const statusDataDir = path.join(generatedFilesDir, 'docusaurus-plugin-stentorosaur');
@@ -270,6 +274,7 @@ export default async function pluginStatus(
         lastUpdated: new Date().toISOString(),
         showServices,
         showIncidents,
+        showPerformanceMetrics,
       };
 
       // Ensure directory exists

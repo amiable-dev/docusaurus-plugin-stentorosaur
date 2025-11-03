@@ -26,6 +26,58 @@ useDemoData: false
 // (omit the option)
 ```
 
+### Performance Metrics Control (v0.3.1+)
+
+```typescript
+{
+  // Show/hide interactive performance metrics on the status page
+  // Default: true
+  showPerformanceMetrics?: boolean;
+  
+  // Default SLO target for all systems (percentage, e.g., 99.9 for 99.9% uptime)
+  // Default: 99.9
+  defaultSLO?: number;
+  
+  // Per-system SLO targets (overrides defaultSLO)
+  // Key is the system name, value is the SLO target percentage
+  // Default: {}
+  systemSLOs?: Record<string, number>;
+}
+```
+
+When enabled (default), system cards become clickable to show/hide detailed performance charts:
+- Response Time trends
+- Uptime visualization (bar/heatmap)
+- SLI/SLO compliance tracking
+- Error budget consumption
+
+Charts display in a responsive 2x2 grid (desktop) or vertical stack (mobile), with fullscreen zoom capability.
+
+**Examples:**
+```typescript
+// Enable performance metrics with default 99.9% SLO (default)
+showPerformanceMetrics: true
+
+// Disable interactive charts - show only system status cards
+showPerformanceMetrics: false
+
+// Set a different default SLO for all systems
+defaultSLO: 99.95
+
+// Configure different SLO targets per system
+systemSLOs: {
+  'Main Website': 99.99,  // Higher SLO for critical service
+  'API Service': 99.9,
+  'Documentation': 99.5,   // Lower SLO for non-critical service
+}
+
+// Combine default with per-system overrides
+defaultSLO: 99.9,
+systemSLOs: {
+  'Main Website': 99.99,  // Only override the critical one
+}
+```
+
 ### Visibility Control
 
 ```typescript
@@ -79,18 +131,19 @@ plugins: [
       description: 'Current operational status',
       
       // Data source control
-      useDemoData: false,        // Don't use demo data
+      useDemoData: false,               // Don't use demo data
       
       // Visibility control  
-      showServices: true,        // Show services board
-      showIncidents: true,       // Show incident history
+      showServices: true,               // Show services board
+      showIncidents: true,              // Show incident history
       
       // Display options
-      showResponseTimes: true,   // Show response time metrics
-      showUptime: true,          // Show uptime percentages
+      showResponseTimes: true,          // Show response time metrics
+      showUptime: true,                 // Show uptime percentages
+      showPerformanceMetrics: true,     // Enable interactive charts (v0.3.1+)
       
       // Update frequency
-      updateInterval: 60,        // Update every 60 minutes
+      updateInterval: 60,               // Update every 60 minutes
     },
   ],
 ]
@@ -161,6 +214,173 @@ npm start
 ```
 
 Then visit http://localhost:3000/status
+
+---
+
+## Interactive Performance Metrics (v0.3.1+)
+
+### Click-to-Toggle Performance Metrics
+
+When `showPerformanceMetrics: true` (default), the status page becomes interactive:
+
+**User Experience:**
+1. Click any system card to view its performance metrics
+2. Metrics slide down smoothly below the clicked card
+3. Click a different system to switch to its metrics
+4. Click the active system again to hide metrics (toggle off)
+
+**Features:**
+- 🎭 **Smooth animations**: Slide-down reveal with fade-in effects
+- 📊 **Four chart types**: Response Time, Uptime, SLI/SLO, Error Budget
+- 🔄 **Synchronized periods**: Toggle all charts between 24h, 7d, 30d, 90d simultaneously
+- 🔍 **Fullscreen zoom**: Click any chart for detailed fullscreen analysis
+- 📱 **Responsive layout**: 2x2 grid (desktop) or vertical stack (mobile)
+- ⌨️ **Keyboard accessible**: Tab navigation, Enter/Space to toggle
+
+### Performance Metrics Configuration
+
+```typescript
+{
+  // Enable/disable interactive performance metrics
+  showPerformanceMetrics: true,  // Default: true
+  
+  // Still works with individual chart controls
+  showResponseTimes: true,
+  showUptime: true,
+}
+```
+
+**Configuration Examples:**
+
+```typescript
+// Full interactive experience (default)
+{
+  showPerformanceMetrics: true,
+  showResponseTimes: true,
+  showUptime: true,
+}
+
+// Disable interactive metrics, show only status cards
+{
+  showPerformanceMetrics: false,
+}
+
+// Hybrid: No interactive metrics, but show basic response times on cards
+{
+  showPerformanceMetrics: false,
+  showResponseTimes: true,
+  showUptime: true,
+}
+```
+
+### SLI/SLO Tracking (v0.3.1+)
+
+The new SLI (Service Level Indicator) and SLO (Service Level Objective) charts help track service reliability:
+
+**SLI Chart Features:**
+- Daily SLI percentage calculation based on uptime
+- SLO target line (default: 99.9%, configurable)
+- Color-coded compliance: green (above SLO), red (below SLO)
+- Period selection: 24h, 7d, 30d, 90d
+
+**Error Budget Chart Features:**
+- Daily error budget consumption visualization
+- Shows how much "allowed downtime" was used each day
+- 100% = all error budget consumed for that day
+- Helps track and prevent SLO violations
+
+**SLO Target Configuration:**
+
+The default SLO target is 99.9%, but you can customize it per system:
+
+```tsx
+// In a custom component or swizzled StatusPage
+<PerformanceMetrics 
+  systemName="api"
+  sloTarget={99.95}  // Stricter SLO
+/>
+
+// Or in an embedded ChartPanel
+<ChartPanel 
+  systemName="database"
+  showCharts={['sli', 'errorBudget']}
+  sloTarget={99.9}
+/>
+```
+
+### Embedding Charts in Your Content (v0.3.1+)
+
+The new `ChartPanel` component lets you embed performance charts anywhere in your Docusaurus site:
+
+```mdx
+---
+title: API Performance Dashboard
+---
+
+import ChartPanel from '@theme/ChartPanel';
+
+# API Monitoring
+
+## Real-Time Performance
+
+<ChartPanel 
+  systemName="api"
+  showCharts={['response', 'uptime', 'sli', 'errorBudget']}
+  defaultPeriod="7d"
+  layout="horizontal"
+/>
+
+## Response Time Only
+
+<ChartPanel 
+  systemName="api"
+  showCharts={['response']}
+  defaultPeriod="30d"
+/>
+```
+
+**ChartPanel Props:**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `systemName` | string | required | System to display charts for |
+| `showCharts` | array | `['response', 'uptime', 'sli', 'errorBudget']` | Chart types to include |
+| `defaultPeriod` | string | `'7d'` | Initial time period |
+| `layout` | string | `'horizontal'` | `'horizontal'` (2x2 grid) or `'vertical'` (stack) |
+| `sloTarget` | number | `99.9` | SLO percentage target |
+
+**Chart Types:**
+- `'response'` - Response time line chart
+- `'uptime'` - Uptime bar/heatmap chart
+- `'sli'` - SLI/SLO compliance line chart
+- `'errorBudget'` - Error budget consumption bar chart
+
+### Swizzling New Components (v0.3.1+)
+
+All new components are fully swizzleable for customization:
+
+```bash
+# Swizzle the performance metrics wrapper
+npm run swizzle docusaurus-plugin-stentorosaur PerformanceMetrics -- --eject
+
+# Swizzle the SLI chart component
+npm run swizzle docusaurus-plugin-stentorosaur SLIChart -- --eject
+
+# Swizzle the embeddable chart panel
+npm run swizzle docusaurus-plugin-stentorosaur ChartPanel -- --eject
+```
+
+**Total swizzleable components: 10**
+1. StatusPage
+2. StatusBoard
+3. StatusItem
+4. IncidentHistory
+5. ResponseTimeChart
+6. UptimeChart
+7. StatusHistory
+8. PerformanceMetrics (new in v0.3.1)
+9. SLIChart (new in v0.3.1)
+10. ChartPanel (new in v0.3.1)
 
 ---
 

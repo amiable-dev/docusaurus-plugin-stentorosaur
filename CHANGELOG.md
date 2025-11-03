@@ -7,33 +7,131 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2025-11-03
+
+### Fixed
+
+- **SLI/SLO Chart Background Styling** (#20)
+  - SLI/SLO and Error Budget charts now have proper backgrounds matching other charts
+  - Added chartContainer wrapper with `var(--ifm-card-background-color)` styling
+  - Fixed transparent background issue in performance metrics dialogs
+  - Charts now properly support light/dark mode theming
+  - Consistent visual appearance across all chart types
+
+- **Chart Visibility and Period Synchronization** (#20)
+  - Average response time line now more visible (increased opacity from 0.5 to 0.9, width from 2px to 3px)
+  - Changed average line color to red (light mode) and purple (dark mode) for better contrast
+  - Fullscreen modal now displays charts almost fullscreen (90vw width, max 1400px)
+  - Fixed period selector synchronization - all charts on status page respond to central period selector
+  - Detail page charts now have individual period selectors as intended
+  - Error budget calculation fixed to show remaining budget instead of consumption
+
 ### Added
 
-- **Interactive Charts for Response Time and Uptime Visualization** (#2)
-  - Added Chart.js integration with `react-chartjs-2` for data visualization
-  - New `ResponseTimeChart` component for displaying response time trends
-    - Line charts with multiple time periods (24h, 7d, 30d, 90d)
-    - Color-coded data points based on status (green/yellow/red)
-    - Average response time reference line
-    - Interactive tooltips with detailed check information
-  - New `UptimeChart` component for uptime visualization
-    - Bar chart view with daily uptime percentages
-    - Calendar heatmap view (GitHub-style) for uptime overview
-    - Color coding: Green (≥99%), Yellow (95-99%), Red (<95%)
-  - New `StatusHistory` page component for comprehensive system history
-    - Combines response time and uptime charts
-    - Displays all-time, 24h, 7d, and 30d metrics
-    - Toggleable chart types (bar/heatmap)
-  - Historical data utilities for loading and aggregating status data
-    - `loadHistoricalData()` - Load data from status files
-    - `aggregateHistoricalData()` - Filter by time period
-    - `calculateAverageResponseTime()` - Calculate averages
-    - `calculateUptimePercentage()` - Calculate uptime
-    - `calculateDailyStats()` - Daily breakdown statistics
-    - `generateDemoHistory()` - Demo data with 30 days of sample checks
-  - Automatic dark/light theme support for all charts
-  - Mobile responsive design for all chart components
-  - Comprehensive test coverage for historical data utilities
+- **Configurable SLO Targets per System** (#20)
+  - New `defaultSLO` configuration option (default: 99.9)
+  - New `systemSLOs` configuration option for per-system SLO targets
+  - `sloTarget` field added to SystemStatusFile type
+  - All SLI/SLO charts now use configurable targets
+  - Demo data includes sloTarget field
+  - Comprehensive documentation in CONFIGURATION.md and README.md
+
+### Configuration
+
+```typescript
+{
+  // Default SLO target for all systems (percentage)
+  defaultSLO: 99.9,
+  
+  // Per-system SLO targets (overrides defaultSLO)
+  systemSLOs: {
+    'Main Website': 99.99,   // Higher SLO for critical service
+    'API Service': 99.9,
+    'Documentation': 99.5,    // Lower SLO for non-critical service
+  }
+}
+```
+
+### Technical
+
+- Updated SLIChart component structure with proper container wrappers
+- Added chart and chartContainer CSS classes for consistent styling
+- Updated PerformanceMetrics, StatusHistory, and ChartPanel to pass sloTarget
+- Enhanced ResponseTimeChart average line visibility
+- Widened fullscreen modal for better chart viewing
+- All 103 tests still passing
+
+## [0.3.2] - 2025-11-03
+
+### Added
+
+- **Interactive Performance Metrics** (#19)
+  - Click-to-toggle performance metrics on status page
+  - Click any system card to reveal its performance charts
+  - Click different system to switch metrics view
+  - Click active system again to hide metrics (toggle off)
+  - Smooth slide-down animations with fade-in effects
+  
+- **New PerformanceMetrics Component**
+  - Displays 4 chart types in responsive grid layout
+  - 2x2 grid on desktop, vertical stack on mobile
+  - Synchronized period selector (24h, 7d, 30d, 90d) updates all charts
+  - Fullscreen zoom on any chart click
+  - Modal overlay with backdrop blur for focused analysis
+  - Keyboard accessible (Tab, Enter, Space)
+  
+- **SLI/SLO Tracking with SLIChart Component**
+  - Service Level Indicator (SLI) compliance visualization
+  - Line chart showing daily SLI percentage vs SLO target
+  - Default 99.9% SLO target (configurable)
+  - Color-coded compliance: green (above), red (below SLO)
+  - Error budget mode showing daily consumption
+  - Helps track and prevent SLO violations
+  
+- **Embeddable ChartPanel Component**
+  - Use performance charts anywhere in Docusaurus pages
+  - Supports all 4 chart types: response, uptime, sli, errorBudget
+  - Flexible layouts: horizontal (2x2 grid) or vertical (stack)
+  - Configurable SLO targets per system
+  - Perfect for dashboards and monitoring pages
+  
+- **Enhanced User Experience**
+  - Back navigation button in StatusHistory (← Back to Status)
+  - Clickable system cards with hover/focus effects
+  - ARIA labels and keyboard navigation throughout
+  - Synchronized period selection across all charts
+  - Smooth animations for metric reveals
+  
+- **Configuration Option**
+  - `showPerformanceMetrics` option (default: true)
+  - Enable/disable interactive performance charts
+  - Works with existing `showResponseTimes` and `showUptime` options
+
+### Changed
+
+- **StatusPage Component** - Refactored to use PerformanceMetrics with click handling
+- **StatusBoard Component** - Added `onSystemClick` callback prop
+- **StatusItem Component** - Now clickable with keyboard support and visual feedback
+- **StatusHistory Component** - Added back button navigation to main status page
+- **UptimeChart Component** - Extended to support 24h period
+- **Swizzleable Components** - Increased from 7 to 10 total components
+
+### Documentation
+
+- Comprehensive README.md updates with interactive features guide
+- CONFIGURATION.md expanded with performance metrics section
+- QUICKSTART.md updated with embedding examples
+- Chart embedding examples for MDX pages
+- SLI/SLO tracking documentation
+- Full API documentation for new components
+
+### Technical
+
+- All 103 tests passing
+- TypeScript compilation successful
+- 10 CSS files with responsive layouts and animations
+- Full accessibility support (WCAG compliant)
+- Mobile-first responsive design
 
 ## [0.3.1] - 2025-11-02
 
@@ -399,7 +497,9 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.2...v0.3.3
+[0.3.2]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.8...v0.3.0
 [0.2.8]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.2.7...v0.2.8

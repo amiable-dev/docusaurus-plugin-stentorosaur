@@ -9,12 +9,24 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
 
 - 🎯 **Status Dashboard**: Beautiful, real-time status display for your systems and processes
 - 📊 **Incident Timeline**: Historical view of all incidents with severity tracking
-- � **Interactive Charts** (v0.3.0+): Visualize response times and uptime with Chart.js
+- 📈 **Interactive Charts** (v0.3.0+): Visualize response times and uptime with Chart.js
   - Line charts for response time trends
   - Bar charts and heatmaps for uptime visualization
   - Multiple time period views (24h, 7d, 30d, 90d)
   - Automatic dark/light theme support
-- �🔄 **GitHub-Powered**: Uses GitHub Issues for incident tracking and Actions for monitoring
+- 🎭 **Performance Metrics** (v0.3.1+): Advanced monitoring visualizations
+  - Click system cards to show/hide detailed performance metrics
+  - Side-by-side responsive chart layouts
+  - Fullscreen zoom for detailed analysis
+  - SLI/SLO compliance tracking with 99.9% default target
+  - Error budget visualization and consumption tracking
+  - Synchronized period selectors across all charts
+- 🧩 **Embeddable Components**: Use charts anywhere in your Docusaurus site
+  - Standalone ChartPanel component for MDX pages
+  - Individual chart types (Response Time, Uptime, SLI, Error Budget)
+  - Flexible layouts (horizontal/vertical)
+  - All components fully swizzleable
+- � **GitHub-Powered**: Uses GitHub Issues for incident tracking and Actions for monitoring
 - ⚡ **Real-time Updates**: Automatically updates status via GitHub Actions (hourly by default)
 - 🎨 **Customizable**: Fully themeable and configurable to match your site
 - 📱 **Responsive**: Works perfectly on all devices
@@ -249,11 +261,14 @@ module.exports = {
         showResponseTimes: true,
         showUptime: true,
         
-        // NEW: Demo data control (useful for testing)
+        // NEW in v0.3.1: Performance metrics visualization
+        showPerformanceMetrics: true,  // Enable/disable performance charts (default: true)
+        
+        // Demo data control (useful for testing)
         // Default: true when no token, false when token provided
         useDemoData: !process.env.GITHUB_TOKEN,
         
-        // NEW: Content visibility
+        // Content visibility
         showServices: true,    // Show/hide services status board (default: true)
         showIncidents: true,   // Show/hide incident history (default: true)
         
@@ -309,9 +324,45 @@ Once configured, the plugin automatically creates a `/status` route on your Docu
 
 Visit `https://your-site.com/status` to see the status dashboard.
 
+### Interactive Performance Metrics (v0.3.1+)
+
+When `showPerformanceMetrics: true` (default), each system card on the status page is clickable:
+
+**Click Behavior:**
+1. **Click a system card** → Performance metrics slide down below the card
+2. **Click a different system** → Previous metrics hide, new system's metrics show
+3. **Click the active system again** → Metrics hide (toggle off)
+
+**Performance Metrics Display:**
+- **Response Time Chart**: Line chart showing response time trends
+- **Uptime Chart**: Bar/heatmap visualization of availability
+- **SLI/SLO Chart**: Service Level Indicator tracking against 99.9% target
+- **Error Budget Chart**: Remaining error budget consumption
+
+**Period Selection:**
+- Toggle between 24h, 7d, 30d, or 90d views
+- Period selection synchronizes across ALL charts simultaneously
+
+**Fullscreen Zoom:**
+- Click any chart to view it fullscreen
+- Enhanced detail view for analysis
+- Click anywhere to close and return to normal view
+
+**Responsive Layout:**
+- Desktop: Charts display in 2x2 grid (side-by-side)
+- Tablet/Mobile: Charts stack vertically for optimal viewing
+
+**Keyboard Navigation:**
+- Tab to focus system cards
+- Enter or Space to toggle metrics
+- Full ARIA accessibility support
+
+**Back Navigation:**
+- In detailed history view, click "← Back to Status" to return to main page
+
 ### Embedding Status Components
 
-You can also embed status components in your docs or blog posts:
+You can embed status components in your docs or blog posts:
 
 ```mdx
 ---
@@ -340,6 +391,91 @@ import IncidentHistory from '@theme/IncidentHistory';
   maxItems={5}
 />
 ```
+
+### Embedding Performance Charts (v0.3.1+)
+
+Use the `ChartPanel` component to embed performance metrics anywhere in your Docusaurus site:
+
+#### All Charts for a System
+
+```mdx
+---
+title: API Performance
+---
+
+import ChartPanel from '@theme/ChartPanel';
+
+# API Monitoring Dashboard
+
+<ChartPanel 
+  systemName="api"
+  showCharts={['response', 'uptime', 'sli', 'errorBudget']}
+  defaultPeriod="7d"
+  layout="horizontal"
+/>
+```
+
+#### Individual Chart Types
+
+**Response Time Chart:**
+```mdx
+<ChartPanel 
+  systemName="api"
+  showCharts={['response']}
+  defaultPeriod="30d"
+/>
+```
+
+**Uptime Heatmap:**
+```mdx
+<ChartPanel 
+  systemName="database"
+  showCharts={['uptime']}
+  defaultPeriod="90d"
+/>
+```
+
+**SLI/SLO Compliance:**
+```mdx
+<ChartPanel 
+  systemName="api"
+  showCharts={['sli']}
+  defaultPeriod="30d"
+  sloTarget={99.95}
+/>
+```
+
+**Error Budget Tracking:**
+```mdx
+<ChartPanel 
+  systemName="api"
+  showCharts={['errorBudget']}
+  defaultPeriod="30d"
+  sloTarget={99.9}
+/>
+```
+
+#### Chart Panel Props
+
+```typescript
+interface ChartPanelProps {
+  systemName: string;                           // Required: system to display
+  showCharts?: ('response' | 'uptime' | 'sli' | 'errorBudget')[];  // Default: all
+  defaultPeriod?: '24h' | '7d' | '30d' | '90d'; // Default: '7d'
+  layout?: 'horizontal' | 'vertical';           // Default: 'horizontal'
+  sloTarget?: number;                           // Default: 99.9 (percent)
+}
+```
+
+**Layout Options:**
+- `horizontal`: Charts display side-by-side (2x2 grid on desktop, responsive stacking on mobile)
+- `vertical`: Charts always stack vertically (useful for narrow layouts)
+
+**Chart Types:**
+- `response`: Response time line chart
+- `uptime`: Uptime bar/heatmap chart
+- `sli`: SLI/SLO compliance line chart with target line
+- `errorBudget`: Error budget consumption bar chart
 
 ### Issue Labeling
 
@@ -514,10 +650,19 @@ jobs:
   // Content visibility
   showServices: true,                        // default: true
   showIncidents: true,                       // default: true
+  showPerformanceMetrics: true,              // default: true (v0.3.1+)
   
   // Display features
   showResponseTimes: true,                   // default: false
   showUptime: true,                          // default: false
+  
+  // SLO/SLI Configuration (v0.3.2+)
+  defaultSLO: 99.9,                          // default: 99.9 (percentage)
+  systemSLOs: {                              // per-system SLO targets
+    'Main Website': 99.99,
+    'API Service': 99.9,
+    'Documentation': 99.5,
+  },
   
   // Update frequency
   updateInterval: 60,                        // default: 60 minutes
@@ -655,6 +800,10 @@ graph LR
 | `description` | string | `'Current status...'` | Status page description |
 | `showResponseTimes` | boolean | `true` | Display response times |
 | `showUptime` | boolean | `true` | Display uptime percentages |
+| `showPerformanceMetrics` | boolean | `true` | Enable interactive performance charts (v0.3.1+) |
+| `useDemoData` | boolean | `!token` | Use demo data when no token provided |
+| `showServices` | boolean | `true` | Show/hide services status board |
+| `showIncidents` | boolean | `true` | Show/hide incident history |
 
 ## Components API
 
@@ -667,6 +816,7 @@ interface StatusBoardProps {
   items: StatusItem[];
   title?: string;
   description?: string;
+  onSystemClick?: (index: number) => void;  // v0.3.1+
 }
 ```
 
@@ -679,6 +829,7 @@ interface StatusItemProps {
   item: StatusItem;
   showResponseTime?: boolean;
   showUptime?: boolean;
+  onClick?: () => void;  // v0.3.1+
 }
 ```
 
@@ -690,6 +841,108 @@ Displays a timeline of incidents.
 interface IncidentHistoryProps {
   incidents: StatusIncident[];
   maxItems?: number;
+}
+```
+
+### PerformanceMetrics (v0.3.1+)
+
+Displays performance charts for a specific system with fullscreen zoom capability.
+
+```tsx
+interface PerformanceMetricsProps {
+  systemName: string;
+  period?: '24h' | '7d' | '30d' | '90d';
+  sloTarget?: number;  // Default: 99.9 (percent)
+}
+```
+
+**Features:**
+- Synchronized period selector for all charts
+- Fullscreen zoom on click
+- Responsive 2x2 grid layout (desktop) / vertical stack (mobile)
+- Includes: Response Time, Uptime, SLI/SLO, Error Budget charts
+
+### SLIChart (v0.3.1+)
+
+Displays SLI/SLO compliance or error budget visualization.
+
+```tsx
+interface SLIChartProps {
+  systemName: string;
+  period?: '24h' | '7d' | '30d' | '90d';
+  mode?: 'sli' | 'errorBudget';  // Default: 'sli'
+  sloTarget?: number;  // Default: 99.9 (percent)
+}
+```
+
+**SLI Mode:**
+- Line chart showing daily SLI percentage
+- Target line at SLO threshold (default 99.9%)
+- Color-coded: green (above SLO), red (below SLO)
+
+**Error Budget Mode:**
+- Bar chart showing daily error budget consumption
+- 100% = all error budget consumed for that day
+- Helps track service reliability over time
+
+### ChartPanel (v0.3.1+)
+
+Embeddable container for one or more performance charts.
+
+```tsx
+interface ChartPanelProps {
+  systemName: string;
+  showCharts?: ('response' | 'uptime' | 'sli' | 'errorBudget')[];
+  defaultPeriod?: '24h' | '7d' | '30d' | '90d';
+  layout?: 'horizontal' | 'vertical';
+  sloTarget?: number;
+}
+```
+
+**Usage:**
+```mdx
+import ChartPanel from '@theme/ChartPanel';
+
+<ChartPanel 
+  systemName="api"
+  showCharts={['response', 'uptime']}
+  defaultPeriod="30d"
+  layout="horizontal"
+/>
+```
+
+### ResponseTimeChart (v0.3.0+)
+
+Line chart showing response time trends.
+
+```tsx
+interface ResponseTimeChartProps {
+  systemName: string;
+  period?: '7d' | '30d' | '90d';
+  height?: number;
+}
+```
+
+### UptimeChart (v0.3.0+)
+
+Bar/heatmap chart showing uptime patterns.
+
+```tsx
+interface UptimeChartProps {
+  systemName: string;
+  period?: '24h' | '7d' | '30d' | '90d';  // v0.3.1: added 24h
+  chartType?: 'bar' | 'heatmap';
+  height?: number;
+}
+```
+
+### StatusHistory (v0.3.0+)
+
+Detailed historical view for a single system with back navigation (v0.3.1+).
+
+```tsx
+interface StatusHistoryProps {
+  systemName: string;
 }
 ```
 

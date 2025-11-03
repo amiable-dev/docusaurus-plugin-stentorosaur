@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '@theme/Layout';
 import ResponseTimeChart from '../ResponseTimeChart';
 import UptimeChart from '../UptimeChart';
+import SLIChart from '../SLIChart';
 import type { SystemStatusFile } from '../../types';
 import styles from './styles.module.css';
 
@@ -84,6 +85,12 @@ export default function StatusHistory({
   return (
     <Layout title={`${systemData.name} - History`}>
       <main className={styles.historyPage}>
+        <div className={styles.backButton}>
+          <a href="/status" className={styles.backLink}>
+            ← Back to Status Page
+          </a>
+        </div>
+        
         <div className={styles.header}>
           <h1>{systemData.name}</h1>
           <div className={styles.headerInfo}>
@@ -174,6 +181,27 @@ export default function StatusHistory({
             name={systemData.name}
             history={systemData.history}
             chartType={chartType}
+          />
+        </section>
+
+        <section className={styles.chartSection}>
+          <h2>SLI/SLO Compliance</h2>
+          <SLIChart
+            name={systemData.name}
+            history={systemData.history}
+            showPeriodSelector={true}
+            sloTarget={systemData.sloTarget || 99.9}
+          />
+        </section>
+
+        <section className={styles.chartSection}>
+          <h2>Error Budget Tracking</h2>
+          <SLIChart
+            name={systemData.name}
+            history={systemData.history}
+            showPeriodSelector={true}
+            showErrorBudget={true}
+            sloTarget={systemData.sloTarget || 99.9}
           />
         </section>
 

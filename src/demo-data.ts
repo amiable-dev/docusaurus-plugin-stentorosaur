@@ -147,6 +147,7 @@ export function getDemoSystemFiles(): SystemStatusFile[] {
       uptimeWeek: uptimeCalc(last7d),
       uptimeMonth: uptimeCalc(last30d),
       uptime: uptimeCalc(history),
+      sloTarget: 99.9, // Default SLO target for demo data
     };
   });
 }
