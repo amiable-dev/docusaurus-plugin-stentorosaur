@@ -54,6 +54,10 @@ export class GitHubStatusService {
         labels: this.statusLabel,
         state: 'all',
         per_page: 100,
+        headers: {
+          // Bypass GitHub API cache to get fresh issue data
+          'If-None-Match': '',
+        },
       });
 
       return response.data as GitHubIssue[];

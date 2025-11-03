@@ -76,6 +76,9 @@ describe('GitHubStatusService', () => {
         labels: 'status',
         state: 'all',
         per_page: 100,
+        headers: {
+          'If-None-Match': '',
+        },
       });
 
       expect(result.items).toBeDefined();
