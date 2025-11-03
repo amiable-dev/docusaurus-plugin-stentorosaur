@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import {getDemoStatusData, getDemoSystemFiles} from '../src/demo-data';
+import {getDemoStatusData, getDemoSystemFiles, getDemoCurrentJson} from '../src/demo-data';
 
 describe('getDemoStatusData', () => {
   it('should return valid demo data structure', () => {
@@ -264,5 +264,141 @@ describe('getDemoSystemFiles', () => {
       expect(uptimeMonth).toBeGreaterThan(90);
       expect(uptime).toBeGreaterThan(90);
     });
+  });
+});
+
+describe('getDemoCurrentJson', () => {
+  it('should return current.json format structure', () => {
+    const currentData = getDemoCurrentJson();
+    
+    expect(currentData).toHaveProperty('version');
+    expect(currentData).toHaveProperty('generated');
+    expect(currentData).toHaveProperty('readings');
+  });
+
+  it('should have valid version and generated timestamp', () => {
+    const currentData = getDemoCurrentJson();
+    
+    expect(currentData.version).toBe('1.0');
+    expect(typeof currentData.generated).toBe('number');
+    expect(currentData.generated).toBeGreaterThan(0);
+  });
+
+  it('should have array of compact readings', () => {
+    const currentData = getDemoCurrentJson();
+    
+    expect(Array.isArray(currentData.readings)).toBe(true);
+    expect(currentData.readings.length).toBeGreaterThan(0);
+  });
+
+  it('should have valid compact reading structure', () => {
+    const currentData = getDemoCurrentJson();
+    const reading = currentData.readings[0];
+    
+    expect(reading).toHaveProperty('t');
+    expect(reading).toHaveProperty('svc');
+    expect(reading).toHaveProperty('state');
+    expect(reading).toHaveProperty('code');
+    expect(reading).toHaveProperty('lat');
+    
+    // Type checks
+    expect(typeof reading.t).toBe('number');
+    expect(typeof reading.svc).toBe('string');
+    expect(['up', 'down', 'degraded', 'maintenance']).toContain(reading.state);
+    expect(typeof reading.code).toBe('number');
+    expect(typeof reading.lat).toBe('number');
+  });
+
+  it('should only include last 14 days of data', () => {
+    const currentData = getDemoCurrentJson();
+    const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    
+    currentData.readings.forEach(reading => {
+      expect(reading.t).toBeGreaterThan(fourteenDaysAgo);
+    });
+  });
+
+  it('should include data from all systems', () => {
+    const currentData = getDemoCurrentJson();
+    const systemFiles = getDemoSystemFiles();
+    const expectedSystemNames = systemFiles.map(s => s.name);
+    
+    const uniqueServices = new Set(currentData.readings.map(r => r.svc));
+    
+    expectedSystemNames.forEach(name => {
+      expect(uniqueServices.has(name)).toBe(true);
+    });
+  });
+
+  it('should sort readings by timestamp ascending', () => {
+    const currentData = getDemoCurrentJson();
+    
+    for (let i = 1; i < currentData.readings.length; i++) {
+      expect(currentData.readings[i].t).toBeGreaterThanOrEqual(
+        currentData.readings[i - 1].t
+      );
+    }
+  });
+
+  it('should have realistic data distribution', () => {
+    const currentData = getDemoCurrentJson();
+    
+    // Should have multiple readings per system
+    const systemCounts = new Map<string, number>();
+    currentData.readings.forEach(r => {
+      systemCounts.set(r.svc, (systemCounts.get(r.svc) || 0) + 1);
+    });
+    
+    systemCounts.forEach(count => {
+      // Each system should have many readings (14 days worth)
+      expect(count).toBeGreaterThan(100);
+    });
+  });
+
+  it('should have mostly "up" status for healthy systems', () => {
+    const currentData = getDemoCurrentJson();
+    
+    const upCount = currentData.readings.filter(r => r.state === 'up').length;
+    const totalCount = currentData.readings.length;
+    const upPercentage = (upCount / totalCount) * 100;
+    
+    // Should be around 97% uptime
+    expect(upPercentage).toBeGreaterThan(90);
+    expect(upPercentage).toBeLessThanOrEqual(100);
+  });
+
+  it('should have valid HTTP status codes', () => {
+    const currentData = getDemoCurrentJson();
+    
+    currentData.readings.forEach(reading => {
+      expect(reading.code).toBeGreaterThanOrEqual(100);
+      expect(reading.code).toBeLessThan(600);
+    });
+  });
+
+  it('should have positive latency values', () => {
+    const currentData = getDemoCurrentJson();
+    
+    currentData.readings.forEach(reading => {
+      expect(reading.lat).toBeGreaterThan(0);
+    });
+  });
+
+  it('should match data from getDemoSystemFiles', () => {
+    const currentData = getDemoCurrentJson();
+    const systemFiles = getDemoSystemFiles();
+    
+    // Total readings should match the sum of recent history from all systems
+    const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    let expectedCount = 0;
+    
+    systemFiles.forEach(systemFile => {
+      const recentHistory = systemFile.history.filter(
+        h => new Date(h.timestamp).getTime() > fourteenDaysAgo
+      );
+      expectedCount += recentHistory.length;
+    });
+    
+    expect(currentData.readings.length).toBe(expectedCount);
   });
 });

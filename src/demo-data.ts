@@ -175,3 +175,59 @@ export function getDemoSystemFiles(): SystemStatusFile[] {
     };
   });
 }
+
+/**
+ * Generate demo data in current.json format (compact readings)
+ * This matches the format used by the monitoring script
+ */
+export function getDemoCurrentJson(): {
+  version: string;
+  generated: number;
+  readings: Array<{
+    t: number;
+    svc: string;
+    state: 'up' | 'down' | 'degraded' | 'maintenance';
+    code: number;
+    lat: number;
+    err?: string;
+  }>;
+} {
+  const systemFiles = getDemoSystemFiles();
+  const readings: Array<{
+    t: number;
+    svc: string;
+    state: 'up' | 'down' | 'degraded' | 'maintenance';
+    code: number;
+    lat: number;
+    err?: string;
+  }> = [];
+
+  // Convert each system's history to compact readings
+  // Only keep last 14 days (matching the hot file window)
+  const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  
+  for (const systemFile of systemFiles) {
+    const recentHistory = systemFile.history.filter(
+      h => new Date(h.timestamp).getTime() > fourteenDaysAgo
+    );
+    
+    for (const check of recentHistory) {
+      readings.push({
+        t: new Date(check.timestamp).getTime(),
+        svc: systemFile.name,
+        state: check.status,
+        code: check.code,
+        lat: check.responseTime,
+      });
+    }
+  }
+
+  // Sort by timestamp ascending (oldest first)
+  readings.sort((a, b) => a.t - b.t);
+
+  return {
+    version: '1.0',
+    generated: Date.now(),
+    readings,
+  };
+}

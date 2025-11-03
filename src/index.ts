@@ -11,7 +11,7 @@ import {normalizeUrl} from '@docusaurus/utils';
 import type {LoadContext, Plugin} from '@docusaurus/types';
 import type{PluginOptions, StatusData, StatusItem, SystemStatusFile} from './types';
 import {GitHubStatusService} from './github-service';
-import {getDemoStatusData, getDemoSystemFiles} from './demo-data';
+import {getDemoStatusData, getDemoSystemFiles, getDemoCurrentJson} from './demo-data';
 
 export {validateOptions} from './options';
 
@@ -377,6 +377,15 @@ export default async function pluginStatus(
         console.log('[docusaurus-plugin-stentorosaur] Writing demo system files with historical data');
         const demoSystemFiles = getDemoSystemFiles();
         
+        // Write current.json (new format)
+        const currentJsonData = getDemoCurrentJson();
+        await fs.writeJson(
+          path.join(buildStatusDir, 'current.json'),
+          currentJsonData,
+          {spaces: 2}
+        );
+        
+        // Write legacy systems/*.json files for backward compatibility
         for (const systemFile of demoSystemFiles) {
           // Sanitize filename: remove special chars, replace spaces with hyphens
           const fileName = systemFile.name
