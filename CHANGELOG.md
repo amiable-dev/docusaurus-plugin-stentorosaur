@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2025-11-03
+
+### Fixed
+
+- **UptimeChart Period Selector on Detail Page** (#20)
+  - Added period selector to Uptime Overview chart on detail page
+  - Now consistent with other charts (Response Time, SLI/SLO) that already had period selectors
+  - Implemented dual-state management with `showPeriodSelector` prop
+  - Chart uses internal state when `showPeriodSelector` is true, or parent period when false
+  - Includes period selector buttons for 24h, 7d, 30d, 90d time ranges
+  
+- **Error Budget Calculation Change** (#20)
+  - Changed from daily error budget consumption to cumulative calculation
+  - Error budget now calculated over entire selected time period
+  - Shows cumulative remaining tolerance instead of daily consumption
+  - Tracks `cumulativeFailedChecks` across all data points in selected period
+  - More meaningful representation of SLO compliance over time
+  - Updated description to clarify "cumulative remaining tolerance"
+
+### Technical
+
+- Modified `UptimeChart` component to support independent period selection
+- Added `internalPeriod` state and `activePeriod` computed value
+- Updated `calculateDailyUptime` to use correct period
+- Modified `SLIChart` error budget calculation algorithm
+- All 103 tests passing with >75% coverage across all metrics
+
 ## [0.3.3] - 2025-11-03
 
 ### Fixed
@@ -499,7 +526,8 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.0...v0.3.1
