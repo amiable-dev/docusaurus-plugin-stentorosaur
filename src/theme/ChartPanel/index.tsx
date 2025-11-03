@@ -63,13 +63,48 @@ export default function ChartPanel({
     async function loadData() {
       try {
         const fileName = systemName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
-        const systemResponse = await fetch(`/${dataPath}/systems/${fileName}.json`);
         
-        if (!systemResponse.ok) {
-          throw new Error(`Failed to load data for ${systemName}`);
+        // Try legacy path first for backwards compatibility
+        let systemResponse = await fetch(`/${dataPath}/systems/${fileName}.json`);
+        let data: SystemStatusFile;
+        
+        if (systemResponse.ok) {
+          // Legacy format
+          data = await systemResponse.json();
+        } else {
+          // Try current.json format
+          const currentResponse = await fetch(`/${dataPath}/current.json`);
+          
+          if (!currentResponse.ok) {
+            throw new Error(`Failed to load data for ${systemName}`);
+          }
+          
+          const currentData = await currentResponse.json();
+          
+          // Filter readings for this specific system
+          const systemReadings = currentData.readings.filter(
+            (r: any) => r.svc === systemName || r.svc === fileName
+          );
+          
+          if (systemReadings.length === 0) {
+            throw new Error(`No data found for ${systemName}`);
+          }
+          
+          // Convert to SystemStatusFile format
+          data = {
+            name: systemName,
+            url: '', // Not available in current.json
+            lastChecked: new Date(systemReadings[systemReadings.length - 1].t).toISOString(),
+            currentStatus: systemReadings[systemReadings.length - 1].state,
+            history: systemReadings.map((r: any) => ({
+              timestamp: new Date(r.t).toISOString(),
+              status: r.state,
+              responseTime: r.lat,
+              code: r.code,
+            })),
+          };
         }
         
-        const data: SystemStatusFile = await systemResponse.json();
         setSystemData(data);
 
         // Try to load incidents
