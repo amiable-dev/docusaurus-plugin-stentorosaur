@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2025-11-03
+
+### Added
+
+- **Mini Heatmap Charts on Status Cards** (#2)
+  - Added 90-day uptime heatmaps to all system status cards
+  - Color-coded daily uptime: green (≥99%), yellow (95-99%), red (<95%)
+  - Hover tooltips show date, uptime percentage, and check counts
+  - Incident markers with red outlines and colored dots on affected days
+  - Critical incidents shown with larger, brighter dots
+  - Responsive grid layout adapts to card width
+
+- **Incident Markers on Charts** (#2)
+  - UptimeChart heatmap mode now displays incident indicators
+  - Visual markers: ⚠️ for critical incidents, 📌 for others
+  - Positioned in top-right corner of affected day cells
+  - Enhanced tooltips include incident severity and titles
+  - Mini heatmaps show incident dots with critical detection
+  - Full incident data flow from StatusPage through all components
+
+- **Chart Export Functionality** (#2)
+  - Export charts as PNG or JPEG images
+  - Added export buttons to ResponseTimeChart, UptimeChart, and SLIChart
+  - Custom useChartExport hook with proper canvas rendering
+  - Automatic filename generation based on chart type and system name
+  - Background color handling for transparent canvas support
+  - 11 comprehensive tests with 100% coverage for export hook
+
+### Fixed
+
+- **Response Time Chart Period Selector** (#2)
+  - Period selector buttons (24h, 7d, 30d, 90d) now properly update chart
+  - Added key={activePeriod} to force React remount on period change
+  - Chart data properly filtered and re-rendered for selected time range
+  - File: src/theme/ResponseTimeChart/index.tsx
+
+- **React Hooks Ordering Violation** (#2)
+  - Fixed "Rendered more hooks than during the previous render" error (#300)
+  - Moved all useMemo hooks (relevantIncidents, chartData, annotations) before conditional returns
+  - Ensures hooks called in same order on every render regardless of chartType
+  - Eliminates "Cannot access before initialization" errors in production builds
+  - File: src/theme/UptimeChart/index.tsx
+
+### Changed
+
+- **Performance Optimizations** (#2)
+  - Added React.useMemo for expensive chart data calculations
+  - Memoized daily uptime calculations in UptimeChart
+  - Memoized chart data objects and options in ResponseTimeChart
+  - Memoized incident filtering by system and period
+  - Memoized color calculation functions
+  - Improved re-render performance for large datasets
+
+### Technical
+
+- New components: MiniHeatmap with TypeScript interfaces
+- Enhanced data flow: StatusPage → StatusBoard → StatusItem → MiniHeatmap
+- CSS modules: MiniHeatmap.module.css, updated UptimeChart/styles.module.css
+- Dependency: chartjs-plugin-annotation@3.1.0 for incident markers
+- All 114 tests passing
+- Coverage: 95.4% statements, 80.29% branches, 96.61% functions, 95.14% lines
+
 ## [0.3.4] - 2025-11-03
 
 ### Fixed
@@ -526,7 +588,8 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.1...v0.3.2
