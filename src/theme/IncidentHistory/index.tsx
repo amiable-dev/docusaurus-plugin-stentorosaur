@@ -13,6 +13,7 @@ import styles from './styles.module.css';
 export interface Props {
   incidents: StatusIncident[];
   maxItems?: number;
+  useDemoData?: boolean;
 }
 
 const severityConfig = {
@@ -41,13 +42,14 @@ const severityConfig = {
 export default function IncidentHistory({
   incidents,
   maxItems = 10,
+  useDemoData = false,
 }: Props): JSX.Element {
   const displayIncidents = incidents.slice(0, maxItems);
 
   if (displayIncidents.length === 0) {
     return (
       <div className={styles.incidentHistory}>
-        <h2>Incident History</h2>
+        <h2>{useDemoData ? 'Demo Data: Incident History' : 'Incident History'}</h2>
         <div className={styles.emptyState}>
           <p>No incidents reported. All systems are running smoothly! 🎉</p>
         </div>
@@ -57,7 +59,7 @@ export default function IncidentHistory({
 
   return (
     <div className={styles.incidentHistory}>
-      <h2>Recent Incidents</h2>
+      <h2>{useDemoData ? 'Demo Data: Recent Incidents' : 'Recent Incidents'}</h2>
       <div className={styles.timeline}>
         {displayIncidents.map((incident) => {
           const config = severityConfig[incident.severity];
