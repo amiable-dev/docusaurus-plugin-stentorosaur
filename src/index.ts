@@ -154,6 +154,7 @@ export default async function pluginStatus(
           showServices,
           showIncidents,
           showPerformanceMetrics,
+          useDemoData: true,
         };
 
         // Ensure directory exists

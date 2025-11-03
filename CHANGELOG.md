@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.9] - 2025-11-03
+
+### Fixed
+
+- **CRITICAL**: Fixed React hydration errors on production (Issue #20)
+  - Server-side rendering (during build) was loading different data than client-side hydration
+  - When `useDemoData: true` was set, SSR would sometimes load real GitHub data from `build/status-data/status.json`
+  - Client would then hydrate with demo data, causing React errors #418, #423, #425
+  - Fixed by ensuring `useDemoData: true` field is included in StatusData returned by early exit path
+  - This ensures both server and client see the same `useDemoData` flag and load matching data
+
 ## [0.3.8] - 2025-11-03
 
 ### Added
