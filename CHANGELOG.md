@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.10] - 2025-11-03
+
+### Fixed
+
+- **GitHub API Cache in Actions Workflows** (Issue amiable-dev/amiable-docusaurus#21)
+  - Added `If-None-Match: ''` header to bypass GitHub API response caching
+  - Fixes issue where `GITHUB_TOKEN` in GitHub Actions returned 2-day-old cached issue data
+  - Status updates now fetch fresh data showing correct issue states (open/closed)
+  - Particularly critical for time-sensitive status page updates
+
+### Added
+
+- **Deployment Workflow Templates**
+  - New `templates/workflows/deploy.yml` for push-triggered GitHub Pages deployments
+  - Supports `repository_dispatch` events for instant status update deployments
+  - Includes `workflow_dispatch` for manual deployment triggers
+
+### Changed
+
+- **Status Update Workflow Template Documentation**
+  - Updated `templates/workflows/status-update.yml` with deployment strategy options
+  - Documents Option A (default): Delayed deployment via scheduled runs
+  - Documents Option B (opt-in): Instant deployment via `repository_dispatch`
+  - Clear trade-offs: simplicity/cost vs. data freshness
+
+## [0.3.9] - 2025-11-03
+
+### Fixed
+
+- **GitHub API Cache in Actions Workflows** (Issue amiable-dev/amiable-docusaurus#21)
+  - Added `If-None-Match: ''` header to bypass GitHub API response caching
+  - Fixes issue where `GITHUB_TOKEN` in GitHub Actions returned 2-day-old cached issue data
+  - Status updates now fetch fresh data showing correct issue states (open/closed)
+  - Particularly critical for time-sensitive status page updates
+
+### Added
+
+- **Deployment Workflow Templates**
+  - New `templates/workflows/deploy.yml` for push-triggered GitHub Pages deployments
+  - Supports `repository_dispatch` events for instant status update deployments
+  - Includes `workflow_dispatch` for manual deployment triggers
+
+### Changed
+
+- **Status Update Workflow Template Documentation**
+  - Updated `templates/workflows/status-update.yml` with deployment strategy options
+  - Documents Option A (default): Delayed deployment via scheduled runs
+  - Documents Option B (opt-in): Instant deployment via `repository_dispatch`
+  - Clear trade-offs: simplicity/cost vs. data freshness
+
 ## [0.3.9] - 2025-11-03
 
 ### Fixed
