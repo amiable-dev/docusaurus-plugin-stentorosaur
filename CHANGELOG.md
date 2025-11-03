@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-11-03
+
+### Added
+
+- **Append-Only Monitoring Architecture (Issues #7 & #19)**
+  - New `scripts/monitor.js` - HTTP endpoint monitoring with JSONL append pattern
+  - Hot file optimization: `current.json` with 14-day rolling window for fast site loads
+  - Cold storage: `archives/YYYY/MM/history-YYYY-MM-DD.jsonl` for scalable long-term data
+  - Compact reading format: `{t, svc, state, code, lat, err}` reduces file size by ~60%
+  - Daily archive compression workflow (`compress-archives.yml`)
+  - Configurable via `.monitorrc.json` or CLI arguments
+  - Comprehensive monitoring system documentation (MONITORING_SYSTEM.md)
+
+- **Demo Data Support for New Format**
+  - `getDemoCurrentJson()` function generates demo data in compact format
+  - Plugin automatically writes `current.json` for demo deployments
+  - Maintains backward compatibility with legacy `systems/*.json` files
+
+- **UI Component Compatibility**
+  - Updated StatusPage to read `current.json` with service grouping
+  - Updated ChartPanel with fallback to legacy format
+  - All chart components support new compact data structure
+  - Automatic data conversion: CompactReading → StatusCheckHistory → SystemStatusFile
+
+### Changed
+
+- **Monitoring Workflows**
+  - `monitor-systems.yml` now uses `scripts/monitor.js` instead of inline bash
+  - Removed 6 Upptime-style workflows (response-time, summary, graphs, site, update-template, updates)
+  - Streamlined to 6 essential workflows: monitor-systems, compress-archives, status-update, calculate-metrics, deploy, deploy-scheduled
+
+- **Data Architecture**
+  - Primary data source: `current.json` (hot file, 14 days)
+  - Archive storage: Daily JSONL files with automatic compression
+  - Legacy `systems/*.json` maintained for backward compatibility
+
+### Documentation
+
+- Updated README.md with "Monitoring Architecture (v0.4.0+)" section
+- Updated QUICKSTART.md with new workflow setup
+- Updated CONTRIBUTING.md with monitoring script testing guide
+- New MONITORING_SYSTEM.md with comprehensive technical documentation
+- New ISSUE_7_19_SUMMARY.md documenting implementation
+
+### Testing
+
+- Added 10 tests for monitoring script (`__tests__/monitor.test.ts`)
+- Added 13 tests for `getDemoCurrentJson()` function
+- All 145 tests passing with 94.29% coverage (exceeds 75% target)
+
+### Performance
+
+- 60% reduction in data file size with compact format
+- Faster page loads with 14-day hot file vs full history
+- Efficient append-only writes (no file rewrites)
+- Automatic compression reduces storage by ~80%
+
 ## [0.3.11] - 2025-11-03
 
 ### Fixed
@@ -696,7 +753,14 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.11...v0.4.0
+[0.3.11]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.10...v0.3.11
+[0.3.10]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.9...v0.3.10
+[0.3.9]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.8...v0.3.9
+[0.3.8]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.7...v0.3.8
+[0.3.7]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.6...v0.3.7
+[0.3.6]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.2...v0.3.3
