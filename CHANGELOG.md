@@ -24,7 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fullscreen modal now displays charts almost fullscreen (90vw width, max 1400px)
   - Fixed period selector synchronization - all charts on status page respond to central period selector
   - Detail page charts now have individual period selectors as intended
-  - Error budget calculation fixed to show remaining budget instead of consumption
+  - Added period selector to Uptime Overview on detail page for consistency with other charts
+  - Error budget calculation changed from daily to cumulative over selected time period
+  - Error budget now shows remaining tolerance over entire period instead of daily consumption
 
 ### Added
 

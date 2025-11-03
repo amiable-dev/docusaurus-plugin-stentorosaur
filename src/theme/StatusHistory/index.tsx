@@ -181,6 +181,7 @@ export default function StatusHistory({
             name={systemData.name}
             history={systemData.history}
             chartType={chartType}
+            showPeriodSelector={true}
           />
         </section>
 

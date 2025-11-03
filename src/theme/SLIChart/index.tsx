@@ -127,21 +127,33 @@ export default function SLIChart({
     const sliValues: number[] = [];
     const errorBudgetValues: number[] = [];
     
-    // Calculate error budget for each day
+    // Calculate error budget for the entire period
     // Error budget is the allowed failure percentage (e.g., 0.1% for 99.9% SLO)
     const allowedError = 100 - sloTarget; // e.g., 0.1% for 99.9% SLO
+    
+    // Calculate total allowed downtime for the period
+    const totalChecks = filteredHistory.length;
+    const allowedDowntimeChecks = (allowedError / 100) * totalChecks;
+    
+    // Track cumulative error consumption over time
+    let cumulativeFailedChecks = 0;
+    let checkIndex = 0;
     
     dailyData.forEach((data, date) => {
       labels.push(date);
       const sli = (data.successful / data.total) * 100;
       sliValues.push(sli);
       
-      // Daily error rate as percentage of total allowed error
-      const actualError = 100 - sli;
-      // What percentage of our error budget remains?
-      // If we had 0.1% error budget and used 0.05%, that's 50% remaining
-      const budgetConsumption = allowedError > 0 ? (actualError / allowedError) * 100 : 0;
-      const budgetRemaining = Math.max(0, 100 - budgetConsumption);
+      // Add failed checks from this day to cumulative total
+      const failedChecksThisDay = data.total - data.successful;
+      cumulativeFailedChecks += failedChecksThisDay;
+      checkIndex += data.total;
+      
+      // Calculate remaining error budget as percentage
+      // Remaining budget = (allowed downtime - actual downtime) / allowed downtime * 100
+      const budgetRemaining = allowedDowntimeChecks > 0 
+        ? Math.max(0, ((allowedDowntimeChecks - cumulativeFailedChecks) / allowedDowntimeChecks) * 100)
+        : 100;
       errorBudgetValues.push(budgetRemaining);
     });
 
@@ -289,11 +301,11 @@ export default function SLIChart({
       {showErrorBudget && (
         <div className={styles.budgetInfo}>
           <p className={styles.budgetNote}>
-            Error budget shows remaining tolerance for downtime relative to SLO target ({sloTarget}%).
+            Error budget shows cumulative remaining tolerance for downtime over the selected period relative to SLO target ({sloTarget}%).
             Green (&gt;50%) = healthy, Yellow (20-50%) = caution, Red (&lt;20%) = critical.
           </p>
         </div>
-        )}
+      )}
       </div>
     </div>
   );

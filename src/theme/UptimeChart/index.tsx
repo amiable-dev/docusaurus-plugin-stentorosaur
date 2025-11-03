@@ -40,6 +40,8 @@ export interface UptimeChartProps {
   period?: '24h' | '7d' | '30d' | '90d';
   /** Chart height in pixels */
   height?: number;
+  /** Show period selector */
+  showPeriodSelector?: boolean;
 }
 
 type TimePeriod = '24h' | '7d' | '30d' | '90d';
@@ -71,8 +73,13 @@ export default function UptimeChart({
   chartType = 'bar',
   period = '30d',
   height = 300,
+  showPeriodSelector = false,
 }: UptimeChartProps): JSX.Element {
+  const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+  
+  // Use internal state only if period selector is shown, otherwise use prop
+  const activePeriod = showPeriodSelector ? internalPeriod : period;
 
   // Detect dark mode from document
   useEffect(() => {
@@ -95,7 +102,7 @@ export default function UptimeChart({
   // Calculate daily uptime percentages
   const calculateDailyUptime = (): DayUptime[] => {
     const now = new Date();
-    const days = PERIOD_DAYS[period];
+    const days = PERIOD_DAYS[activePeriod];
     const dailyData: Map<string, { upChecks: number; totalChecks: number }> = new Map();
 
     // Initialize all days
@@ -292,6 +299,19 @@ export default function UptimeChart({
 
   return (
     <div className={styles.chartContainer}>
+      {showPeriodSelector && (
+        <div className={styles.periodSelector}>
+          {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map((p) => (
+            <button
+              key={p}
+              className={`${styles.periodButton} ${internalPeriod === p ? styles.active : ''}`}
+              onClick={() => setInternalPeriod(p)}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+      )}
       <div className={styles.stats}>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Average Uptime:</span>
