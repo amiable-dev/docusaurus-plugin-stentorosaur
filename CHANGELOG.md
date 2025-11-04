@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2025-11-04
+
+### Fixed
+
+- **Node Version Compatibility**
+  - Updated monitor-systems workflow template to use Node 20
+  - Node 18 reached end-of-life in April 2025 and is no longer supported
+  - This was causing npm EBADENGINE warnings and preventing monitoring data collection
+
 ## [0.4.3] - 2025-11-04
 
 ### Fixed
