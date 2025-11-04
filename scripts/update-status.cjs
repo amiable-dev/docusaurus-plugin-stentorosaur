@@ -6,7 +6,7 @@
  * 
  * Usage:
  *   npx stentorosaur-update-status
- *   npx stentorosaur-update-status --output-dir ./build/status-data
+ *   npx stentorosaur-update-status --write-incidents --write-maintenance
  *   npx stentorosaur-update-status --verbose --commit
  * 
  * Environment variables:
@@ -17,10 +17,12 @@
  *   SYSTEM_LABELS - Comma-separated list of system labels (default: from config)
  * 
  * Options:
- *   --output-dir <path>  Output directory for status data (default: build/status-data)
- *   --verbose            Enable verbose logging
- *   --commit             Auto-commit changes with git
- *   --help               Show this help message
+ *   --output-dir <path>      Output directory for status data (default: build/status-data)
+ *   --write-incidents        Write incidents.json to status-data/ directory
+ *   --write-maintenance      Write maintenance.json to status-data/ directory
+ *   --verbose                Enable verbose logging
+ *   --commit                 Auto-commit changes with git
+ *   --help                   Show this help message
  */
 
 const path = require('path');
@@ -34,6 +36,8 @@ const options = {
   verbose: args.includes('--verbose'),
   commit: args.includes('--commit'),
   help: args.includes('--help') || args.includes('-h'),
+  writeIncidents: args.includes('--write-incidents'),
+  writeMaintenance: args.includes('--write-maintenance'),
   owner: null,
   repo: null,
   statusLabel: null,
@@ -88,10 +92,12 @@ Usage:
   npx stentorosaur-update-status [options]
 
 Options:
-  --output-dir <path>  Output directory for status data (default: build/status-data)
-  --verbose            Enable verbose logging
-  --commit             Auto-commit changes with git
-  --help, -h           Show this help message
+  --output-dir <path>      Output directory for status data (default: build/status-data)
+  --write-incidents        Write incidents.json to status-data/ directory (for committed data)
+  --write-maintenance      Write maintenance.json to status-data/ directory (for committed data)
+  --verbose                Enable verbose logging
+  --commit                 Auto-commit changes with git
+  --help, -h               Show this help message
 
 Environment Variables:
   GITHUB_TOKEN        GitHub personal access token (required)
@@ -104,8 +110,8 @@ Examples:
   # Basic usage (updates build/status-data if exists)
   npx stentorosaur-update-status
 
-  # Custom output directory
-  npx stentorosaur-update-status --output-dir ./public/status
+  # Write incidents and maintenance to committed files
+  npx stentorosaur-update-status --write-incidents --write-maintenance --commit
 
   # Verbose mode with auto-commit
   npx stentorosaur-update-status --verbose --commit
@@ -234,6 +240,56 @@ async function updateStatus() {
     await fs.writeJson(docusaurusPath, statusData, {spaces: 2});
     verbose('Wrote status data to:', docusaurusPath);
 
+    // Write incidents.json and maintenance.json to committed status-data/ directory if requested
+    const committedStatusDir = path.join(process.cwd(), 'status-data');
+    
+    if (options.writeIncidents) {
+      await fs.ensureDir(committedStatusDir);
+      const incidentsPath = path.join(committedStatusDir, 'incidents.json');
+      
+      // Transform incidents to match the format the plugin expects
+      const incidents = result.incidents.map(incident => ({
+        title: incident.title,
+        number: incident.number,
+        severity: incident.labels?.find(l => ['critical', 'major', 'minor'].includes(l.toLowerCase())) || 'major',
+        state: incident.state,
+        createdAt: incident.createdAt,
+        updatedAt: incident.updatedAt,
+        closedAt: incident.closedAt,
+        url: incident.url,
+        body: incident.body,
+      }));
+      
+      await fs.writeJson(incidentsPath, incidents, {spaces: 2});
+      log(`✓ Wrote ${incidents.length} incidents to status-data/incidents.json`);
+      verbose('Incidents path:', incidentsPath);
+    }
+    
+    if (options.writeMaintenance) {
+      await fs.ensureDir(committedStatusDir);
+      const maintenancePath = path.join(committedStatusDir, 'maintenance.json');
+      
+      // Filter for maintenance issues (labeled 'maintenance')
+      const maintenanceIssues = result.incidents.filter(issue => 
+        issue.labels?.some(label => label.toLowerCase() === 'maintenance')
+      );
+      
+      const maintenance = maintenanceIssues.map(issue => ({
+        title: issue.title,
+        number: issue.number,
+        state: issue.state,
+        scheduledStart: issue.scheduledStart || issue.createdAt,
+        scheduledEnd: issue.scheduledEnd || null,
+        createdAt: issue.createdAt,
+        url: issue.url,
+        body: issue.body,
+      }));
+      
+      await fs.writeJson(maintenancePath, maintenance, {spaces: 2});
+      log(`✓ Wrote ${maintenance.length} maintenance windows to status-data/maintenance.json`);
+      verbose('Maintenance path:', maintenancePath);
+    }
+
     // Determine output directory for build files
     const dataPath = pluginConfig.dataPath || 'status-data';
     const defaultBuildDir = path.join(process.cwd(), 'build', dataPath);
@@ -301,7 +357,8 @@ async function updateStatus() {
             commitMessage = '🟩 All systems operational';
           }
 
-          execSync('git add build/status-data/', { stdio: 'inherit' });
+          // Add both build/ and status-data/ directories
+          execSync('git add build/status-data/ status-data/', { stdio: 'inherit' });
           execSync(`git commit -m "${commitMessage} [skip ci]"`, { stdio: 'inherit' });
           log('✓ Changes committed:', commitMessage);
         } else {

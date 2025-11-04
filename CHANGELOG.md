@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.12] - 2025-11-04
+
+### Changed
+- **update-status.cjs**: Added `--write-incidents` and `--write-maintenance` CLI options to write committed data files
+- **update-status.cjs**: Now writes `incidents.json` and `maintenance.json` to `status-data/` directory when flags are set
+- **status-update.yml**: Updated workflow to commit incidents and maintenance data with `[skip ci]`
+- **status-update.yml**: Added smart deployment trigger for critical issues using `repository_dispatch`
+- Implements Task 2 from Issue #33: Fix workflow to commit incidents/maintenance JSON
+
 ## [0.4.11] - 2025-01-10
 
 ### Fixed

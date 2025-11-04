@@ -35,39 +35,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
           
-      - name: Update status data
+      - name: Update incidents and maintenance data
         env:
-          # Must explicitly pass token to make it available in process.env
-          # secrets.GITHUB_TOKEN exists but is NOT in process.env unless you pass it via env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx stentorosaur-update-status
+        run: npx stentorosaur-update-status --write-incidents --write-maintenance --verbose
         
-      # Status data is now updated in status-data/ directory
-      # NOTE: We don't commit here to avoid polluting git history with incompatible commit messages
+      - name: Commit status data changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if there are changes to commit
+          if [ -n "$(git status --porcelain status-data/)" ]; then
+            git add status-data/
+            git commit -m "� Update incidents and maintenance data [skip ci]"
+            git push
+            echo "✓ Committed status data changes"
+          else
+            echo "ℹ No changes to commit"
+          fi
+      
+      # DEPLOYMENT TRIGGER:
+      # For critical incidents, trigger immediate deployment to update status page
+      # This only fires when issues are opened/closed/labeled with critical severity
       # 
-      # The calculate-metrics.yml workflow reads git history to extract response times from commits
-      # made by monitor-systems.yml (format: "🟩 website is up (200 in 145 ms)")
-      # 
-      # If we commit here with format "🟥 Systems down: website", it breaks metrics extraction.
-      # 
-      # DEPLOYMENT OPTIONS:
-      # 
-      # Option A (Default): Delayed deployment - simpler, uses fewer Actions minutes
-      # Status updates deploy via:
-      # - Scheduled deployment (deploy-scheduled.yml runs daily)
-      # - Code pushes (triggers deploy.yml)
-      # - Manual workflow dispatch
-      # Trade-off: Status may be stale for up to 24 hours
-      # 
-      # Option B: Instant deployment - uncomment the step below
-      # Triggers deploy.yml immediately after status update
-      # Trade-off: More GitHub Actions minutes, requires deploy.yml configuration
-      # 
-      # - name: Trigger deployment
-      #   uses: peter-evans/repository-dispatch@v3
-      #   with:
-      #     event-type: status-updated
-      #     token: ${{ secrets.GITHUB_TOKEN }}
-      #
-      # Note: If using Option B, also uncomment repository_dispatch in deploy.yml
+      # Note: Requires repository_dispatch trigger in deploy.yml
+      - name: Trigger deployment for critical issues
+        if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          event-type: status-updated
+          token: ${{ secrets.GITHUB_TOKEN }}
 
