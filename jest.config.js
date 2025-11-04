@@ -36,5 +36,7 @@ module.exports = {
   moduleNameMapper: {
     // Mock CSS modules
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
+    // Mock @theme modules
+    '^@theme/Layout$': '<rootDir>/__mocks__/Layout.js',
   },
 };
