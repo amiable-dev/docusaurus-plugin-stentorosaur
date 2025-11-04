@@ -6,7 +6,14 @@
  */
 
 import {Octokit} from '@octokit/rest';
-import type {StatusIncident, StatusItem, StatusItemStatus} from './types';
+import type { StatusIncident, StatusItem, StatusItemStatus, ScheduledMaintenance, MaintenanceComment } from './types';
+import { calculateResolutionTime } from './time-utils';
+import { 
+  extractFrontmatter, 
+  getMaintenanceStatus, 
+  parseMaintenanceComments, 
+  isScheduledMaintenance 
+} from './maintenance-utils';
 
 export interface GitHubIssue {
   number: number;
@@ -18,6 +25,15 @@ export interface GitHubIssue {
   html_url: string;
   body?: string | null;
   labels: Array<{name: string}>;
+  comments: number;
+}
+
+export interface GitHubComment {
+  user: {
+    login: string;
+  };
+  created_at: string;
+  body: string;
 }
 
 export class GitHubStatusService {
@@ -26,13 +42,15 @@ export class GitHubStatusService {
   private repo: string;
   private statusLabel: string;
   private systemLabels: string[];
+  private maintenanceLabels: string[];
 
   constructor(
     token: string | undefined,
     owner: string,
     repo: string,
     statusLabel: string,
-    systemLabels: string[]
+    systemLabels: string[],
+    maintenanceLabels: string[] = ['scheduled-maintenance']
   ) {
     this.octokit = new Octokit({
       auth: token || process.env.GITHUB_TOKEN,
@@ -41,6 +59,7 @@ export class GitHubStatusService {
     this.repo = repo;
     this.statusLabel = statusLabel;
     this.systemLabels = systemLabels;
+    this.maintenanceLabels = maintenanceLabels;
   }
 
   /**
@@ -88,6 +107,12 @@ export class GitHubStatusService {
       this.systemLabels.includes(label)
     );
 
+    // Calculate resolution time for closed incidents
+    const resolutionTimeMinutes = calculateResolutionTime(
+      issue.created_at,
+      issue.closed_at || undefined
+    );
+
     return {
       id: issue.number,
       title: issue.title,
@@ -100,6 +125,8 @@ export class GitHubStatusService {
       body: issue.body || undefined,
       labels,
       affectedSystems,
+      commentCount: issue.comments,
+      resolutionTimeMinutes,
     };
   }
 
@@ -162,5 +189,127 @@ export class GitHubStatusService {
     const items = this.generateStatusItems(incidents);
 
     return {items, incidents};
+  }
+
+  /**
+   * Fetch maintenance issues from GitHub
+   */
+  async fetchMaintenanceIssues(): Promise<GitHubIssue[]> {
+    try {
+      const response = await this.octokit.issues.listForRepo({
+        owner: this.owner,
+        repo: this.repo,
+        labels: this.maintenanceLabels.join(','),
+        state: 'all',
+        per_page: 100,
+        sort: 'created',
+        direction: 'desc',
+        headers: {
+          'If-None-Match': '',
+        },
+      });
+
+      return response.data as GitHubIssue[];
+    } catch (error) {
+      console.error('Error fetching maintenance issues:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch comments for an issue
+   */
+  async fetchIssueComments(issueNumber: number): Promise<GitHubComment[]> {
+    try {
+      const response = await this.octokit.issues.listComments({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: issueNumber,
+        per_page: 100,
+      });
+
+      return response.data as GitHubComment[];
+    } catch (error) {
+      console.error(`Error fetching comments for issue ${issueNumber}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Convert GitHub issue to ScheduledMaintenance
+   */
+  async convertIssueToMaintenance(issue: GitHubIssue): Promise<ScheduledMaintenance | null> {
+    const labels = issue.labels.map((l) => l.name);
+    
+    // Check if this is actually a maintenance issue
+    if (!isScheduledMaintenance(labels, this.maintenanceLabels)) {
+      return null;
+    }
+
+    // Extract frontmatter
+    const { frontmatter, content } = extractFrontmatter(issue.body || '');
+    
+    // Required fields
+    if (!frontmatter.start || !frontmatter.end) {
+      console.warn(`Maintenance issue #${issue.number} missing start/end times`);
+      return null;
+    }
+
+    // Fetch comments
+    const githubComments = await this.fetchIssueComments(issue.number);
+    const comments = parseMaintenanceComments(
+      githubComments.map(c => ({
+        author: { login: c.user.login },
+        created_at: c.created_at,
+        body: c.body,
+      }))
+    );
+
+    // Determine status
+    const status = getMaintenanceStatus(frontmatter.start, frontmatter.end, issue.state);
+
+    // Extract affected systems
+    const affectedSystems = frontmatter.systems || 
+      labels.filter((label) => this.systemLabels.includes(label));
+
+    // Extract description (everything after frontmatter)
+    const description = content.trim();
+
+    return {
+      id: issue.number,
+      title: issue.title,
+      start: frontmatter.start,
+      end: frontmatter.end,
+      status,
+      affectedSystems,
+      description,
+      comments,
+      url: issue.html_url,
+      createdAt: issue.created_at,
+    };
+  }
+
+  /**
+   * Fetch all scheduled maintenance
+   */
+  async fetchScheduledMaintenance(): Promise<ScheduledMaintenance[]> {
+    const issues = await this.fetchMaintenanceIssues();
+    const maintenance: ScheduledMaintenance[] = [];
+
+    for (const issue of issues) {
+      const maintenanceItem = await this.convertIssueToMaintenance(issue);
+      if (maintenanceItem) {
+        maintenance.push(maintenanceItem);
+      }
+    }
+
+    // Sort by start time
+    maintenance.sort((a, b) => {
+      const aDate = new Date(a.start).getTime();
+      const bDate = new Date(b.start).getTime();
+      return bDate - aDate; // Most recent first
+    });
+
+    return maintenance;
   }
 }

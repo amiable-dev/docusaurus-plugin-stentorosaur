@@ -6,15 +6,19 @@ A complete Docusaurus plugin that creates an Upptime-like status monitoring dash
 
 ## Key Features
 
-✅ **Status Dashboard** - Beautiful real-time status display
-✅ **Incident Timeline** - Historical view of all incidents
+✅ **Status Dashboard** - Beautiful real-time status display with multiple layout options
+✅ **Upptime-Style View** (v0.5.0+) - Structured status page with configurable sections
+✅ **Scheduled Maintenance** (v0.5.0+) - Track and display maintenance windows
+✅ **Incident Timeline** - Historical view of all incidents with resolution tracking
+✅ **Interactive Charts** (v0.3.0+) - Performance metrics with clickable system cards
 ✅ **GitHub-Powered** - Uses Issues for tracking, Actions for automation
-✅ **Automated Monitoring** - Scheduled health checks every 5 minutes
+✅ **Automated Monitoring** - Scheduled health checks with historical data
 ✅ **Manual Reporting** - Issue templates for human-created incidents
 ✅ **Flexible Tracking** - Monitor systems AND business processes
 ✅ **Fully Themed** - Integrates seamlessly with Docusaurus design
 ✅ **TypeScript** - Complete type definitions
 ✅ **Responsive** - Works on all devices
+✅ **High Test Coverage** - 88.41% coverage with 208 passing tests
 
 ## Architecture
 
@@ -78,12 +82,23 @@ docusaurus-plugin-stentorosaur/
 │   ├── types.ts              # TypeScript type definitions
 │   ├── options.ts            # Configuration schema validation
 │   ├── github-service.ts     # GitHub API integration
+│   ├── demo-data.ts          # Demo/fallback data
+│   ├── historical-data.ts    # Historical data utilities (v0.4.0+)
 │   ├── plugin-status.d.ts    # Module type declarations
 │   └── theme/                # React components
-│       ├── StatusPage/       # Main status page
+│       ├── StatusPage/       # Default status page layout
+│       ├── UptimeStatusPage/ # Upptime-style layout (v0.5.0+)
 │       ├── StatusBoard/      # System status overview
 │       ├── StatusItem/       # Individual status item
-│       └── IncidentHistory/  # Incident timeline
+│       ├── IncidentHistory/  # Incident timeline
+│       ├── PerformanceMetrics/ # Interactive charts (v0.3.1+)
+│       ├── ResponseTimeChart/  # Response time visualization
+│       ├── UptimeChart/        # Uptime bar/heatmap charts
+│       ├── SLIChart/           # SLI/SLO tracking
+│       ├── ChartPanel/         # Chart container component
+│       └── Maintenance/        # Maintenance components (v0.5.0+)
+│           ├── MaintenanceItem/
+│           └── MaintenanceList/
 │
 ├── templates/
 │   ├── workflows/            # GitHub Actions templates

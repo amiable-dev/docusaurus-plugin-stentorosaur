@@ -135,6 +135,11 @@
   margin-bottom: 0.75rem;
 }
 
+.resolutionInfo {
+  color: var(--ifm-color-success-dark);
+  font-weight: 500;
+}
+
 .incidentBody {
   padding: 1rem;
   background: var(--ifm-color-emphasis-100);

@@ -8,6 +8,8 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
 ## Features
 
 - 🎯 **Status Dashboard**: Beautiful, real-time status display for your systems and processes
+- 🏗️ **Multiple Status Views** (v0.5.0+): Choose between default or Upptime-style structured layouts
+- 🔧 **Scheduled Maintenance** (v0.5.0+): Track and display upcoming and past maintenance windows
 - 📊 **Incident Timeline**: Historical view of all incidents with severity tracking
 - 📈 **Interactive Charts** (v0.3.0+): Visualize response times and uptime with Chart.js
   - Line charts for response time trends
@@ -264,6 +266,30 @@ module.exports = {
         // NEW in v0.3.1: Performance metrics visualization
         showPerformanceMetrics: true,  // Enable/disable performance charts (default: true)
         
+        // NEW in v0.5.0: Status page layout style
+        statusView: 'upptime',  // 'default' | 'upptime' (default: 'default')
+        
+        // NEW in v0.5.0: Configure Upptime-style sections
+        uptimeConfig: {
+          sections: [
+            { id: 'active-incidents', enabled: true },
+            { id: 'live-status', enabled: true },
+            { id: 'charts', enabled: true },
+            { id: 'scheduled-maintenance', enabled: true },
+            { id: 'past-maintenance', enabled: true },
+            { id: 'past-incidents', enabled: true },
+          ],
+          sectionTitles: {
+            'scheduled-maintenance': '🔧 Upcoming Maintenance',
+          },
+        },
+        
+        // NEW in v0.5.0: Scheduled maintenance tracking
+        scheduledMaintenance: {
+          enabled: true,
+          label: 'maintenance',  // GitHub label for maintenance issues
+        }
+        
         // Demo data control (useful for testing)
         // Default: true when no token, false when token provided
         useDemoData: !process.env.GITHUB_TOKEN,
@@ -349,6 +375,100 @@ Copy the issue template for manual status reporting:
 mkdir -p .github/ISSUE_TEMPLATE
 cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMPLATE/*.yml .github/ISSUE_TEMPLATE/
 ```
+
+### Creating Maintenance Tickets (v0.5.0+)
+
+To schedule and display maintenance windows on your status page, create GitHub issues with the `maintenance` label and YAML frontmatter:
+
+#### Maintenance Issue Format
+
+```markdown
+---
+start: 2025-11-10T02:00:00Z
+end: 2025-11-10T04:00:00Z
+systems:
+  - API Service
+  - Main Website
+---
+
+We will be performing a database migration to improve query performance. The API and website will be in read-only mode during this window.
+
+**Impact:**
+- API endpoints will return cached data
+- No new user registrations during maintenance
+
+**Rollback Plan:**
+Database snapshots created. Can restore within 15 minutes if needed.
+```
+
+#### Required Frontmatter Fields
+
+- **`start`** (required): Maintenance start time in ISO 8601 format (UTC recommended)
+- **`end`** (required): Maintenance end time in ISO 8601 format
+- **`systems`** (optional): Array of affected system names. If omitted, uses issue labels matching your `systemLabels` configuration
+
+#### Labels
+
+- Add the **`maintenance`** label (or your custom label from `scheduledMaintenance.label` config)
+- Optionally add system labels like `api`, `website`, etc.
+
+#### Issue Comments
+
+Add comments to provide updates during maintenance:
+
+```markdown
+Starting maintenance as scheduled.
+```
+
+```markdown
+Database migration 50% complete. On track for 4:00 AM completion.
+```
+
+```markdown
+Maintenance completed successfully. All systems operational.
+```
+
+Comments appear in the maintenance timeline on your status page.
+
+#### Status Determination
+
+The plugin automatically determines maintenance status:
+
+- **Upcoming**: Start time is in the future
+- **In Progress**: Current time is between start and end
+- **Completed**: End time has passed OR issue is closed
+
+#### Example Maintenance Issue
+
+**Title:** Database Migration and Index Optimization
+
+**Labels:** `maintenance`, `api`, `website`
+
+**Body:**
+```markdown
+---
+start: 2025-11-15T02:00:00Z
+end: 2025-11-15T04:00:00Z
+systems:
+  - API Service
+  - Main Website
+  - Documentation
+---
+
+Annual database migration to PostgreSQL 16 with index optimization.
+
+**Expected Impact:**
+- 2-hour maintenance window
+- Read-only mode for all services
+- API rate limits reduced to 10 req/min
+
+**Preparation:**
+- ✅ Database backups completed
+- ✅ Rollback procedure tested
+- ✅ Stakeholders notified
+```
+
+**Close the issue** when maintenance is complete to mark it as "Completed" on your status page.
 
 ## Usage
 
@@ -733,6 +853,29 @@ jobs:
     'Documentation': 99.5,
   },
   
+  // Status Page Layout (v0.5.0+)
+  statusView: 'upptime',                     // 'default' | 'upptime', default: 'default'
+  uptimeConfig: {                            // Upptime-style configuration
+    sections: [                              // Configure section visibility
+      { id: 'active-incidents', enabled: true },
+      { id: 'live-status', enabled: true },
+      { id: 'charts', enabled: true },
+      { id: 'scheduled-maintenance', enabled: true },
+      { id: 'past-maintenance', enabled: true },
+      { id: 'past-incidents', enabled: true },
+    ],
+    sectionTitles: {                         // Override section titles
+      'scheduled-maintenance': '🔧 Upcoming Maintenance',
+      'past-incidents': '📜 Incident History',
+    },
+  },
+  
+  // Scheduled Maintenance (v0.5.0+)
+  scheduledMaintenance: {
+    enabled: true,                           // default: true
+    label: 'maintenance',                    // GitHub label, default: 'maintenance'
+  },
+  
   // Update frequency
   updateInterval: 60,                        // default: 60 minutes
 }
@@ -767,6 +910,28 @@ jobs:
   token: process.env.GITHUB_TOKEN,
   showServices: true,
   showIncidents: false,  // Hide incident timeline
+}
+```
+
+**Upptime-Style Layout** (v0.5.0+):
+```typescript
+{
+  owner: 'your-org',
+  repo: 'status-tracking',
+  token: process.env.GITHUB_TOKEN,
+  statusView: 'upptime',  // Use structured Upptime-style layout
+  uptimeConfig: {
+    sections: [
+      { id: 'active-incidents', enabled: true },
+      { id: 'live-status', enabled: true },
+      { id: 'scheduled-maintenance', enabled: true },
+      { id: 'past-incidents', enabled: true },
+    ],
+  },
+  scheduledMaintenance: {
+    enabled: true,
+    label: 'maintenance',
+  },
 }
 ```
 

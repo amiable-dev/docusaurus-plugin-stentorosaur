@@ -56,10 +56,14 @@ docusaurus-plugin-stentorosaur/
 │   ├── types.ts                  # TypeScript interfaces
 │   ├── options.ts                # Configuration schema
 │   └── theme/                    # React components
-│       ├── StatusPage/
-│       ├── StatusBoard/
-│       ├── StatusItem/
-│       └── IncidentHistory/
+│       ├── StatusPage/           # Default status page layout
+│       ├── UptimeStatusPage/     # Upptime-style structured layout (v0.5.0+)
+│       ├── StatusBoard/          # System status board
+│       ├── StatusItem/           # Individual system status card
+│       ├── IncidentHistory/      # Incident timeline
+│       └── Maintenance/          # Scheduled maintenance (v0.5.0+)
+│           ├── MaintenanceItem/
+│           └── MaintenanceList/
 ├── scripts/                      # CLI tools
 │   ├── update-status.cjs         # Status update CLI
 │   └── monitor.js                # Monitoring script (v0.4.0+)
@@ -67,11 +71,16 @@ docusaurus-plugin-stentorosaur/
 │   ├── workflows/                # GitHub Actions workflows
 │   └── ISSUE_TEMPLATE/           # GitHub issue templates
 ├── __tests__/                    # Test suites
-│   ├── demo-data.test.ts
-│   ├── options.test.ts
-│   ├── github-service.test.ts
-│   ├── plugin.test.ts
-│   └── update-status.test.ts
+│   ├── demo-data.test.ts         # Demo data validation
+│   ├── options.test.ts           # Configuration schema tests
+│   ├── github-service.test.ts    # GitHub API integration tests
+│   ├── historical-data.test.ts   # Historical data utilities
+│   ├── plugin.test.ts            # Plugin lifecycle tests
+│   ├── update-status.test.ts     # CLI tool tests
+│   ├── useChartExport.test.ts    # Chart export hook tests
+│   ├── MaintenanceItem.test.tsx  # MaintenanceItem component (v0.5.0+)
+│   ├── MaintenanceList.test.tsx  # MaintenanceList component (v0.5.0+)
+│   └── UptimeStatusPage.test.tsx # UptimeStatusPage component (v0.5.0+)
 └── lib/                          # Generated build output (git ignored)
 ```
 
@@ -82,7 +91,8 @@ docusaurus-plugin-stentorosaur/
 The project maintains high test coverage standards enforced in CI:
 
 - **Minimum**: 70% for all metrics (branches, functions, lines, statements)
-- **Current**: ~95% overall coverage
+- **Current**: 88.41% overall coverage (208 tests passing)
+- **v0.5.0**: Added 39 new tests for maintenance and Upptime features
 
 ### Running Tests
 
@@ -137,6 +147,11 @@ Tests are organized into focused suites:
 5. **CLI Script Tests** (`update-status.test.ts`)
    - Tests standalone CLI tool
    - Validates command-line arguments and behavior
+
+6. **Component Tests** (v0.5.0+)
+   - `MaintenanceItem.test.tsx` - Maintenance window display component
+   - `MaintenanceList.test.tsx` - Maintenance list with filtering
+   - `UptimeStatusPage.test.tsx` - Upptime-style status page layout
 
 ### Writing Tests
 
@@ -300,7 +315,28 @@ The plugin follows standard Docusaurus plugin architecture with three critical p
 3. Add Joi validation in `src/options.ts` pluginOptionsSchema
 4. Use in `src/index.ts` plugin lifecycle
 5. Add tests in `__tests__/options.test.ts`
-6. Document in README.md
+6. Document in README.md and CONFIGURATION.md
+
+**Example (v0.5.0 statusView option):**
+
+```typescript
+// 1. Add to PluginOptions interface (types.ts)
+interface PluginOptions {
+  statusView?: 'default' | 'upptime';
+  uptimeConfig?: UptimeStatusPageConfig;
+}
+
+// 2. Add validation (options.ts)
+const pluginOptionsSchema = Joi.object<PluginOptions>({
+  statusView: Joi.string().valid('default', 'upptime').default('default'),
+  uptimeConfig: Joi.object({...}),
+});
+
+// 3. Use in plugin (index.ts)
+const statusPageComponent = options.statusView === 'upptime' 
+  ? '@theme/UptimeStatusPage' 
+  : '@theme/StatusPage';
+```
 
 ### Creating New Theme Components
 
@@ -309,6 +345,22 @@ The plugin follows standard Docusaurus plugin architecture with three critical p
 3. Add to `getSwizzleComponentList()` in `src/index.ts` for user customization
 4. CSS files MUST use `.module.css` extension (CSS Modules)
 5. Remember: Build copies CSS via `copyUntypedFiles.js`
+6. Add comprehensive tests in `__tests__/ComponentName.test.tsx`
+
+**Current Swizzleable Components (v0.5.0):**
+- StatusPage (default layout)
+- UptimeStatusPage (Upptime-style layout) ✨ new
+- StatusBoard
+- StatusItem
+- IncidentHistory
+- ResponseTimeChart
+- UptimeChart
+- StatusHistory
+- PerformanceMetrics
+- SLIChart
+- ChartPanel
+- MaintenanceItem ✨ new
+- MaintenanceList ✨ new
 
 ## Pull Request Process
 
@@ -340,6 +392,86 @@ We follow [Semantic Versioning 2.0.0](https://semver.org/):
 5. GitHub Actions automatically publishes to npm
 
 **Note**: Never run `npm publish` locally - always use the automated workflow.
+
+## Important Implementation Details
+
+### Historical Data Structure
+
+When working with `current.json` or historical data, note the structure changed in v0.4.0+:
+
+```typescript
+// current.json structure (v0.4.0+)
+{
+  "version": "1.0",
+  "generated": 1762259569968,
+  "readings": [
+    {"t": 1761060300000, "svc": "Main Website", "state": "up", "code": 200, "lat": 149},
+    // ... more readings
+  ]
+}
+```
+
+**Important**: Always access data as `data.readings || data` to support both the new object structure and legacy array format.
+
+```typescript
+// Correct way to parse current.json
+const response = await fetch('/status-data/current.json');
+const data = await response.json();
+const readings = data.readings || data; // Handle both formats
+```
+
+### Case-Insensitive Service Matching
+
+When matching service names between configuration and historical data, **always use lowercase keys**:
+
+```typescript
+// Correct: Build service map with lowercase keys
+const serviceMap = new Map<string, Reading[]>();
+for (const reading of readings) {
+  const key = reading.svc.toLowerCase(); // ✅ Lowercase key
+  if (!serviceMap.has(key)) {
+    serviceMap.set(key, []);
+  }
+  serviceMap.get(key)!.push(reading);
+}
+
+// Then lookup with lowercase
+const serviceReadings = serviceMap.get(item.name.toLowerCase());
+```
+
+This prevents mismatches between "Main Website" in config and "main website" in data.
+
+### Maintenance Issue Parsing
+
+Maintenance issues use **YAML frontmatter** (not markdown fields):
+
+```markdown
+---
+start: 2025-11-15T02:00:00Z
+end: 2025-11-15T04:00:00Z
+systems:
+  - API Service
+  - Database
+---
+
+Description goes here after the frontmatter.
+```
+
+The `extractFrontmatter()` utility in `github-service.ts` parses the YAML block. Required fields are `start` and `end` - `systems` is optional and falls back to issue labels.
+
+### Component Props vs Route Data
+
+When creating new components, understand two data flow patterns:
+
+1. **Route-level components** (StatusPage, UptimeStatusPage): Receive data via `route.data` from `contentLoaded()`
+2. **Embedded components** (StatusBoard, MaintenanceList): Accept data via React props
+
+Make components work in both contexts by checking for data sources:
+
+```typescript
+const dataFromRoute = route?.data as StatusData;
+const items = statusItems || dataFromRoute?.items || [];
+```
 
 ## Getting Help
 

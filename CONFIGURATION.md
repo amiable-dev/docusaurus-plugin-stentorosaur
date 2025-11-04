@@ -2,6 +2,31 @@
 
 You now have full control over what's displayed on your status page!
 
+## Quick Reference (v0.5.0)
+
+```typescript
+{
+  // Layout Options
+  statusView?: 'default' | 'upptime';           // Choose status page style
+  
+  // Upptime Configuration
+  uptimeConfig?: {
+    sections: Array<{
+      id: 'active-incidents' | 'live-status' | 'charts' | 
+          'scheduled-maintenance' | 'past-maintenance' | 'past-incidents';
+      enabled: boolean;
+    }>;
+    sectionTitles?: Record<string, string>;      // Override section titles
+  };
+  
+  // Scheduled Maintenance
+  scheduledMaintenance?: {
+    enabled: boolean;                            // Enable maintenance tracking
+    label: string;                               // GitHub label (default: 'maintenance')
+  };
+}
+```
+
 ## New Configuration Options
 
 ### Demo Data Control
@@ -214,6 +239,209 @@ npm start
 ```
 
 Then visit http://localhost:3000/status
+
+---
+
+## Status Page Layout (v0.5.0+)
+
+### Choosing Your Status Page Style
+
+The plugin supports two different status page layouts:
+
+1. **Default Layout** - Original compact design with services and incidents
+2. **Upptime Layout** - Structured sections with scheduled maintenance support
+
+```typescript
+{
+  // Choose your layout style
+  statusView: 'upptime',  // 'default' | 'upptime'
+}
+```
+
+### Default Layout
+
+The classic layout with services board and incident history:
+
+```typescript
+{
+  statusView: 'default',  // or omit (default)
+  showServices: true,
+  showIncidents: true,
+}
+```
+
+**Features:**
+- Compact services status board
+- Incident timeline
+- Optional performance metrics
+
+### Upptime Layout
+
+A structured layout inspired by Upptime with configurable sections:
+
+```typescript
+{
+  statusView: 'upptime',
+  uptimeConfig: {
+    sections: [
+      { id: 'active-incidents', enabled: true },
+      { id: 'live-status', enabled: true },
+      { id: 'charts', enabled: false },  // Disable charts section
+      { id: 'scheduled-maintenance', enabled: true },
+      { id: 'past-maintenance', enabled: true },
+      { id: 'past-incidents', enabled: true },
+    ],
+    sectionTitles: {
+      'scheduled-maintenance': '🔧 Upcoming Maintenance',
+      'past-maintenance': '✅ Completed Maintenance',
+      'active-incidents': '🚨 Current Issues',
+    },
+  },
+}
+```
+
+**Available Section IDs:**
+- `active-incidents` - Currently open incidents
+- `live-status` - Real-time system status board
+- `charts` - Performance charts (placeholder)
+- `scheduled-maintenance` - Upcoming and in-progress maintenance
+- `past-maintenance` - Completed maintenance history
+- `past-incidents` - Resolved incidents
+
+**Features:**
+- Clean sectioned layout
+- Scheduled maintenance tracking
+- Customizable section titles with emoji
+- Granular visibility control
+
+---
+
+## Scheduled Maintenance (v0.5.0+)
+
+### Enabling Maintenance Tracking
+
+```typescript
+{
+  scheduledMaintenance: {
+    enabled: true,              // Enable maintenance tracking
+    label: 'maintenance',       // GitHub label to identify maintenance issues
+  },
+}
+```
+
+### Creating Maintenance Issues
+
+Create a GitHub issue with the `maintenance` label and YAML frontmatter:
+
+**Labels:**
+- `maintenance` (required - or your custom label from config)
+- System labels optional (e.g., `api`, `database`)
+
+**Issue Body Format:**
+
+```markdown
+---
+start: 2025-11-15T02:00:00Z
+end: 2025-11-15T04:00:00Z
+systems:
+  - API Service
+  - Database
+---
+
+Scheduled database upgrade to improve performance.
+
+**Expected Impact:**
+- API will be unavailable during the maintenance window
+- Database queries may be slower than usual
+
+**Rollback Plan:**
+Database snapshots available for immediate restore if needed.
+```
+
+**Required Frontmatter Fields:**
+- `start` - Maintenance start time (ISO 8601 format, UTC recommended)
+- `end` - Maintenance end time (ISO 8601 format)
+- `systems` - Array of affected system names (optional, uses issue labels if omitted)
+
+**Issue Comments:**
+Add comments to provide updates during maintenance. They will be displayed in the maintenance timeline.
+
+### Maintenance Statuses
+
+Status is automatically determined based on timing:
+
+- `upcoming` - Start time is in the future (shows in "Scheduled Maintenance")
+- `in-progress` - Current time between start and end (shows in "Scheduled Maintenance" with indicator)
+- `completed` - End time has passed OR issue is closed (shows in "Past Maintenance")
+
+### Maintenance UI Components
+
+The plugin provides two new components for displaying maintenance:
+
+**MaintenanceList** - Displays a list of maintenance items:
+```tsx
+import MaintenanceList from '@theme/Maintenance/MaintenanceList';
+
+<MaintenanceList
+  maintenance={maintenanceItems}
+  filterStatus="upcoming"  // 'upcoming' | 'in-progress' | 'completed' | 'all'
+  showComments={true}
+  showAffectedSystems={true}
+  emptyMessage="No maintenance scheduled"
+/>
+```
+
+**MaintenanceItem** - Displays a single maintenance window:
+```tsx
+import MaintenanceItem from '@theme/Maintenance/MaintenanceItem';
+
+<MaintenanceItem
+  maintenance={maintenanceData}
+  showComments={true}
+  showAffectedSystems={true}
+/>
+```
+
+### Example: Full Upptime Setup with Maintenance
+
+```typescript
+// docusaurus.config.ts
+plugins: [
+  [
+    'docusaurus-plugin-stentorosaur',
+    {
+      owner: 'your-org',
+      repo: 'status-tracking',
+      token: process.env.GITHUB_TOKEN,
+      systemLabels: ['api', 'website', 'database'],
+      
+      // Upptime-style layout
+      statusView: 'upptime',
+      
+      // Configure sections
+      uptimeConfig: {
+        sections: [
+          { id: 'active-incidents', enabled: true },
+          { id: 'live-status', enabled: true },
+          { id: 'scheduled-maintenance', enabled: true },
+          { id: 'past-maintenance', enabled: true },
+          { id: 'past-incidents', enabled: true },
+        ],
+        sectionTitles: {
+          'scheduled-maintenance': '🔧 Upcoming Maintenance',
+          'past-maintenance': '✅ Maintenance History',
+        },
+      },
+      
+      // Enable maintenance tracking
+      scheduledMaintenance: {
+        enabled: true,
+        label: 'maintenance',
+      },
+    },
+  ],
+]
+```
 
 ---
 

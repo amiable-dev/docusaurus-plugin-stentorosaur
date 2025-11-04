@@ -25,7 +25,7 @@ Create a Personal Access Token at <https://github.com/settings/tokens> with `rep
 > - Without a token, the plugin shows **demo data** (useful for testing)
 > - See the [README](./README.md#github-token-setup) for detailed token setup
 
-## Step 3: Configure Docusaurus
+## Step 2: Configure Docusaurus
 
 Add to your `docusaurus.config.js`:
 
@@ -39,6 +39,15 @@ module.exports = {
         repo: 'your-repo',
         systemLabels: ['api', 'website', 'database'],
         token: process.env.GITHUB_TOKEN,
+        
+        // Optional: Choose status page layout (v0.5.0+)
+        statusView: 'upptime',  // 'default' | 'upptime'
+        
+        // Optional: Enable scheduled maintenance tracking (v0.5.0+)
+        scheduledMaintenance: {
+          enabled: true,
+          label: 'maintenance',
+        },
       },
     ],
   ],
@@ -156,6 +165,54 @@ npm run start
 Navigate to: `http://localhost:3000/status`
 
 ## Next Steps
+
+### Choose Your Status Page Layout (v0.5.0+)
+
+Pick the layout that works best for you:
+
+**Default Layout** - Compact design with services and incidents:
+```javascript
+{
+  statusView: 'default',  // or omit (this is the default)
+}
+```
+
+**Upptime Layout** - Structured sections with maintenance support:
+```javascript
+{
+  statusView: 'upptime',
+  uptimeConfig: {
+    sections: [
+      { id: 'active-incidents', enabled: true },
+      { id: 'live-status', enabled: true },
+      { id: 'scheduled-maintenance', enabled: true },
+      { id: 'past-maintenance', enabled: true },
+      { id: 'past-incidents', enabled: true },
+    ],
+  },
+  scheduledMaintenance: {
+    enabled: true,
+    label: 'maintenance',
+  },
+}
+```
+
+### Track Scheduled Maintenance (v0.5.0+)
+
+Create maintenance issues with special formatting:
+
+1. Add labels: `maintenance` + system labels (e.g., `api`)
+2. Include in the issue body:
+
+```markdown
+**Scheduled Start:** 2025-11-15T02:00:00Z
+**Scheduled End:** 2025-11-15T04:00:00Z
+**Status:** upcoming
+**Affected Systems:** api, database
+
+## Description
+Database upgrade to improve performance.
+```
 
 ### Customize Your Status Page
 

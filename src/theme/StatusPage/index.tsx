@@ -47,6 +47,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
       try {
         const response = await fetch('/status-data/current.json');
         if (response.ok) {
+          const data = await response.json();
           const readings: Array<{
             t: number;
             svc: string;
@@ -54,15 +55,16 @@ export default function StatusPage({statusData}: Props): JSX.Element {
             code: number;
             lat: number;
             err?: string;
-          }> = await response.json();
+          }> = data.readings || data;
           
           // Group readings by service
           const serviceMap = new Map<string, typeof readings>();
           for (const reading of readings) {
-            if (!serviceMap.has(reading.svc)) {
-              serviceMap.set(reading.svc, []);
+            const key = reading.svc.toLowerCase();
+            if (!serviceMap.has(key)) {
+              serviceMap.set(key, []);
             }
-            serviceMap.get(reading.svc)!.push(reading);
+            serviceMap.get(key)!.push(reading);
           }
           
           // Convert to SystemStatusFile format

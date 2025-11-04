@@ -53,6 +53,27 @@ export interface StatusIncident {
   body?: string;
   labels: string[];
   affectedSystems: string[];
+  commentCount?: number;
+  resolutionTimeMinutes?: number;
+}
+
+export interface MaintenanceComment {
+  author: string;
+  timestamp: string;
+  body: string;
+}
+
+export interface ScheduledMaintenance {
+  id: number;
+  title: string;
+  start: string;
+  end: string;
+  status: 'upcoming' | 'in-progress' | 'completed';
+  affectedSystems: string[];
+  description: string;
+  comments: MaintenanceComment[];
+  url: string;
+  createdAt: string;
 }
 
 export interface PluginOptions {
@@ -142,14 +163,51 @@ export interface PluginOptions {
    * Default SLO target for systems not specified in systemSLOs
    */
   defaultSLO?: number;
+
+  /**
+   * Scheduled maintenance configuration
+   */
+  scheduledMaintenance?: {
+    enabled?: boolean;
+    displayDuration?: number; // days to show in past maintenance
+    labels?: string[]; // GitHub labels to identify maintenance
+    showComments?: boolean;
+    showAffectedSystems?: boolean;
+    timezone?: string; // 'UTC' or 'local' or specific timezone
+  };
+
+  /**
+   * Status page view style: 'default' or 'upptime'
+   * - 'default': Original status board layout
+   * - 'upptime': Upptime-style structured view with configurable sections
+   */
+  statusView?: 'default' | 'upptime';
+
+  /**
+   * Configuration for Upptime-style status page (only used when statusView is 'upptime')
+   */
+  uptimeConfig?: UptimeStatusPageConfig;
 }
 
 export interface StatusData {
   items: StatusItem[];
   incidents: StatusIncident[];
+  maintenance: ScheduledMaintenance[];
   lastUpdated: string;
   showServices?: boolean;
   showIncidents?: boolean;
   showPerformanceMetrics?: boolean;
   useDemoData?: boolean;
+  systems?: StatusItem[]; // Alias for items for compatibility
+  overallStatus?: 'operational' | 'degraded' | 'outage' | 'maintenance';
+}
+
+export interface UptimeStatusSection {
+  id: 'active-incidents' | 'live-status' | 'charts' | 'scheduled-maintenance' | 'past-maintenance' | 'past-incidents';
+  enabled: boolean;
+}
+
+export interface UptimeStatusPageConfig {
+  sections: UptimeStatusSection[];
+  sectionTitles?: Record<string, string>;
 }

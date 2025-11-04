@@ -9,7 +9,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import {normalizeUrl} from '@docusaurus/utils';
 import type {LoadContext, Plugin} from '@docusaurus/types';
-import type{PluginOptions, StatusData, StatusItem, SystemStatusFile} from './types';
+import type{PluginOptions, StatusData, StatusItem, SystemStatusFile, StatusIncident, ScheduledMaintenance} from './types';
 import {GitHubStatusService} from './github-service';
 import {getDemoStatusData, getDemoSystemFiles, getDemoCurrentJson} from './demo-data';
 
@@ -136,8 +136,9 @@ export default async function pluginStatus(
     },
 
     async loadContent() {
-      let items;
-      let incidents;
+      let items: StatusItem[] = [];
+      let incidents: StatusIncident[] = [];
+      let maintenance: ScheduledMaintenance[] = [];
       let shouldUseDemoData = useDemoData ?? !token;
 
       // If useDemoData is explicitly true, skip committed data and use demo data
@@ -146,10 +147,12 @@ export default async function pluginStatus(
         const demoData = getDemoStatusData();
         items = showServices ? demoData.items : [];
         incidents = showIncidents ? demoData.incidents : [];
+        maintenance = demoData.maintenance || [];
         
         const statusData: StatusData = {
           items,
           incidents: incidents.slice(0, 20), // Limit to most recent 20 incidents
+          maintenance,
           lastUpdated: new Date().toISOString(),
           showServices,
           showIncidents,
@@ -224,6 +227,7 @@ export default async function pluginStatus(
           const demoData = getDemoStatusData();
           items = showServices ? demoData.items : [];
           incidents = showIncidents ? demoData.incidents : [];
+          maintenance = demoData.maintenance || [];
         } else {
           try {
             console.log('[docusaurus-plugin-stentorosaur] Fetching fresh status data from GitHub API');
@@ -281,6 +285,7 @@ export default async function pluginStatus(
               const demoData = getDemoStatusData();
               items = showServices ? demoData.items : [];
               incidents = showIncidents ? demoData.incidents : [];
+              maintenance = demoData.maintenance || [];
             }
           } catch (error) {
             console.warn(
@@ -290,6 +295,7 @@ export default async function pluginStatus(
             const demoData = getDemoStatusData();
             items = showServices ? demoData.items : [];
             incidents = showIncidents ? demoData.incidents : [];
+            maintenance = demoData.maintenance || [];
           }
         }
       }
@@ -297,6 +303,7 @@ export default async function pluginStatus(
       const statusData: StatusData = {
         items,
         incidents: incidents.slice(0, 20), // Limit to most recent 20 incidents
+        maintenance,
         lastUpdated: new Date().toISOString(),
         showServices,
         showIncidents,
@@ -323,10 +330,16 @@ export default async function pluginStatus(
         JSON.stringify(content, null, 2)
       );
 
+      // Determine which status page component to use
+      const statusView = options.statusView || 'default';
+      const statusPageComponent = statusView === 'upptime' 
+        ? '@theme/UptimeStatusPage' 
+        : '@theme/StatusPage';
+
       // Add status page route
       addRoute({
         path: normalizeUrl([baseUrl, 'status']),
-        component: '@theme/StatusPage',
+        component: statusPageComponent,
         exact: true,
         modules: {
           statusData: statusDataId,

@@ -7,6 +7,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Upptime-Style Structured Status View** (#28 - complete)
+  - Added `statusView` configuration option ('default' | 'upptime')
+  - Created `UptimeStatusPage` component with 6 configurable sections
+  - Sections: Active Incidents, Live Status, Charts (placeholder), Scheduled Maintenance, Past Maintenance, Past Incidents
+  - Support for custom section titles via `sectionTitles` configuration
+  - Support for enabling/disabling individual sections
+  - Full Layout integration with proper Docusaurus theme support
+  - Responsive design with mobile-friendly layouts
+  - Configuration via `UptimeStatusPageConfig` interface
+  - Conditional routing in plugin based on `statusView` setting
+  - Complete test coverage with 11 test cases
+  - Clickable system cards with interactive performance charts
+  - Case-insensitive service name matching for historical data
+
+- **Scheduled Maintenance UI Components** (#30 - complete)
+  - **MaintenanceItem Component:**
+    - Display individual maintenance windows with status badges
+    - Show scheduled start/end times with timezone support
+    - Expandable comments section for maintenance updates
+    - Affected systems display with color-coded tags
+    - Comprehensive styling with responsive design
+    - 13 test cases covering all functionality
+  - **MaintenanceList Component:**
+    - Container for displaying multiple maintenance events
+    - Filtering by status (upcoming, in-progress, completed, all)
+    - Sorting by scheduled start time
+    - Configurable visibility of comments and affected systems
+    - Empty state messages
+    - 15 test cases with full coverage
+  - **GitHub Service Integration:**
+    - `fetchMaintenanceIssues()` - Fetch maintenance-labeled issues from GitHub
+    - `convertIssueToMaintenance()` - Parse YAML frontmatter and comments
+    - `fetchScheduledMaintenance()` - Complete maintenance data retrieval
+    - Support for maintenance status labels (upcoming, in-progress, completed)
+  - **Demo Data:**
+    - 3 example maintenance scenarios (upcoming, in-progress, completed)
+    - Realistic scheduling and affected systems
+  - **Type Definitions:**
+    - `ScheduledMaintenance` interface with maintenance window support
+    - Status determination (upcoming, in-progress, completed)
+    - Affected systems tracking
+  - **Configuration:**
+    - `scheduledMaintenance.enabled` - Toggle maintenance tracking
+    - `scheduledMaintenance.label` - Customize GitHub label (default: 'maintenance')
+
+- **Resolution Time and Comment Count Display** (#29)
+  - Added `resolutionTimeMinutes` and `commentCount` fields to `StatusIncident` interface
+  - Created time utility functions for calculating and formatting incident resolution times
+  - IncidentHistory component now displays resolution info for closed incidents
+  - Format: "Resolved in X [time] with Y posts"
+  - Supports intelligent duration formatting (minutes, hours, days)
+
+### Changed
+
+- **Plugin Configuration:**
+  - Added `statusView` option to choose between 'default' and 'upptime' layouts
+  - Added `uptimeConfig` for configuring Upptime-style sections and titles
+  - Added `scheduledMaintenance` configuration for maintenance tracking
+  - Updated Joi validation schema to support new options
+  
+- **Plugin Routing:**
+  - Conditional component selection based on `statusView` setting
+  - Routes to `@theme/UptimeStatusPage` when `statusView: 'upptime'`
+  - Routes to `@theme/StatusPage` when `statusView: 'default'`
+  
+- **Type System:**
+  - Extended `StatusData` with `systems` alias and `overallStatus` field
+  - Added `UptimeStatusSection` and `UptimeStatusPageConfig` type definitions
+  - Enhanced `GitHubIssue` interface to include comments field
+
+### Fixed
+
+- **UptimeStatusPage:**
+  - Fixed duplicate section headings (IncidentHistory now accepts title prop)
+  - Fixed maintenance data not displaying (plugin now includes demo maintenance data)
+  - Fixed charts not displaying on system card click (case-insensitive service name matching)
+  - Fixed current.json data parsing to support `{readings: [...]}` structure
+  - Removed redundant "All Systems Operational" status banner
+  
+- **StatusPage:**
+  - Fixed current.json data parsing to support `{readings: [...]}` structure
+  - Fixed case-insensitive service name matching for historical data
+  - Added `MaintenanceListProps` and `MaintenanceItemProps` interfaces
+
+- **Test Coverage:**
+  - Increased from 94.18% to 88.41% overall coverage
+  - Added 39 new test cases across 3 new test files
+  - All 208 tests passing
+  - Comprehensive coverage of new components and features
+
+- **Documentation:**
+  - Updated README.md with statusView and maintenance configuration examples
+  - Updated CONFIGURATION.md with detailed Upptime layout documentation
+  - Added maintenance issue creation guide
+  - Added component API documentation for new components
+
 ## [0.4.4] - 2025-11-04
 
 ### Fixed

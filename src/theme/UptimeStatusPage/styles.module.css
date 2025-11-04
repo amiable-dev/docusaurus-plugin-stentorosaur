@@ -1,0 +1,191 @@
+.statusPage {
+  padding: 2rem 0;
+}
+
+.header {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.header h1 {
+  margin-bottom: 0.5rem;
+}
+
+.description {
+  font-size: 1.125rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.overallStatus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+}
+
+.statusIndicator {
+  font-size: 1.5rem;
+}
+
+.statusOperational {
+  background: var(--ifm-color-success-contrast-background);
+  color: var(--ifm-color-success-dark);
+  border: 2px solid var(--ifm-color-success);
+}
+
+.statusDegraded {
+  background: var(--ifm-color-warning-contrast-background);
+  color: var(--ifm-color-warning-dark);
+  border: 2px solid var(--ifm-color-warning);
+}
+
+.statusOutage {
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-dark);
+  border: 2px solid var(--ifm-color-danger);
+}
+
+.statusMaintenance {
+  background: var(--ifm-color-info-contrast-background);
+  color: var(--ifm-color-info-dark);
+  border: 2px solid var(--ifm-color-info);
+}
+
+.uptimeStatusPage {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section {
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: var(--ifm-heading-color);
+}
+
+.liveStatus {
+  margin-top: 1rem;
+}
+
+.statusBanner {
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.statusBanner.operational {
+  background: var(--ifm-color-success-contrast-background);
+  color: var(--ifm-color-success-dark);
+  border: 1px solid var(--ifm-color-success);
+}
+
+.statusBanner.degraded {
+  background: var(--ifm-color-warning-contrast-background);
+  color: var(--ifm-color-warning-dark);
+  border: 1px solid var(--ifm-color-warning);
+}
+
+.statusBanner.outage {
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-dark);
+  border: 1px solid var(--ifm-color-danger);
+}
+
+.statusBanner.maintenance {
+  background: var(--ifm-color-info-contrast-background);
+  color: var(--ifm-color-info-dark);
+  border: 1px solid var(--ifm-color-info);
+}
+
+.systemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.systemItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 6px;
+}
+
+.systemName {
+  font-weight: 500;
+  color: var(--ifm-font-color-base);
+}
+
+.systemStatus {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.systemStatus.up {
+  background: var(--ifm-color-success-contrast-background);
+  color: var(--ifm-color-success-dark);
+}
+
+.systemStatus.down {
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-dark);
+}
+
+.systemStatus.degraded {
+  background: var(--ifm-color-warning-contrast-background);
+  color: var(--ifm-color-warning-dark);
+}
+
+.systemStatus.maintenance {
+  background: var(--ifm-color-info-contrast-background);
+  color: var(--ifm-color-info-dark);
+}
+
+.chartsPlaceholder {
+  padding: 2rem;
+  text-align: center;
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 8px;
+  color: var(--ifm-color-emphasis-600);
+}
+
+@media (max-width: 768px) {
+  .sectionTitle {
+    font-size: 1.25rem;
+  }
+
+  .section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .systemItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}

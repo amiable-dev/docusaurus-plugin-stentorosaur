@@ -43,6 +43,24 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
   showPerformanceMetrics: Joi.boolean().default(DEFAULT_OPTIONS.showPerformanceMetrics),
   defaultSLO: Joi.number().min(0).max(100).default(DEFAULT_OPTIONS.defaultSLO),
   systemSLOs: Joi.object().pattern(Joi.string(), Joi.number().min(0).max(100)).default(DEFAULT_OPTIONS.systemSLOs),
+  statusView: Joi.string().valid('default', 'upptime').default('default'),
+  uptimeConfig: Joi.object({
+    sections: Joi.array().items(
+      Joi.object({
+        id: Joi.string().valid('active-incidents', 'live-status', 'charts', 'scheduled-maintenance', 'past-maintenance', 'past-incidents').required(),
+        enabled: Joi.boolean().required(),
+      })
+    ),
+    sectionTitles: Joi.object().pattern(Joi.string(), Joi.string()),
+  }),
+  scheduledMaintenance: Joi.object({
+    enabled: Joi.boolean(),
+    displayDuration: Joi.number().min(1),
+    labels: Joi.array().items(Joi.string()),
+    showComments: Joi.boolean(),
+    showAffectedSystems: Joi.boolean(),
+    timezone: Joi.string(),
+  }),
 });
 
 export function validateOptions({

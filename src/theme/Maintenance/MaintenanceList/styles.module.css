@@ -1,0 +1,12 @@
+.maintenanceList {
+  margin: 1rem 0;
+}
+
+.emptyState {
+  padding: 2rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-600);
+  font-style: italic;
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 8px;
+}

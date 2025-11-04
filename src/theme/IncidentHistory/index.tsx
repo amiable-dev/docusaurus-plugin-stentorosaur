@@ -8,12 +8,14 @@
 import React from 'react';
 import {formatDistanceToNow} from 'date-fns';
 import type {StatusIncident} from '../../types';
+import {formatResolutionInfo} from '../../time-utils';
 import styles from './styles.module.css';
 
 export interface Props {
   incidents: StatusIncident[];
   maxItems?: number;
   useDemoData?: boolean;
+  title?: string;
 }
 
 const severityConfig = {
@@ -43,13 +45,17 @@ export default function IncidentHistory({
   incidents,
   maxItems = 10,
   useDemoData = false,
+  title,
 }: Props): JSX.Element {
   const displayIncidents = incidents.slice(0, maxItems);
+
+  const defaultTitle = useDemoData ? 'Demo Data: Recent Incidents' : 'Recent Incidents';
+  const displayTitle = title || defaultTitle;
 
   if (displayIncidents.length === 0) {
     return (
       <div className={styles.incidentHistory}>
-        <h2>{useDemoData ? 'Demo Data: Incident History' : 'Incident History'}</h2>
+        <h2>{displayTitle}</h2>
         <div className={styles.emptyState}>
           <p>No incidents reported. All systems are running smoothly! 🎉</p>
         </div>
@@ -59,7 +65,7 @@ export default function IncidentHistory({
 
   return (
     <div className={styles.incidentHistory}>
-      <h2>{useDemoData ? 'Demo Data: Recent Incidents' : 'Recent Incidents'}</h2>
+      <h2>{displayTitle}</h2>
       <div className={styles.timeline}>
         {displayIncidents.map((incident) => {
           const config = severityConfig[incident.severity];
@@ -125,6 +131,21 @@ export default function IncidentHistory({
                         addSuffix: true,
                       })}
                     </span>
+                  )}
+                  {incident.status === 'closed' && (
+                    <>
+                      {formatResolutionInfo(
+                        incident.resolutionTimeMinutes,
+                        incident.commentCount
+                      ) && (
+                        <span className={styles.resolutionInfo}>
+                          • {formatResolutionInfo(
+                            incident.resolutionTimeMinutes,
+                            incident.commentCount
+                          )}
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
 

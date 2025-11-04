@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type {StatusItem, StatusIncident, SystemStatusFile, StatusCheckHistory} from './types';
+import type {StatusItem, StatusIncident, SystemStatusFile, StatusCheckHistory, ScheduledMaintenance} from './types';
 import {generateDemoHistory} from './historical-data';
 
 // Cache for demo history to ensure consistency between status items and system files
@@ -25,12 +25,16 @@ function getCachedDemoHistory(systemName: string, days: number): StatusCheckHist
   return demoHistoryCache.get(cacheKey)!;
 }
 
-export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusIncident[]} {
+export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusIncident[]; maintenance: ScheduledMaintenance[]} {
   const now = new Date().toISOString();
   const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
   const twoHoursAgo = new Date(Date.now() - 7200000).toISOString();
   const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
   const twoDaysAgo = new Date(Date.now() - 172800000).toISOString();
+  const threeDaysFromNow = new Date(Date.now() + 259200000).toISOString();
+  const fourDaysFromNow = new Date(Date.now() + 345600000).toISOString();
+  const fiveDaysAgo = new Date(Date.now() - 432000000).toISOString();
+  const fourDaysAgo = new Date(Date.now() - 345600000).toISOString();
 
   const items: StatusItem[] = [
     {
@@ -100,6 +104,8 @@ export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusInci
       url: 'https://github.com/example/repo/issues/2',
       body: 'Database upgrade completed successfully. All systems operational.',
       labels: ['status', 'maintenance', 'resolved'],
+      commentCount: 5,
+      resolutionTimeMinutes: 47,
     },
     {
       id: 3,
@@ -113,10 +119,78 @@ export function getDemoStatusData(): {items: StatusItem[]; incidents: StatusInci
       url: 'https://github.com/example/repo/issues/3',
       body: 'Cache purged. Content now up to date.',
       labels: ['status', 'cdn', 'resolved'],
+      commentCount: 2,
+      resolutionTimeMinutes: 15,
     },
   ];
 
-  return {items, incidents};
+  const maintenance: ScheduledMaintenance[] = [
+    {
+      id: 101,
+      title: 'Database Migration and Index Optimization',
+      start: threeDaysFromNow.split('T')[0] + 'T02:00:00Z',
+      end: threeDaysFromNow.split('T')[0] + 'T04:00:00Z',
+      status: 'upcoming',
+      affectedSystems: ['API Service', 'Main Website'],
+      description: 'We will be performing a database migration to improve query performance and optimize indexes. The API and main website will be in read-only mode during this window.',
+      comments: [
+        {
+          author: 'devops-bot',
+          timestamp: new Date(Date.now() - 7200000).toISOString(),
+          body: 'Maintenance window confirmed. All stakeholders notified.',
+        },
+        {
+          author: 'sre-team',
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
+          body: 'Rollback plan documented and tested in staging environment.',
+        },
+      ],
+      url: 'https://github.com/example/repo/issues/101',
+      createdAt: new Date(Date.now() - 172800000).toISOString(),
+    },
+    {
+      id: 102,
+      title: 'SSL Certificate Renewal',
+      start: fourDaysFromNow.split('T')[0] + 'T22:00:00Z',
+      end: fourDaysFromNow.split('T')[0] + 'T22:30:00Z',
+      status: 'upcoming',
+      affectedSystems: ['CDN', 'Main Website', 'API Service'],
+      description: 'Annual SSL certificate renewal. Brief interruption expected during certificate rotation.',
+      comments: [],
+      url: 'https://github.com/example/repo/issues/102',
+      createdAt: new Date(Date.now() - 604800000).toISOString(),
+    },
+    {
+      id: 103,
+      title: 'Build Server Upgrade',
+      start: fiveDaysAgo.split('T')[0] + 'T01:00:00Z',
+      end: fourDaysAgo.split('T')[0] + 'T03:00:00Z',
+      status: 'completed',
+      affectedSystems: ['Build & CI/CD'],
+      description: 'Upgrade build servers to latest LTS version with performance improvements.',
+      comments: [
+        {
+          author: 'ci-admin',
+          timestamp: fiveDaysAgo,
+          body: 'Starting maintenance as scheduled.',
+        },
+        {
+          author: 'ci-admin',
+          timestamp: new Date(Date.now() - 400000000).toISOString(),
+          body: 'All build agents upgraded successfully. Running smoke tests.',
+        },
+        {
+          author: 'ci-admin',
+          timestamp: fourDaysAgo,
+          body: 'Maintenance completed. Build times improved by 25% on average.',
+        },
+      ],
+      url: 'https://github.com/example/repo/issues/103',
+      createdAt: new Date(Date.now() - 864000000).toISOString(),
+    },
+  ];
+
+  return {items, incidents, maintenance};
 }
 
 /**
