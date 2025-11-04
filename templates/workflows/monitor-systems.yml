@@ -39,7 +39,7 @@ jobs:
         id: check
         continue-on-error: true
         run: |
-          node scripts/monitor.js \
+          npx stentorosaur-monitor \
             --system "${{ matrix.system.name }}" \
             --url "${{ matrix.system.url }}" \
             --output-dir build/status-data

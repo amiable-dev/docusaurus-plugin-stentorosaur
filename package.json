@@ -5,7 +5,8 @@
   "main": "lib/index.js",
   "types": "src/plugin-status.d.ts",
   "bin": {
-    "stentorosaur-update-status": "scripts/update-status.cjs"
+    "stentorosaur-update-status": "scripts/update-status.cjs",
+    "stentorosaur-monitor": "scripts/monitor.js"
   },
   "keywords": [
     "docusaurus",

@@ -93,7 +93,7 @@ export default async function pluginStatus(
   context: LoadContext,
   options: PluginOptions
 ): Promise<Plugin<StatusData>> {
-  const {siteConfig, generatedFilesDir} = context;
+  const {siteConfig, generatedFilesDir, siteDir} = context;
   
   // Use site config values as defaults
   const owner = options.owner || siteConfig.organizationName;
@@ -371,19 +371,42 @@ export default async function pluginStatus(
         );
       }
       
+      // Copy current.json and archives if they exist (from monitoring workflow)
+      const sourceDataDir = path.join(siteDir, 'build', dataPath);
+      const sourceCurrentJson = path.join(sourceDataDir, 'current.json');
+      const sourceArchives = path.join(sourceDataDir, 'archives');
+      
+      if (await fs.pathExists(sourceCurrentJson)) {
+        console.log('[docusaurus-plugin-stentorosaur] Copying current.json from monitoring data');
+        await fs.copy(
+          sourceCurrentJson,
+          path.join(buildStatusDir, 'current.json')
+        );
+      }
+      
+      if (await fs.pathExists(sourceArchives)) {
+        console.log('[docusaurus-plugin-stentorosaur] Copying archives from monitoring data');
+        await fs.copy(
+          sourceArchives,
+          path.join(buildStatusDir, 'archives')
+        );
+      }
+      
       // If using demo data, write demo system files with historical data for charts
       let shouldUseDemoData = useDemoData ?? !token;
       if (shouldUseDemoData) {
         console.log('[docusaurus-plugin-stentorosaur] Writing demo system files with historical data');
         const demoSystemFiles = getDemoSystemFiles();
         
-        // Write current.json (new format)
-        const currentJsonData = getDemoCurrentJson();
-        await fs.writeJson(
-          path.join(buildStatusDir, 'current.json'),
-          currentJsonData,
-          {spaces: 2}
-        );
+        // Write current.json (new format) - only if not already copied from monitoring
+        if (!(await fs.pathExists(path.join(buildStatusDir, 'current.json')))) {
+          const currentJsonData = getDemoCurrentJson();
+          await fs.writeJson(
+            path.join(buildStatusDir, 'current.json'),
+            currentJsonData,
+            {spaces: 2}
+          );
+        }
         
         // Write legacy systems/*.json files for backward compatibility
         for (const systemFile of demoSystemFiles) {
