@@ -369,12 +369,16 @@ Then update your workflow:
 
 #### 3. Setup Issue Templates (Optional)
 
-Copy the issue template for manual status reporting:
+Copy the issue templates for manual status reporting and maintenance scheduling:
 
 ```bash
 mkdir -p .github/ISSUE_TEMPLATE
 cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMPLATE/*.yml .github/ISSUE_TEMPLATE/
 ```
+
+**Available templates:**
+- `status-issue.yml` - Report system or process status issues
+- `scheduled-maintenance.yml` - Schedule maintenance windows (v0.5.0+)
 
 ### Creating Maintenance Tickets (v0.5.0+)
 
