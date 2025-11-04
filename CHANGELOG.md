@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.8] - 2025-11-04
+
+### Fixed
+
+- **Monitor Systems Rebase Conflict Handling** (#32)
+  - Added `git rebase --abort` to cleanup failed rebases before retrying
+  - Fixes "Pulling is not possible because you have unmerged files" error
+  - Ensures clean state for each retry attempt when concurrent jobs modify same files
+  - Properly handles merge conflicts during parallel monitoring pushes
+
 ## [0.4.7] - 2025-11-04
 
 ### Fixed
@@ -935,7 +945,8 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.8...HEAD
+[0.4.8]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.4...v0.4.6
 [0.4.4]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.0...v0.4.4

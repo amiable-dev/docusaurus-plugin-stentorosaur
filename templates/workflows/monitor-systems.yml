@@ -91,6 +91,14 @@ jobs:
                   break;
                 } catch (error) {
                   retries--;
+                  
+                  // Abort failed rebase to clean up for next retry
+                  try {
+                    execSync('git rebase --abort');
+                  } catch (abortError) {
+                    // Rebase might not be in progress, ignore error
+                  }
+                  
                   if (retries === 0) {
                     console.error('Failed to push after 3 attempts');
                     throw error;
