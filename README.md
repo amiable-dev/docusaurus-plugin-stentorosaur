@@ -671,7 +671,7 @@ npx stentorosaur-update-status
 **Options:**
 
 - `--help` - Show usage information and examples
-- `--output-dir <path>` - Specify custom output directory (default: `build/status-data`)
+- `--output-dir <path>` - Specify custom output directory (default: `status-data`)
 - `--verbose` - Enable detailed logging for debugging
 - `--commit` - Auto-commit changes with emoji messages (🟩🟨🟥📊)
 
@@ -714,7 +714,7 @@ As of v0.4.0, the plugin uses an **append-only monitoring architecture** that el
 
 **Data Structure:**
 ```
-build/status-data/
+status-data/                               # Committed to Git
 ├── current.json                           # Hot file (rolling 14-day window)
 └── archives/
     └── 2025/11/

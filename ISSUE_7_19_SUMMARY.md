@@ -65,7 +65,7 @@ Successfully implemented the new monitoring architecture with append-only data s
 
 ### Archive Structure
 ```
-build/status-data/
+status-data/                               # Committed to Git
 ├── current.json                           # Hot file (14 days)
 └── archives/
     └── 2025/11/
@@ -167,7 +167,7 @@ node scripts/monitor.js --config .monitorrc.json
   
 - name: Commit changes
   run: |
-    git add build/status-data/
+    git add status-data/
     git commit -m "${{ steps.check.outputs.commit_message }}"
     git push
 ```
@@ -215,12 +215,12 @@ node scripts/monitor.js --config .monitorrc.json
 node scripts/monitor.js --system test --url https://example.com --verbose
 
 # Check output files
-cat build/status-data/archives/2025/11/history-2025-11-03.jsonl
-cat build/status-data/current.json | jq '.[-5:]'  # Last 5 readings
+cat status-data/archives/2025/11/history-2025-11-03.jsonl
+cat status-data/current.json | jq '.[-5:]'  # Last 5 readings
 
 # Test compression
-gzip build/status-data/archives/2025/11/history-2025-11-02.jsonl
-ls -lh build/status-data/archives/2025/11/
+gzip status-data/archives/2025/11/history-2025-11-02.jsonl
+ls -lh status-data/archives/2025/11/
 ```
 
 ### Integration Testing

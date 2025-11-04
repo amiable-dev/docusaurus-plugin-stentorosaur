@@ -1,5 +1,18 @@
 name: Calculate Metrics
 
+# ⚠️  DEPRECATED WORKFLOW ⚠️
+# This workflow is for LEGACY data format only (systems/*.json files)
+# 
+# If you're using the new format with current.json and JSONL archives,
+# you DO NOT need this workflow - metrics are already in current.json!
+# 
+# Only enable this if you:
+# 1. Have existing systems/*.json files from a legacy setup
+# 2. Are NOT using the stentorosaur-monitor script
+# 3. Want to calculate metrics from git commit history
+# 
+# For new installations, this workflow can be safely DELETED.
+
 on:
   schedule:
     # Runs every hour to calculate response time averages

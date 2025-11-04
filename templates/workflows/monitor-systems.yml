@@ -17,14 +17,30 @@ jobs:
     strategy:
       matrix:
         # Define systems/endpoints to monitor
-        # This should be customized based on your needs
+        # IMPORTANT: Replace these example URLs with your actual endpoints!
+        # Each system must have:
+        #   - name: unique identifier (used in labels, file names, commit messages)
+        #   - url: actual URL to check (must be accessible from GitHub Actions runners)
+        # 
+        # Common patterns:
+        #   - Health check endpoints: https://api.example.com/health, /healthz, /status
+        #   - Main application URLs: https://example.com (checks for 200/301/302 response)
+        #   - Specific services: https://api.example.com, https://db.example.com/ping
+        # 
+        # Invalid examples (will always fail):
+        #   ❌ https://null.example.com - not a real domain
+        #   ❌ http://localhost:3000 - not accessible from GitHub runners
+        #   ❌ https://private-network.internal - not publicly accessible
         system: 
           - name: 'api'
             url: 'https://api.example.com/health'
           - name: 'website'
             url: 'https://example.com'
-          - name: 'database'
-            url: 'https://db.example.com/status'
+          # Uncomment and customize additional systems as needed:
+          # - name: 'database'
+          #   url: 'https://db.example.com/status'
+          # - name: 'cdn'
+          #   url: 'https://cdn.example.com/health'
     
     steps:
       - name: Checkout repository
@@ -42,7 +58,7 @@ jobs:
           npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-monitor \
             --system "${{ matrix.system.name }}" \
             --url "${{ matrix.system.url }}" \
-            --output-dir build/status-data
+            --output-dir status-data
           
       - name: Commit response time data
         uses: actions/github-script@v7
@@ -55,14 +71,16 @@ jobs:
             execSync('git config user.email "github-actions[bot]@users.noreply.github.com"');
             
             // Check if there are changes
-            const status = execSync('git status --porcelain build/status-data/').toString();
+            const status = execSync('git status --porcelain status-data/').toString();
             
             if (status) {
               const commitMessage = '${{ steps.check.outputs.commit_message }}' || 'Update status data [skip ci]';
               
-              execSync('git add build/status-data/');
+              execSync('git add status-data/');
               execSync(`git commit -m "${commitMessage}"`);
               execSync('git push origin HEAD:${{ github.ref_name }}');
+            } else {
+              console.log('No changes to commit');
             }
           
       - name: Create issue for downtime

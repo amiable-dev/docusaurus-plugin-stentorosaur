@@ -116,7 +116,7 @@ npx stentorosaur-update-status
 **CLI Options:**
 
 - `--help` - Show usage information
-- `--output-dir <path>` - Custom output directory (default: build/status-data)
+- `--output-dir <path>` - Custom output directory (default: status-data)
 - `--verbose` - Enable detailed logging
 - `--commit` - Auto-commit changes with emoji messages (🟩🟨🟥📊)
 

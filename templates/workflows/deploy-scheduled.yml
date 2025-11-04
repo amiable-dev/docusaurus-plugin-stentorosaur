@@ -35,7 +35,7 @@ jobs:
         run: npm ci
       - name: Build website
         env:
-          # Plugin will read committed status data from build/status-data/
+          # Plugin will read committed status data from status-data/
           # GITHUB_TOKEN is provided as fallback if committed data is stale
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build

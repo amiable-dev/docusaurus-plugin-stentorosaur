@@ -170,7 +170,7 @@ export default async function pluginStatus(
       }
 
       // First, try to read committed status data (Upptime-style)
-      const committedStatusFile = path.join(context.siteDir, 'build', 'status-data', 'status.json');
+      const committedStatusFile = path.join(context.siteDir, 'status-data', 'status.json');
       let useCommittedData = false;
       
       if (await fs.pathExists(committedStatusFile)) {
@@ -385,7 +385,7 @@ export default async function pluginStatus(
       }
       
       // Copy current.json and archives if they exist (from monitoring workflow)
-      const sourceDataDir = path.join(siteDir, 'build', dataPath);
+      const sourceDataDir = path.join(siteDir, dataPath);
       const sourceCurrentJson = path.join(sourceDataDir, 'current.json');
       const sourceArchives = path.join(sourceDataDir, 'archives');
       

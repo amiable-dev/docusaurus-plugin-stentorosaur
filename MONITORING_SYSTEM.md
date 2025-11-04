@@ -95,7 +95,7 @@ node scripts/monitor.js \
   --timeout 10000 \
   --expected-codes 200,301,302 \
   --max-response-time 30000 \
-  --output-dir build/status-data \
+  --output-dir status-data \
   --verbose
 ```
 
@@ -106,7 +106,7 @@ node scripts/monitor.js \
 - `--timeout <ms>` - Request timeout in milliseconds (default: 10000)
 - `--expected-codes <codes>` - Comma-separated expected status codes (default: 200,301,302)
 - `--max-response-time <ms>` - Maximum response time before degraded (default: 30000)
-- `--output-dir <path>` - Output directory (default: build/status-data)
+- `--output-dir <path>` - Output directory (default: status-data)
 - `--config <file>` - JSON config file with system definitions
 - `--verbose` - Enable verbose logging
 
@@ -252,13 +252,13 @@ Then update your workflow to use it:
 
 ### No data appearing in current.json
 
-1. Check that `build/status-data/archives/` directory exists
+1. Check that `status-data/archives/` directory exists
 2. Verify monitoring script is running (check GitHub Actions logs)
 3. Ensure workflow has `contents: write` permission
 
 ### Old format still being used
 
-1. Delete `build/status-data/systems/*.json` files
+1. Delete `status-data/systems/*.json` files
 2. Wait for next monitoring run to create `current.json`
 3. Plugin will automatically switch to new format
 

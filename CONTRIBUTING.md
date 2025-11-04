@@ -120,8 +120,8 @@ node scripts/monitor.js --system test --url https://www.google.com --verbose
 node scripts/monitor.js --config .monitorrc.json
 
 # Verify data files
-cat build/status-data/current.json | jq '.'
-cat build/status-data/archives/2025/11/history-2025-11-03.jsonl
+cat status-data/current.json | jq '.'
+cat status-data/archives/2025/11/history-2025-11-03.jsonl
 ```
 
 ### Test Structure

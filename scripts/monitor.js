@@ -22,7 +22,7 @@
  *   --timeout <ms>      Request timeout in ms (default: 10000)
  *   --expected-codes    Comma-separated expected status codes (default: 200,301,302)
  *   --max-response-time Maximum response time before degraded (default: 30000)
- *   --output-dir <path> Output directory (default: build/status-data)
+ *   --output-dir <path> Output directory (default: status-data)
  *   --config <file>     JSON config file with system definitions
  *   --verbose           Enable verbose logging
  */
@@ -41,7 +41,7 @@ const options = {
   timeout: 10000,
   expectedCodes: [200, 301, 302],
   maxResponseTime: 30000,
-  outputDir: 'build/status-data',
+  outputDir: 'status-data',
   config: null,
   verbose: false,
 };

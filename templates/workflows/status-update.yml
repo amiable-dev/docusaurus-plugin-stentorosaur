@@ -12,7 +12,7 @@ on:
       - main
     paths:
       # Only run when non-status files change (prevents infinite loop)
-      - '!build/status-data/**'
+      - '!status-data/**'
 
 permissions:
   contents: write  # Required to commit status data changes
@@ -42,7 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx stentorosaur-update-status
         
-      # Status data is now updated in build/status-data/ directory
+      # Status data is now updated in status-data/ directory
       # NOTE: We don't commit here to avoid polluting git history with incompatible commit messages
       # 
       # The calculate-metrics.yml workflow reads git history to extract response times from commits

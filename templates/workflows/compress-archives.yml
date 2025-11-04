@@ -25,7 +25,7 @@ jobs:
           month=$(echo "$yesterday" | cut -d- -f2)
           day=$(echo "$yesterday" | cut -d- -f3)
           
-          archive_dir="build/status-data/archives/$year/$month"
+          archive_dir="status-data/archives/$year/$month"
           
           if [ -d "$archive_dir" ]; then
             # Find uncompressed JSONL files from yesterday
@@ -46,7 +46,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add build/status-data/archives/
+          git add status-data/archives/
           
           if git diff --staged --quiet; then
             echo "No changes to commit"
