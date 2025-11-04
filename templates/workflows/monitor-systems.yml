@@ -39,7 +39,7 @@ jobs:
         id: check
         continue-on-error: true
         run: |
-          npx stentorosaur-monitor \
+          npx @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-monitor \
             --system "${{ matrix.system.name }}" \
             --url "${{ matrix.system.url }}" \
             --output-dir build/status-data
