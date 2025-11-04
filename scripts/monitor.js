@@ -215,6 +215,70 @@ function buildCurrentJson(archivesDir, days = 14) {
 }
 
 /**
+ * Generate status.json from current.json for plugin consumption
+ * Aggregates time-series data into status items
+ */
+function generateStatusJson(currentJsonPath, outputDir) {
+  const currentData = JSON.parse(fs.readFileSync(currentJsonPath, 'utf8'));
+  
+  // Group readings by system
+  const systemMap = new Map();
+  
+  for (const reading of currentData) {
+    if (!systemMap.has(reading.svc)) {
+      systemMap.set(reading.svc, []);
+    }
+    systemMap.get(reading.svc).push(reading);
+  }
+  
+  // Calculate stats for each system
+  const items = [];
+  
+  for (const [systemName, readings] of systemMap.entries()) {
+    // Sort by timestamp (most recent first)
+    readings.sort((a, b) => b.t - a.t);
+    
+    const latest = readings[0];
+    
+    // Calculate uptime (percentage of 'up' readings)
+    const upReadings = readings.filter(r => r.state === 'up').length;
+    const uptime = readings.length > 0 ? (upReadings / readings.length) * 100 : 0;
+    
+    // Calculate average response time (only from 'up' readings)
+    const upTimes = readings.filter(r => r.state === 'up').map(r => r.lat);
+    const avgResponseTime = upTimes.length > 0
+      ? Math.round(upTimes.reduce((sum, lat) => sum + lat, 0) / upTimes.length)
+      : undefined;
+    
+    items.push({
+      name: systemName,
+      status: latest.state,
+      lastChecked: new Date(latest.t).toISOString(),
+      responseTime: avgResponseTime,
+      uptime: Math.round(uptime * 100) / 100,
+      incidentCount: 0, // TODO: Could calculate from state changes
+    });
+  }
+  
+  const statusData = {
+    items,
+    incidents: [],
+    maintenance: [],
+    lastUpdated: new Date().toISOString(),
+    showServices: true,
+    showIncidents: true,
+    showPerformanceMetrics: true,
+    useDemoData: false,
+  };
+  
+  const statusPath = path.join(outputDir, 'status.json');
+  fs.writeFileSync(statusPath, JSON.stringify(statusData, null, 2));
+  verbose(`Generated ${statusPath}`);
+  
+  return statusData;
+}
+
+/**
  * Monitor a single system
  */
 async function monitorSystem(systemConfig) {
@@ -332,6 +396,13 @@ async function main() {
       
       const result = await monitorSystem(config);
       results.push(result);
+    }
+    
+    // Generate status.json from current.json for plugin consumption
+    const currentPath = path.join(options.outputDir, 'current.json');
+    if (fs.existsSync(currentPath)) {
+      generateStatusJson(currentPath, options.outputDir);
+      log('Generated status.json for plugin');
     }
     
     // Summary

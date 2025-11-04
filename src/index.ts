@@ -169,31 +169,117 @@ export default async function pluginStatus(
         return statusData;
       }
 
-      // First, try to read committed status data (Upptime-style)
-      const committedStatusFile = path.join(context.siteDir, 'status-data', 'status.json');
+      // First, try to read committed status data (new format: current.json with time-series)
+      const committedCurrentFile = path.join(context.siteDir, 'status-data', 'current.json');
       let useCommittedData = false;
       
-      if (await fs.pathExists(committedStatusFile)) {
+      if (await fs.pathExists(committedCurrentFile)) {
         try {
-          const committedData = await fs.readJson(committedStatusFile);
-          const dataAge = Date.now() - new Date(committedData.lastUpdated).getTime();
-          const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+          const currentData = await fs.readJson(committedCurrentFile);
           
-          if (dataAge < maxAge) {
+          // Validate it's an array of readings
+          if (Array.isArray(currentData) && currentData.length > 0) {
             console.log(
-              `[docusaurus-plugin-stentorosaur] Using committed status data (age: ${Math.round(dataAge / 1000 / 60)} minutes)`
+              `[docusaurus-plugin-stentorosaur] Found current.json with ${currentData.length} readings, aggregating...`
             );
-            items = showServices ? committedData.items : [];
-            incidents = showIncidents ? committedData.incidents : [];
+            
+            // Group readings by system
+            const systemMap = new Map<string, any[]>();
+            for (const reading of currentData) {
+              if (!systemMap.has(reading.svc)) {
+                systemMap.set(reading.svc, []);
+              }
+              systemMap.get(reading.svc)!.push(reading);
+            }
+            
+            // Calculate stats for each system
+            items = [];
+            for (const [systemName, readings] of systemMap.entries()) {
+              // Sort by timestamp (most recent first)
+              readings.sort((a, b) => b.t - a.t);
+              
+              const latest = readings[0];
+              
+              // Calculate uptime (percentage of 'up' readings)
+              const upReadings = readings.filter(r => r.state === 'up').length;
+              const uptime = readings.length > 0 ? (upReadings / readings.length) * 100 : 0;
+              
+              // Calculate average response time (only from 'up' readings)
+              const upTimes = readings.filter(r => r.state === 'up').map(r => r.lat);
+              const avgResponseTime = upTimes.length > 0
+                ? Math.round(upTimes.reduce((sum: number, lat: number) => sum + lat, 0) / upTimes.length)
+                : undefined;
+              
+              items.push({
+                name: systemName,
+                status: latest.state,
+                lastChecked: new Date(latest.t).toISOString(),
+                responseTime: avgResponseTime,
+                uptime: `${(Math.round(uptime * 100) / 100).toFixed(2)}%`,
+                incidentCount: 0,
+              });
+            }
+            
             useCommittedData = true;
-          } else {
-            console.log(
-              `[docusaurus-plugin-stentorosaur] Committed status data is stale (age: ${Math.round(dataAge / 1000 / 60 / 60)} hours), fetching fresh data`
-            );
+            
+            // Try to read committed incidents.json (written by status-update.yml)
+            const committedIncidentsFile = path.join(context.siteDir, 'status-data', 'incidents.json');
+            if (await fs.pathExists(committedIncidentsFile)) {
+              try {
+                const committedIncidents = await fs.readJson(committedIncidentsFile);
+                if (Array.isArray(committedIncidents)) {
+                  incidents = showIncidents ? committedIncidents : [];
+                  console.log(`[docusaurus-plugin-stentorosaur] Loaded ${incidents.length} incidents from incidents.json`);
+                }
+              } catch (error) {
+                console.warn(
+                  '[docusaurus-plugin-stentorosaur] Failed to read incidents.json:',
+                  error instanceof Error ? error.message : String(error)
+                );
+              }
+            }
+            
+            // Try to read committed maintenance.json (written by status-update.yml)
+            const committedMaintenanceFile = path.join(context.siteDir, 'status-data', 'maintenance.json');
+            if (await fs.pathExists(committedMaintenanceFile)) {
+              try {
+                const committedMaintenance = await fs.readJson(committedMaintenanceFile);
+                if (Array.isArray(committedMaintenance)) {
+                  maintenance = committedMaintenance;
+                  console.log(`[docusaurus-plugin-stentorosaur] Loaded ${maintenance.length} maintenance windows from maintenance.json`);
+                }
+              } catch (error) {
+                console.warn(
+                  '[docusaurus-plugin-stentorosaur] Failed to read maintenance.json:',
+                  error instanceof Error ? error.message : String(error)
+                );
+              }
+            }
+            
+            // Only fetch from GitHub API if we don't have incidents/maintenance from files
+            if (token && !shouldUseDemoData && incidents.length === 0) {
+              try {
+                const service = new GitHubStatusService(
+                  token,
+                  owner,
+                  repo,
+                  statusLabel,
+                  systemLabels
+                );
+                const result = await service.fetchStatusData();
+                incidents = showIncidents ? result.incidents : [];
+                console.log(`[docusaurus-plugin-stentorosaur] Fetched ${incidents.length} incidents from GitHub`);
+              } catch (error) {
+                console.warn(
+                  '[docusaurus-plugin-stentorosaur] Failed to fetch incidents from GitHub:',
+                  error instanceof Error ? error.message : String(error)
+                );
+              }
+            }
           }
         } catch (error) {
           console.warn(
-            '[docusaurus-plugin-stentorosaur] Failed to read committed status data:',
+            '[docusaurus-plugin-stentorosaur] Failed to read current.json:',
             error instanceof Error ? error.message : String(error)
           );
         }

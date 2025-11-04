@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.11] - 2025-01-10
+
+### Fixed
+- Plugin now reads and aggregates `current.json` (time-series monitoring data) during build
+- Reads `incidents.json` for GitHub Issue-based incident tracking  
+- Reads `maintenance.json` for scheduled maintenance windows
+- Properly separates monitoring data (every 5min) from incident data (on events)
+- Related to #33 - Full fix pending workflow updates
+
+### Changed
+- Status items now aggregate uptime and response times from `current.json`
+- Plugin prioritizes committed data files over GitHub API calls
+- Uptime displayed as percentage string (e.g., "99.50%")
+
 ## [0.4.10] - 2025-11-04
 
 ### Changed
