@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.5] - 2025-11-04
+## [0.4.6] - 2025-11-04
 
 ### Fixed
 
@@ -924,8 +924,8 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.5...HEAD
-[0.4.5]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.4...v0.4.5
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.4...v0.4.6
 [0.4.4]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.0...v0.4.4
 [0.4.0]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.11...v0.4.0
 [0.3.11]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.10...v0.3.11
