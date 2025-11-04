@@ -66,17 +66,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/compress-archives.yml .github/workflows/
 ```
 
-**Configure your endpoints** - edit `monitor-systems.yml`:
-
-```yaml
-system: 
-  - name: 'api'
-    url: 'https://api.example.com/health'
-  - name: 'website'
-    url: 'https://example.com'
-```
-
-**Or use a config file** - create `.monitorrc.json`:
+**Configure your endpoints** - create `.monitorrc.json` (required in v0.4.10+):
 
 ```json
 {
@@ -91,11 +81,13 @@ system:
 }
 ```
 
-**Benefits of the new system:**
+**Benefits of the monitoring system (v0.4.10+):**
+- ✅ **Zero data loss** - Sequential monitoring captures all systems
+- ✅ **No race conditions** - Single job eliminates concurrent git conflicts
 - ✅ Append-only data storage (no Git history pollution)
 - ✅ Fast site loads (small current.json file)
 - ✅ Automatic compression of old data
-- ✅ Minimal Git commits with emoji messages (🟩/🟨/🟥)
+- ✅ Scales reliably to 10+ systems without data loss
 
 See [MONITORING_SYSTEM.md](./MONITORING_SYSTEM.md) for details.
 

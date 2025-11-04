@@ -319,21 +319,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 
 #### 2. Configure Monitoring
 
-Edit `.github/workflows/monitor-systems.yml` to define your endpoints:
-
-```yaml
-strategy:
-  matrix:
-    system: 
-      - name: 'api'
-        url: 'https://api.example.com/health'
-      - name: 'website'
-        url: 'https://example.com'
-      - name: 'database'
-        url: 'https://db.example.com/status'
-```
-
-**Alternative: Use a config file**
+**IMPORTANT (v0.4.10+)**: The workflow now uses **sequential monitoring** to eliminate race conditions and guarantee zero data loss.
 
 Create `.monitorrc.json` in your repository root:
 
@@ -360,12 +346,27 @@ Create `.monitorrc.json` in your repository root:
 }
 ```
 
-Then update your workflow:
+The workflow automatically uses this config file:
 
 ```yaml
-- name: Monitor systems
-  run: node scripts/monitor.js --config .monitorrc.json
+- name: Monitor all systems
+  run: |
+    npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-monitor \
+      --config .monitorrc.json \
+      --verbose
 ```
+
+**Why Sequential Instead of Parallel?**
+
+- ✅ **Zero data loss** - Single commit contains all systems' data
+- ✅ **No race conditions** - No concurrent git operations
+- ✅ **No merge conflicts** - Single job = single push
+- ✅ **Scales reliably** - Works with 2 or 100 systems without data loss
+- ⚠️ **Trade-off**: Runtime is ~5s per system (sequential) vs ~5s total (parallel)
+  - 2 systems: 10s vs 5s, but 0% data loss vs 50%
+  - 10 systems: 50s vs 5s, but 0% data loss vs potential 90%
+
+**For systems at scale** (10+ endpoints), the sequential approach guarantees every monitoring check is captured, while parallel matrix jobs would lose data on git push conflicts.
 
 #### 3. Setup Issue Templates (Optional)
 

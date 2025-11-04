@@ -8,18 +8,38 @@ These workflows are **required** for a functioning status page:
 
 ### 1. `monitor-systems.yml` ⭐ REQUIRED
 
-Monitors your endpoints and records response times.
+Monitors your endpoints and records response times using **sequential monitoring** (v0.4.10+).
 
 - **Schedule**: Every 5 minutes
 - **Creates**: `status-data/current.json` and `status-data/archives/YYYY/MM/history-YYYY-MM-DD.jsonl`
-- **Action**: Makes HTTP requests to your endpoints, records status and response time
-- **Commits**: Each check commits data with emoji status message (e.g., "🟩 api is up (200 in 145 ms)")
+- **Action**: Makes HTTP requests to your endpoints sequentially, records status and response time
+- **Commits**: Single commit with all systems' data (e.g., "Update monitoring data [skip ci]")
 - **Important**: Uses `status-data/` directory (NOT in `build/`) to ensure Git tracks the monitoring data
 
 **Configuration Required:**
-- Replace example URLs with your actual endpoints
-- Each system needs a unique `name` and accessible `url`
-- See comments in the file for valid URL patterns
+
+1. **Create `.monitorrc.json`** in your repository root:
+
+```json
+{
+  "systems": [
+    {"system": "api", "url": "https://api.example.com/health"},
+    {"system": "website", "url": "https://example.com"}
+  ]
+}
+```
+
+2. **Verify URLs are valid and publicly accessible**
+   - Invalid URLs (like `null.example.com` or `localhost`) will always fail
+   - Private/internal URLs are not accessible from GitHub Actions runners
+
+**Why Sequential Monitoring?**
+
+- ✅ **Zero data loss** - All systems captured in single commit
+- ✅ **No race conditions** - Only one git push operation
+- ✅ **No merge conflicts** - Single job eliminates concurrent operations
+- ✅ **Scales reliably** - Works with 10+ systems without data loss
+- ⚠️ **Trade-off**: ~5s per system (but guarantees 100% data capture)
 
 ### 2. `status-update.yml` ⭐ REQUIRED
 

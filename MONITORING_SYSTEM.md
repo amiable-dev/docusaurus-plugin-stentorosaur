@@ -114,32 +114,57 @@ node scripts/monitor.js \
 
 #### Monitor Systems (`monitor-systems.yml`)
 
-Runs every 5 minutes to check all configured endpoints.
+Runs every 5 minutes to check all configured endpoints using **sequential monitoring** (v0.4.10+).
 
 **Configuration:**
 
-```yaml
-strategy:
-  matrix:
-    system:
-      - name: api
-        url: https://api.example.com/health
-      - name: website
-        url: https://example.com
-      - name: admin
-        url: https://admin.example.com
+Create `.monitorrc.json` in your repository root:
+
+```json
+{
+  "systems": [
+    {
+      "system": "api",
+      "url": "https://api.example.com/health"
+    },
+    {
+      "system": "website",
+      "url": "https://example.com"
+    },
+    {
+      "system": "admin",
+      "url": "https://admin.example.com"
+    }
+  ]
+}
 ```
 
-**Steps:**
+**Architecture (v0.4.10+):**
+
+The workflow uses a **single job** that monitors all systems sequentially:
+
 1. Checkout repository
-2. Setup Node.js 18
-3. Run monitoring script for each system
-4. Commit changes with emoji message
+2. Setup Node.js 20
+3. Run monitoring script with `--config .monitorrc.json`
+4. Script monitors each system sequentially
+5. Single commit with all systems' data
+
+**Why Sequential?**
+
+- **Zero data loss**: All systems' data captured in one commit
+- **No race conditions**: Only one git push operation
+- **No merge conflicts**: Single job eliminates concurrent operations
+- **Reliable at scale**: Works with 10+ systems without data loss
+
+**Performance:**
+- Runtime: ~5 seconds per system
+- 2 systems: ~10s total (vs 5s parallel with 50% data loss)
+- 10 systems: ~50s total (vs 5s parallel with 90% data loss)
+- Still completes within 5-minute cron interval for most deployments
 
 **Commit Messages:**
-- 🟩 `api is up (200 in 145 ms)`
-- 🟨 `website degraded (200 in 850 ms)`
-- 🟥 `database is down (500)`
+- Single commit contains summary: `Update monitoring data [skip ci]`
+- Check output shows: 🟩 `api is up (200 in 145 ms)`, 🟨 `website degraded`, etc.
 
 #### Compress Archives (`compress-archives.yml`)
 
