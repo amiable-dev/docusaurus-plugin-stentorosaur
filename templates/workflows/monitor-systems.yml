@@ -14,34 +14,6 @@ jobs:
   monitor:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        # Define systems/endpoints to monitor
-        # IMPORTANT: Replace these example URLs with your actual endpoints!
-        # Each system must have:
-        #   - name: unique identifier (used in labels, file names, commit messages)
-        #   - url: actual URL to check (must be accessible from GitHub Actions runners)
-        # 
-        # Common patterns:
-        #   - Health check endpoints: https://api.example.com/health, /healthz, /status
-        #   - Main application URLs: https://example.com (checks for 200/301/302 response)
-        #   - Specific services: https://api.example.com, https://db.example.com/ping
-        # 
-        # Invalid examples (will always fail):
-        #   ❌ https://null.example.com - not a real domain
-        #   ❌ http://localhost:3000 - not accessible from GitHub runners
-        #   ❌ https://private-network.internal - not publicly accessible
-        system: 
-          - name: 'api'
-            url: 'https://api.example.com/health'
-          - name: 'website'
-            url: 'https://example.com'
-          # Uncomment and customize additional systems as needed:
-          # - name: 'database'
-          #   url: 'https://db.example.com/status'
-          # - name: 'cdn'
-          #   url: 'https://cdn.example.com/health'
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -51,14 +23,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Check ${{ matrix.system.name }} status
+      - name: Monitor all systems
         id: check
         continue-on-error: true
         run: |
+          # Monitor all systems defined in .monitorrc.json
+          # This runs sequentially to avoid race conditions and ensure zero data loss
           npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-monitor \
-            --system "${{ matrix.system.name }}" \
-            --url "${{ matrix.system.url }}" \
-            --output-dir status-data
+            --config .monitorrc.json \
+            --verbose
           
       - name: Commit response time data
         uses: actions/github-script@v7
@@ -74,127 +47,119 @@ jobs:
             const status = execSync('git status --porcelain status-data/').toString();
             
             if (status) {
-              const commitMessage = '${{ steps.check.outputs.commit_message }}' || 'Update status data [skip ci]';
-              
               execSync('git add status-data/');
-              execSync(`git commit -m "${commitMessage}"`);
+              execSync('git commit -m "Update monitoring data [skip ci]"');
               
-              // Retry push with merge strategy (handles concurrent matrix jobs)
-              let retries = 5;
-              let delay = 1000; // Start with 1 second
+              // Simple push with retry (no race conditions since single job)
+              let retries = 3;
+              let delay = 1000;
               
               while (retries > 0) {
                 try {
-                  // Fetch latest changes
-                  execSync('git fetch origin ${{ github.ref_name }}');
-                  
-                  // Try to merge with 'ours' strategy for conflicts (keep our changes)
-                  try {
-                    execSync('git merge origin/${{ github.ref_name }} -X ours --no-edit');
-                  } catch (mergeError) {
-                    // If merge fails, it might be a fast-forward or already up to date
-                    console.log('Merge not needed or failed, attempting push anyway');
-                  }
-                  
+                  execSync('git pull --rebase origin ${{ github.ref_name }}');
                   execSync('git push origin HEAD:${{ github.ref_name }}');
                   console.log('Successfully pushed changes');
                   break;
                 } catch (error) {
                   retries--;
                   
-                  // Reset to clean state for next retry
-                  try {
-                    execSync('git merge --abort');
-                  } catch (abortError) {
-                    // Merge might not be in progress, ignore error
-                  }
-                  
                   if (retries === 0) {
-                    console.error('Failed to push after 5 attempts');
+                    console.error('Failed to push after 3 attempts');
                     throw error;
                   }
-                  console.log(`Push failed, retrying in ${delay}ms... (${retries} attempts remaining)`);
+                  console.log(`Push failed, retrying in ${delay}ms...`);
                   execSync(`sleep ${delay / 1000}`);
-                  delay = Math.min(delay * 1.5, 5000); // Exponential backoff capped at 5s
+                  delay *= 2;
                 }
               }
             } else {
               console.log('No changes to commit');
             }
           
-      - name: Create issue for downtime
-        if: steps.check.outputs.status == 'down'
+      - name: Manage downtime issues
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
-            const systemName = '${{ matrix.system.name }}';
-            const statusCode = '${{ steps.check.outputs.status_code }}';
+            const fs = require('fs');
+            const path = require('path');
             
-            // Check if there's already an open automated issue for this system
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['status', systemName, 'automated'],
-              state: 'open'
-            });
+            // Load monitoring config to get system list
+            const config = JSON.parse(fs.readFileSync('.monitorrc.json', 'utf8'));
             
-            if (issues.data.length === 0) {
-              // Create new issue
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: `${systemName} is down`,
-                body: `## Incident Report
-                
-                **System:** ${systemName}
-                **Status:** Down
-                **HTTP Status Code:** ${statusCode}
-                **Time:** ${new Date().toISOString()}
-                **URL:** ${{ matrix.system.url }}
-                
-                The system is currently experiencing issues and is not responding as expected.
-                
-                ---
-                *This issue was automatically created by the monitoring workflow.*`,
-                labels: ['status', systemName, 'critical', 'automated']
-              });
+            // Parse current.json to get latest status for each system
+            const currentData = JSON.parse(fs.readFileSync('status-data/current.json', 'utf8'));
+            
+            // Get latest reading for each system
+            const latestBySystem = {};
+            for (const reading of currentData) {
+              if (!latestBySystem[reading.svc] || reading.t > latestBySystem[reading.svc].t) {
+                latestBySystem[reading.svc] = reading;
+              }
             }
             
-      - name: Close issue for recovery
-        if: steps.check.outputs.status == 'up'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const systemName = '${{ matrix.system.name }}';
-            
-            // Find open automated issues for this system (only auto-created downtime issues)
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['status', systemName, 'automated'],
-              state: 'open'
-            });
-            
-            // Close them with a recovery comment
-            for (const issue of issues.data) {
-              await github.rest.issues.createComment({
+            // Check each configured system
+            for (const systemConfig of config.systems) {
+              const systemName = systemConfig.system;
+              const latest = latestBySystem[systemName];
+              
+              if (!latest) continue;
+              
+              const isDown = latest.state === 'down';
+              
+              // Find existing automated issues for this system
+              const issues = await github.rest.issues.listForRepo({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: issue.number,
-                body: `## ✅ Resolved
-                
-                The system has recovered and is now operational.
-                
-                **Time:** ${new Date().toISOString()}
-                
-                ---
-                *This update was automatically posted by the monitoring workflow.*`
+                labels: ['status', systemName, 'automated'],
+                state: 'open'
               });
               
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                state: 'closed'
-              });
+              if (isDown && issues.data.length === 0) {
+                // Create downtime issue
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: `${systemName} is down`,
+                  body: `## Incident Report
+                  
+                  **System:** ${systemName}
+                  **Status:** Down
+                  **HTTP Status Code:** ${latest.code}
+                  **Time:** ${new Date(latest.t).toISOString()}
+                  **URL:** ${systemConfig.url}
+                  ${latest.err ? `**Error:** ${latest.err}` : ''}
+                  
+                  The system is currently experiencing issues and is not responding as expected.
+                  
+                  ---
+                  *This issue was automatically created by the monitoring workflow.*`,
+                  labels: ['status', systemName, 'critical', 'automated']
+                });
+              } else if (!isDown && issues.data.length > 0) {
+                // Close recovery issues
+                for (const issue of issues.data) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    body: `## ✅ Resolved
+                    
+                    The system has recovered and is now operational.
+                    
+                    **Time:** ${new Date(latest.t).toISOString()}
+                    **Response Time:** ${latest.lat}ms
+                    
+                    ---
+                    *This update was automatically posted by the monitoring workflow.*`
+                  });
+                  
+                  await github.rest.issues.update({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    state: 'closed'
+                  });
+                }
+              }
             }

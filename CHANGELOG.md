@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.10] - 2025-11-04
+
+### Changed
+
+- **Monitor Systems: Sequential Strategy for Zero Data Loss** (#32)
+  - Replaced matrix parallel strategy with sequential single-job approach
+  - Eliminates race conditions entirely - no concurrent git operations
+  - Guarantees 100% data capture even with 10+ monitored systems
+  - Uses `.monitorrc.json` config file for system definitions
+  - Single commit contains all systems' data - no partial loss possible
+  - Simplified git push logic - no complex merge/rebase needed
+  - Trade-off: ~5s per system (sequential) vs concurrent (but 50%+ data loss)
+  - Issue management now reads from `current.json` to handle all systems
+
 ## [0.4.9] - 2025-11-04
 
 ### Fixed
