@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2025-11-04
+
+### Fixed
+
+- **NPX Command Syntax (Corrected)**
+  - Fixed workflow template to use `npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-monitor`
+  - The `-p` flag specifies the package to install, then the bin command can be executed
+  - The `-y` flag auto-accepts the installation prompt
+
 ## [0.4.2] - 2025-11-04
 
 ### Fixed
