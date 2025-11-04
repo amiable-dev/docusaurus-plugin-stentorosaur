@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2025-11-04
+
+### Fixed
+
+- **Monitoring Data Commit Architecture** (#31)
+  - Fixed workflows writing to gitignored `build/status-data/` directory
+  - Changed all workflows to write to `status-data/` (Git-tracked location)
+  - Updated plugin source to read from `status-data/` during build
+  - Plugin's postBuild hook copies `status-data/` → `build/status-data/` for deployment
+  - Components fetch from `/status-data/` at runtime (deployed location)
+  - Updated monitor script default outputDir from `build/status-data` to `status-data`
+  - Root cause: Git couldn't see files in build/ directory, preventing commits
+  - Solution ensures two-stage data flow: committed source → build output
+
+### Changed
+
+- **Data Architecture**
+  - Workflows now commit monitoring data to `status-data/` directory
+  - Plugin reads from `status-data/` (committed) and copies to `build/status-data/` (deployed)
+  - Maintains proper separation between committed data and build artifacts
+  - Monitor script default `--output-dir` changed to `status-data`
+
+### Documentation
+
+- Updated all workflow templates with correct `status-data/` paths
+- Updated README.md with correct CLI defaults and data flow diagrams
+- Updated QUICKSTART.md with correct directory structure
+- Updated MONITORING_SYSTEM.md with troubleshooting for correct paths
+- Updated CONTRIBUTING.md with updated testing commands
+- Updated ISSUE_7_19_SUMMARY.md with correct archive paths and examples
+- Created comprehensive workflows/README.md documentation
+
 ### Added
 
 - **Upptime-Style Structured Status View** (#28 - complete)
@@ -892,7 +924,9 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.4...v0.4.5
+[0.4.4]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.0...v0.4.4
 [0.4.0]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.11...v0.4.0
 [0.3.11]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.10...v0.3.11
 [0.3.10]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.9...v0.3.10
