@@ -2,9 +2,10 @@ name: Scheduled Deployment
 
 on:
   schedule:
-    # Deploy daily at 2 AM UTC to pick up committed status data
-    # Adjust timing based on your needs
-    - cron: '0 2 * * *'
+    # Deploy hourly to pick up latest committed status data
+    # Critical updates trigger immediate deployment via repository_dispatch
+    # This ensures non-critical changes are deployed within 1 hour
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 permissions:

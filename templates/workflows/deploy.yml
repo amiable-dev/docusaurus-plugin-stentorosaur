@@ -4,13 +4,15 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      # Don't trigger deploy on monitoring data commits (they use [skip ci])
+      - 'status-data/current.json'
+      - 'status-data/archives/**'
   workflow_dispatch:
-  # Uncomment to enable instant status updates (Option B):
-  # When status-update.yml completes, it will trigger this workflow
-  # to deploy changes immediately instead of waiting for scheduled deployment
-  #
-  # repository_dispatch:
-  #   types: [status-updated]
+  # Deploy immediately when critical status updates occur
+  # Triggered by status-update.yml when critical issues are detected
+  repository_dispatch:
+    types: [status-updated]
 
 permissions:
   contents: read

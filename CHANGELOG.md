@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.13] - 2025-11-04
+
+### Changed
+- **deploy.yml**: Added `repository_dispatch` trigger for immediate deployment on critical incidents
+- **deploy.yml**: Added `paths-ignore` to prevent deployment on monitoring data commits
+- **deploy-scheduled.yml**: Changed schedule from daily to hourly (every hour)
+- Implements Task 5 & 6 from Issue #33: Smart deployment triggers
+
+### Fixed
+- Critical incidents now trigger immediate deployments via `repository_dispatch` event
+- Non-critical updates deploy hourly via scheduled workflow
+- Monitoring data commits with `[skip ci]` no longer trigger unnecessary deployments
+
 ## [0.4.12] - 2025-11-04
 
 ### Changed
