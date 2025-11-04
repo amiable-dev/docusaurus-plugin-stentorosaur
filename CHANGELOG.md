@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.9] - 2025-11-04
+
+### Fixed
+
+- **Monitor Systems Merge Conflict Resolution** (#32)
+  - Switched from `git pull --rebase` to `git merge` with `-X ours` strategy
+  - Rebase was failing due to content conflicts in JSON files, not just timing
+  - Merge strategy with 'ours' preference keeps latest monitoring data from each job
+  - Increased retries from 3 to 5 attempts with backoff capped at 5 seconds
+  - Properly handles concurrent writes to same files (current.json, archives)
+
 ## [0.4.8] - 2025-11-04
 
 ### Fixed
@@ -945,7 +956,8 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.8...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.9...HEAD
+[0.4.9]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.4...v0.4.6

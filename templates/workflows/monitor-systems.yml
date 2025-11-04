@@ -79,33 +79,43 @@ jobs:
               execSync('git add status-data/');
               execSync(`git commit -m "${commitMessage}"`);
               
-              // Retry push with pull-rebase if rejected (handles concurrent matrix jobs)
-              let retries = 3;
+              // Retry push with merge strategy (handles concurrent matrix jobs)
+              let retries = 5;
               let delay = 1000; // Start with 1 second
               
               while (retries > 0) {
                 try {
-                  execSync('git pull --rebase origin ${{ github.ref_name }}');
+                  // Fetch latest changes
+                  execSync('git fetch origin ${{ github.ref_name }}');
+                  
+                  // Try to merge with 'ours' strategy for conflicts (keep our changes)
+                  try {
+                    execSync('git merge origin/${{ github.ref_name }} -X ours --no-edit');
+                  } catch (mergeError) {
+                    // If merge fails, it might be a fast-forward or already up to date
+                    console.log('Merge not needed or failed, attempting push anyway');
+                  }
+                  
                   execSync('git push origin HEAD:${{ github.ref_name }}');
                   console.log('Successfully pushed changes');
                   break;
                 } catch (error) {
                   retries--;
                   
-                  // Abort failed rebase to clean up for next retry
+                  // Reset to clean state for next retry
                   try {
-                    execSync('git rebase --abort');
+                    execSync('git merge --abort');
                   } catch (abortError) {
-                    // Rebase might not be in progress, ignore error
+                    // Merge might not be in progress, ignore error
                   }
                   
                   if (retries === 0) {
-                    console.error('Failed to push after 3 attempts');
+                    console.error('Failed to push after 5 attempts');
                     throw error;
                   }
                   console.log(`Push failed, retrying in ${delay}ms... (${retries} attempts remaining)`);
                   execSync(`sleep ${delay / 1000}`);
-                  delay *= 2; // Exponential backoff: 1s, 2s, 4s
+                  delay = Math.min(delay * 1.5, 5000); // Exponential backoff capped at 5s
                 }
               }
             } else {
