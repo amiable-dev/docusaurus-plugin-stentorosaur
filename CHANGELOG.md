@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.7] - 2025-11-04
+
+### Fixed
+
+- **Monitor Systems Race Condition** (#32)
+  - Fixed git push failures when multiple systems monitored simultaneously
+  - Added pull-rebase-retry logic to handle concurrent matrix job pushes
+  - Implements exponential backoff (1s, 2s, 4s) with 3 retry attempts
+  - Prevents data loss from rejected pushes during parallel monitoring
+  - All monitoring data now successfully committed even with concurrent jobs
+
 ## [0.4.6] - 2025-11-04
 
 ### Fixed
@@ -924,7 +935,8 @@ For existing users upgrading from v0.2.x:
 - Severity-based color coding
 - Clean, accessible UI
 
-[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.4...v0.4.6
 [0.4.4]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.4.0...v0.4.4
 [0.4.0]: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/compare/v0.3.11...v0.4.0

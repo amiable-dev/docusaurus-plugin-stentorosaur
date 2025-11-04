@@ -78,7 +78,28 @@ jobs:
               
               execSync('git add status-data/');
               execSync(`git commit -m "${commitMessage}"`);
-              execSync('git push origin HEAD:${{ github.ref_name }}');
+              
+              // Retry push with pull-rebase if rejected (handles concurrent matrix jobs)
+              let retries = 3;
+              let delay = 1000; // Start with 1 second
+              
+              while (retries > 0) {
+                try {
+                  execSync('git pull --rebase origin ${{ github.ref_name }}');
+                  execSync('git push origin HEAD:${{ github.ref_name }}');
+                  console.log('Successfully pushed changes');
+                  break;
+                } catch (error) {
+                  retries--;
+                  if (retries === 0) {
+                    console.error('Failed to push after 3 attempts');
+                    throw error;
+                  }
+                  console.log(`Push failed, retrying in ${delay}ms... (${retries} attempts remaining)`);
+                  execSync(`sleep ${delay / 1000}`);
+                  delay *= 2; // Exponential backoff: 1s, 2s, 4s
+                }
+              }
             } else {
               console.log('No changes to commit');
             }
