@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2025-11-04
+
+### Fixed
+
+- **Monitoring Script Accessibility**
+  - Added `stentorosaur-monitor` bin command to make monitoring script accessible via `npx`
+  - Updated workflow template to use `npx stentorosaur-monitor` instead of `node scripts/monitor.js`
+  - Fixes issue where monitoring workflows couldn't execute because script wasn't in user's repository
+
+- **Monitoring Data Persistence**
+  - Enhanced `postBuild` hook to copy `current.json` from `build/status-data/` if it exists
+  - Added logic to copy `archives` directory during build process
+  - Only generates demo data if real monitoring data is not present
+  - Fixes issue where monitoring data wasn't being included in deployed sites
+
 ## [0.4.0] - 2025-11-03
 
 ### Added
