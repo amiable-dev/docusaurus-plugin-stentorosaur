@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.16] - 2025-11-05
+
+### Fixed
+
+- **Complete SSG Build Failure Resolution** (#34)
+  - Extended v0.4.15 fix to cover all affected components
+  - Fixed IncidentHistory component: Added default empty array for `incidents` prop
+  - Fixed MaintenanceList component: Added default empty array for `maintenance` prop
+  - Prevents `TypeError: Cannot read properties of undefined (reading 'length')` during SSG
+  - All 4 theme components now have comprehensive defensive guards:
+    - StatusPage: `items`, `incidents` defaults + `statusData` null check
+    - UptimeStatusPage: `items`, `systems`, `incidents` defaults + `statusData` null check
+    - IncidentHistory: `incidents` default empty array
+    - MaintenanceList: `maintenance` default empty array
+  - Complete solution for production SSG failures identified in #34
+
 ## [0.4.15] - 2025-11-05
 
 ### Fixed
