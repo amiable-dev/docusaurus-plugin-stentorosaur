@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.17] - 2025-11-05
+
+### Fixed
+
+- **IncidentHistory Component** (#34)
+  - Added null check for `affectedSystems` array before accessing `length` property
+  - Prevents `TypeError: Cannot read properties of undefined (reading 'length')` during SSG
+  - Fixes production build failure when incidents have undefined `affectedSystems`
+  - Complete fix for all IncidentHistory SSG issues
+
 ## [0.4.16] - 2025-11-05
 
 ### Fixed

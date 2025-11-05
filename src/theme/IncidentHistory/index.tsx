@@ -112,7 +112,7 @@ export default function IncidentHistory({
                   </div>
                 </div>
 
-                {incident.affectedSystems.length > 0 && (
+                {incident.affectedSystems && incident.affectedSystems.length > 0 && (
                   <div className={styles.affectedSystems}>
                     <span className={styles.affectedLabel}>Affected:</span>
                     {incident.affectedSystems.map((system) => (
