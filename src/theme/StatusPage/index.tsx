@@ -19,14 +19,14 @@ export interface Props {
 
 export default function StatusPage({statusData}: Props): JSX.Element {
   const {
-    items, 
-    incidents, 
+    items = [], 
+    incidents = [], 
     lastUpdated, 
     showServices = true, 
     showIncidents = true,
     showPerformanceMetrics = true,
     useDemoData = false,
-  } = statusData;
+  } = statusData || {};
   const [systemFiles, setSystemFiles] = useState<SystemStatusFile[]>([]);
   const [activeSystemIndex, setActiveSystemIndex] = useState<number | null>(null);
   

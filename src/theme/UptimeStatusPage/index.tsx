@@ -32,13 +32,13 @@ const DEFAULT_CONFIG: UptimeStatusPageConfig = {
 
 export default function UptimeStatusPage({statusData}: Props): JSX.Element {
   const {
-    items,
-    systems,
+    items = [],
+    systems = [],
     incidents = [],
     maintenance = [],
     overallStatus = 'operational',
     useDemoData = false,
-  } = statusData;
+  } = statusData || {};
 
   // State for system files with historical data
   const [systemFiles, setSystemFiles] = useState<SystemStatusFile[]>([]);

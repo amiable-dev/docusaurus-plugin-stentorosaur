@@ -7,9 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.15] - 2025-11-05
+
+### Fixed
+
+- **StatusPage & UptimeStatusPage**: Add defensive guards for undefined statusData properties
+  - Fix `TypeError: Cannot read properties of undefined (reading 'length')` during SSG
+  - Add default empty arrays for `items`, `incidents`, and `systems` when destructuring
+  - Add null check for `statusData` object itself
+  - Prevents build failures when status data is not fully populated during static site generation
+
 ## [0.4.14] - 2025-11-05
 
 ### Documentation
+
 - **README.md**: Added comprehensive 3-file data architecture section
   - Documented separation of `current.json`, `incidents.json`, `maintenance.json`
   - Explained smart deployment flow (critical vs non-critical)
