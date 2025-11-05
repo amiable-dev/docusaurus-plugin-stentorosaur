@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.14] - 2025-11-05
+
+### Documentation
+- **README.md**: Added comprehensive 3-file data architecture section
+  - Documented separation of `current.json`, `incidents.json`, `maintenance.json`
+  - Explained smart deployment flow (critical vs non-critical)
+  - Added workflow interaction diagrams showing data flow
+  - Documented `repository_dispatch` trigger for immediate critical deploys
+  - Explained `paths-ignore` filtering for monitoring data commits
+- **MONITORING_SYSTEM.md**: Complete architecture documentation
+  - Detailed all three data files with formats and purposes
+  - Documented workflow interactions: `monitor-systems.yml`, `status-update.yml`
+  - Explained deployment workflows: `deploy.yml`, `deploy-scheduled.yml`
+  - Added comprehensive workflow interaction diagram
+  - Documented data flow timing and deployment latency
+- **CONFIGURATION.md**: Added CLI tools section
+  - Documented `stentorosaur-update-status` command options
+  - Added `--write-incidents` and `--write-maintenance` documentation
+  - Provided usage examples for GitHub Actions and local development
+  - Explained output files and environment variables
+- **QUICKSTART.md**: Complete workflow setup guide
+  - Documented all 5 workflows with their specific purposes
+  - Explained smart deployment logic with step-by-step flow
+  - Added complete data flow diagram for all scenarios
+  - Documented maintenance issue YAML frontmatter format
+  - Clarified exactly when deployments are triggered
+
+### Notes
+- Addresses documentation gap identified in Issue #33
+- All implementation complete (v0.4.11-0.4.13), now fully documented
+- No code changes, documentation only
+
 ## [0.4.13] - 2025-11-04
 
 ### Changed
