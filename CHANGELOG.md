@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-11-05
+
+### Added
+
+- **Comprehensive Site/Endpoint Configuration** (#25)
+  - Added `sites` array to plugin options for direct endpoint configuration
+  - Alternative to using GitHub Issues for monitoring configuration
+  - Matches [Upptime's endpoint configuration](https://upptime.js.org/docs/configuration#endpoints)
+  
+- **Full HTTP Method Support**
+  - GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
+  - Custom request body and headers
+  - Environment variable substitution with `$SECRET_NAME` syntax
+  
+- **Multiple Check Types**
+  - HTTP/HTTPS requests (default)
+  - TCP ping with custom port
+  - WebSocket connection checks
+  - SSL certificate validation
+  
+- **Advanced Status Detection**
+  - Custom expected status codes
+  - Response time thresholds
+  - Body content validation (match/missing text)
+  - Degraded state detection
+  
+- **SSL Configuration**
+  - Certificate verification options
+  - Self-signed certificate support
+  - Individual peer/host verification controls
+  
+- **Display Customization**
+  - Custom icons (emoji or URL)
+  - URL slugs for status pages
+  - Issue assignee configuration
+  - IPv6 support
+  
+- **Comprehensive Documentation**
+  - Added detailed site configuration section to CONFIGURATION.md
+  - Examples for common use cases (APIs, databases, GraphQL, WebSockets)
+  - Complete reference table for all configuration options
+  - Security guidance for SSL options
+
+### Changed
+
+- Extended `PluginOptions` interface with `SiteConfig` array
+- Added validation schema for all site configuration options
+- Default `sites` to empty array
+
+### Tests
+
+- Added 16 comprehensive test cases for site configuration
+- Validated all endpoint options and edge cases
+- 100% coverage for new functionality
+- All 223 tests passing
+
 ## [0.4.19] - 2025-11-05
 
 ### Fixed

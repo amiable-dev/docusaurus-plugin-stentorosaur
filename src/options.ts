@@ -7,7 +7,7 @@
 
 import {Joi} from '@docusaurus/utils-validation';
 import type {OptionValidationContext} from '@docusaurus/types';
-import type {PluginOptions} from './types';
+import type {PluginOptions, SiteConfig} from './types';
 
 export const DEFAULT_OPTIONS: Partial<PluginOptions> = {
   statusLabel: 'status',
@@ -23,7 +23,32 @@ export const DEFAULT_OPTIONS: Partial<PluginOptions> = {
   showPerformanceMetrics: true,
   defaultSLO: 99.9,
   systemSLOs: {},
+  sites: [],
 };
+
+// Site configuration validation schema
+const siteConfigSchema = Joi.object<SiteConfig>({
+  name: Joi.string().required(),
+  url: Joi.string().required(),
+  method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS').default('GET'),
+  check: Joi.string().valid('http', 'tcp-ping', 'ws', 'ssl').default('http'),
+  port: Joi.number().port(),
+  ipv6: Joi.boolean(),
+  headers: Joi.array().items(Joi.string()),
+  body: Joi.string(),
+  expectedStatusCodes: Joi.array().items(Joi.number().integer().min(100).max(599)),
+  maxResponseTime: Joi.number().positive(),
+  __dangerous__insecure: Joi.boolean(),
+  __dangerous__disable_verify_peer: Joi.boolean(),
+  __dangerous__disable_verify_host: Joi.boolean(),
+  __dangerous__body_down: Joi.string(),
+  __dangerous__body_degraded: Joi.string(),
+  __dangerous__body_down_if_text_missing: Joi.string(),
+  __dangerous__body_degraded_if_text_missing: Joi.string(),
+  icon: Joi.string(),
+  slug: Joi.string().pattern(/^[a-z0-9-]+$/),
+  assignees: Joi.array().items(Joi.string()),
+});
 
 const pluginOptionsSchema = Joi.object<PluginOptions>({
   owner: Joi.string(),
@@ -61,6 +86,7 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
     showAffectedSystems: Joi.boolean(),
     timezone: Joi.string(),
   }),
+  sites: Joi.array().items(siteConfigSchema).default(DEFAULT_OPTIONS.sites),
 });
 
 export function validateOptions({

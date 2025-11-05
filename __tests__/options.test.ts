@@ -7,7 +7,7 @@
 
 import {Joi} from '@docusaurus/utils-validation';
 import {DEFAULT_OPTIONS, validateOptions} from '../src/options';
-import type {PluginOptions} from '../src/types';
+import type {PluginOptions, SiteConfig} from '../src/types';
 import type {OptionValidationContext} from '@docusaurus/types';
 
 // Create the same schema as in options.ts for testing
@@ -244,6 +244,400 @@ describe('plugin options validation', () => {
         expect.any(Object),
         mockContext.options
       );
+    });
+  });
+
+  describe('site configuration validation', () => {
+    it('should accept valid site configuration', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'API Service',
+            url: 'https://api.example.com',
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites).toBeDefined();
+      expect(result.sites?.[0].name).toBe('API Service');
+    });
+
+    it('should accept HTTP method configuration', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'POST Endpoint',
+            url: 'https://api.example.com/webhook',
+            method: 'POST',
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].method).toBe('POST');
+    });
+
+    it('should accept headers configuration', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'Authenticated API',
+            url: 'https://api.example.com',
+            headers: [
+              'Authorization: Bearer $API_TOKEN',
+              'Content-Type: application/json',
+            ],
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].headers).toEqual([
+        'Authorization: Bearer $API_TOKEN',
+        'Content-Type: application/json',
+      ]);
+    });
+
+    it('should accept expected status codes', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'API',
+            url: 'https://api.example.com',
+            expectedStatusCodes: [200, 201, 202],
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].expectedStatusCodes).toEqual([200, 201, 202]);
+    });
+
+    it('should accept TCP ping configuration', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'Database',
+            url: 'db.example.com',
+            check: 'tcp-ping',
+            port: 5432,
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].check).toBe('tcp-ping');
+      expect(result.sites?.[0].port).toBe(5432);
+    });
+
+    it('should accept SSL configuration', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'Secure Site',
+            url: 'https://secure.example.com',
+            check: 'ssl',
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].check).toBe('ssl');
+    });
+
+    it('should accept dangerous SSL options', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'Internal API',
+            url: 'https://internal.example.com',
+            __dangerous__insecure: true,
+            __dangerous__disable_verify_peer: true,
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].__dangerous__insecure).toBe(true);
+    });
+
+    it('should accept body check options', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'Status Check',
+            url: 'https://status.example.com',
+            __dangerous__body_down_if_text_missing: '\"status\":\"UP\"',
+            __dangerous__body_degraded_if_text_missing: '\"health\":\"OK\"',
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].__dangerous__body_down_if_text_missing).toBe('\"status\":\"UP\"');
+    });
+
+    it('should accept max response time', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'Fast API',
+            url: 'https://api.example.com',
+            maxResponseTime: 5000,
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].maxResponseTime).toBe(5000);
+    });
+
+    it('should accept display options', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'Main Website',
+            url: 'https://example.com',
+            icon: '🌐',
+            slug: 'main-site',
+            assignees: ['user1', 'user2'],
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].icon).toBe('🌐');
+      expect(result.sites?.[0].slug).toBe('main-site');
+      expect(result.sites?.[0].assignees).toEqual(['user1', 'user2']);
+    });
+
+    it('should accept IPv6 configuration', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'IPv6 Site',
+            url: 'https://ipv6.example.com',
+            ipv6: true,
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].ipv6).toBe(true);
+    });
+
+    it('should accept POST request with body', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'GraphQL API',
+            url: 'https://api.example.com/graphql',
+            method: 'POST',
+            body: '{\"query\":\"{health}\"}',
+            headers: ['Content-Type: application/json'],
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].body).toBe('{\"query\":\"{health}\"}');
+    });
+
+    it('should accept WebSocket configuration', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'WebSocket Server',
+            url: 'wss://ws.example.com',
+            check: 'ws',
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].check).toBe('ws');
+    });
+
+    it('should accept multiple sites', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'Website',
+            url: 'https://example.com',
+          },
+          {
+            name: 'API',
+            url: 'https://api.example.com',
+            method: 'GET',
+          },
+          {
+            name: 'Database',
+            url: 'db.example.com',
+            check: 'tcp-ping',
+            port: 5432,
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites).toHaveLength(3);
+      expect(result.sites?.[0].name).toBe('Website');
+      expect(result.sites?.[1].name).toBe('API');
+      expect(result.sites?.[2].name).toBe('Database');
+    });
+
+    it('should default to empty sites array', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+      };
+
+      const mockValidate = jest.fn((schema, opts) => ({
+        ...opts,
+        sites: DEFAULT_OPTIONS.sites,
+      }));
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites).toEqual([]);
+    });
+
+    it('should support environment variable substitution in URL', () => {
+      const options: Partial<PluginOptions> = {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        sites: [
+          {
+            name: 'Secret API',
+            url: 'https://$API_HOST/endpoint',
+          },
+        ],
+      };
+
+      const mockValidate = jest.fn((schema, opts) => opts);
+      const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
+        validate: mockValidate,
+        options: options as PluginOptions,
+      };
+
+      const result = validateOptions(mockContext);
+      expect(result.sites?.[0].url).toBe('https://$API_HOST/endpoint');
     });
   });
 });
