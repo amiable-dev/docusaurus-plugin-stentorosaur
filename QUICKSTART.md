@@ -56,7 +56,9 @@ module.exports = {
 
 ## Step 3: Set up GitHub Actions
 
-### Option A: Automated Monitoring (New in v0.4.0)
+The plugin uses three workflows that work together:
+
+### Workflow 1: Monitor Systems (Required for Automated Monitoring)
 
 Copy the monitoring workflows:
 
@@ -66,7 +68,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/compress-archives.yml .github/workflows/
 ```
 
-**Configure your endpoints** - create `.monitorrc.json` (required in v0.4.10+):
+**Configure your endpoints** - create `.monitorrc.json` in your repository root:
 
 ```json
 {
@@ -76,22 +78,22 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
       "url": "https://api.example.com/health",
       "expectedCodes": [200],
       "maxResponseTime": 30000
+    },
+    {
+      "system": "website",
+      "url": "https://example.com"
     }
   ]
 }
 ```
 
-**Benefits of the monitoring system (v0.4.10+):**
-- ✅ **Zero data loss** - Sequential monitoring captures all systems
-- ✅ **No race conditions** - Single job eliminates concurrent git conflicts
-- ✅ Append-only data storage (no Git history pollution)
-- ✅ Fast site loads (small current.json file)
-- ✅ Automatic compression of old data
-- ✅ Scales reliably to 10+ systems without data loss
+**What it does:**
+- ✅ Checks endpoints every 5 minutes
+- ✅ Updates `current.json` with response times and status
+- ✅ Creates GitHub Issues for critical failures
+- ✅ Commits with `[skip ci]` (doesn't trigger deployments)
 
-See [MONITORING_SYSTEM.md](./MONITORING_SYSTEM.md) for details.
-
-### Option B: Manual Status Updates
+### Workflow 2: Status Update (Required for Incident Tracking)
 
 Copy the status update workflow:
 
@@ -99,33 +101,114 @@ Copy the status update workflow:
 cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/status-update.yml .github/workflows/
 ```
 
-This workflow automatically updates status data when issues change using the CLI command:
+**What it does:**
+- ✅ Runs when issues are created/updated/closed
+- ✅ Runs hourly to catch any changes
+- ✅ Generates `incidents.json` from issues with `status` label
+- ✅ Generates `maintenance.json` from issues with `maintenance` label
+- ✅ Triggers immediate deployment for critical incidents
+- ✅ Uses CLI: `npx stentorosaur-update-status --write-incidents --write-maintenance`
+
+**CLI Options (v0.4.12+):**
 
 ```bash
-npx stentorosaur-update-status
+# Full command with all options
+npx stentorosaur-update-status \
+  --write-incidents \
+  --write-maintenance \
+  --output-dir status-data \
+  --verbose
+
+# Available options:
+# --write-incidents    Generate incidents.json from 'status' labeled issues
+# --write-maintenance  Generate maintenance.json from 'maintenance' labeled issues
+# --output-dir <path>  Custom output directory (default: status-data)
+# --verbose            Enable detailed logging
+# --commit             Auto-commit changes with emoji messages
 ```
 
-**CLI Options:**
+### Workflow 3: Deployment (Required)
 
-- `--help` - Show usage information
-- `--output-dir <path>` - Custom output directory (default: status-data)
-- `--verbose` - Enable detailed logging
-- `--commit` - Auto-commit changes with emoji messages (🟩🟨🟥📊)
-
-You can also run this command locally to update status data:
+Copy both deployment workflows:
 
 ```bash
-# Basic usage
-npx stentorosaur-update-status
-
-# With custom output directory
-npx stentorosaur-update-status --output-dir ./public/status
-
-# With verbose logging and auto-commit
-npx stentorosaur-update-status --verbose --commit
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/deploy.yml .github/workflows/
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/deploy-scheduled.yml .github/workflows/
 ```
 
-And optionally the issue template:
+**deploy.yml** - Immediate deployments:
+- ✅ Triggered by code pushes to main
+- ✅ Triggered by `repository_dispatch` events (critical incidents)
+- ✅ Ignores monitoring data commits (via `paths-ignore`)
+- ✅ Deploys within ~2 minutes for critical incidents
+
+**deploy-scheduled.yml** - Scheduled deployments:
+- ✅ Runs every hour (configurable)
+- ✅ Picks up non-critical incident updates
+- ✅ Picks up maintenance window changes
+- ✅ Ensures regular updates even without critical issues
+
+**Smart Deployment Logic (v0.4.13+):**
+
+```
+Critical Incident:
+  Issue created with 'critical' + 'status' labels
+    → status-update.yml runs
+    → Generates incidents.json with critical incident
+    → Triggers repository_dispatch event
+    → deploy.yml runs immediately
+    → Status page updated in ~2 minutes
+
+Non-Critical Update:
+  Issue created with 'major' or 'minor' label
+    → status-update.yml runs
+    → Generates incidents.json
+    → Commits with [skip ci]
+    → deploy-scheduled.yml runs within 1 hour
+    → Status page updated
+
+Monitoring Data:
+  monitor-systems.yml runs every 5 minutes
+    → Updates current.json
+    → Commits with [skip ci]
+    → NO deployment triggered (paths-ignore)
+    → Data available for next scheduled deployment
+```
+
+### Complete Workflow Setup Summary
+
+After copying all workflows, you'll have:
+
+```
+.github/
+  workflows/
+    monitor-systems.yml      # Every 5 min - Check endpoints, update current.json
+    status-update.yml        # On issue events + hourly - Update incidents/maintenance
+    deploy.yml               # On push + critical incidents - Immediate deployment
+    deploy-scheduled.yml     # Hourly - Pick up non-critical updates
+    compress-archives.yml    # Daily - Compress old monitoring data
+```
+
+**Data Flow:**
+
+```
+Every 5 min:
+  monitor-systems.yml → current.json → [skip ci] → No deploy
+  
+Critical failure:
+  monitor-systems.yml → Creates Issue → status-update.yml
+    → incidents.json → repository_dispatch → deploy.yml → IMMEDIATE DEPLOY
+  
+Non-critical issue:
+  GitHub Issue created → status-update.yml
+    → incidents.json → [skip ci] → deploy-scheduled.yml (hourly) → DEPLOY
+
+Maintenance:
+  GitHub Issue with YAML frontmatter → status-update.yml
+    → maintenance.json → [skip ci] → deploy-scheduled.yml (hourly) → DEPLOY
+```
+
+### Issue Template (Optional but Recommended)
 
 ```bash
 mkdir -p .github/ISSUE_TEMPLATE
@@ -138,13 +221,27 @@ Create a new GitHub issue with these labels:
 
 - `status` (required)
 - `api` (or whatever system label you configured)
-- `critical` (or `major`, `minor`, `maintenance`)
+- `critical` (or `major`, `minor`)
 
 Example:
 
 - Title: "API experiencing high latency"
 - Labels: `status`, `api`, `major`
 - Body: Description of the issue
+
+**For maintenance windows**, add YAML frontmatter:
+
+```markdown
+---
+start: 2025-11-15T02:00:00Z
+end: 2025-11-15T04:00:00Z
+systems:
+  - api
+  - database
+---
+
+Scheduled database upgrade to improve performance.
+```
 
 ## Step 5: View Your Status Page
 

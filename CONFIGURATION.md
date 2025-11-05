@@ -2,6 +2,82 @@
 
 You now have full control over what's displayed on your status page!
 
+## CLI Tools (v0.4.12+)
+
+### stentorosaur-update-status
+
+Command-line tool for generating status data files from GitHub Issues.
+
+**Usage:**
+
+```bash
+npx stentorosaur-update-status [options]
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--output-dir <path>` | string | `status-data` | Directory to write status files |
+| `--write-incidents` | boolean | `false` | Generate incidents.json from issues with 'status' label |
+| `--write-maintenance` | boolean | `false` | Generate maintenance.json from issues with 'maintenance' label |
+| `--verbose` | boolean | `false` | Enable detailed logging |
+| `--commit` | boolean | `false` | Auto-commit changes with emoji messages |
+| `--help` | - | - | Show help message |
+
+**Examples:**
+
+```bash
+# Generate all data files (v0.4.12+)
+npx stentorosaur-update-status --write-incidents --write-maintenance
+
+# With verbose logging
+npx stentorosaur-update-status --write-incidents --write-maintenance --verbose
+
+# Custom output directory
+npx stentorosaur-update-status \
+  --output-dir ./public/status \
+  --write-incidents \
+  --write-maintenance
+
+# Auto-commit with emoji messages
+npx stentorosaur-update-status \
+  --write-incidents \
+  --write-maintenance \
+  --commit
+```
+
+**GitHub Action Usage:**
+
+```yaml
+- name: Update status data
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    npx stentorosaur-update-status \
+      --write-incidents \
+      --write-maintenance \
+      --verbose
+```
+
+**Output Files:**
+
+When `--write-incidents` is used:
+- Creates `status-data/incidents.json` with active and resolved incidents
+- Includes issues with `status` label
+- Contains last 30 days of resolved incidents
+
+When `--write-maintenance` is used:
+- Creates `status-data/maintenance.json` with maintenance windows
+- Includes issues with `maintenance` label
+- Parses YAML frontmatter for start/end times
+- Calculates status: upcoming, in-progress, or completed
+
+**Environment Variables:**
+
+- `GITHUB_TOKEN` - Required for fetching issues from GitHub API
+- `GITHUB_REPOSITORY` - Auto-detected in GitHub Actions, or use `--owner` and `--repo` options (coming soon)
+
 ## Quick Reference (v0.5.0)
 
 ```typescript

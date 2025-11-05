@@ -1,14 +1,174 @@
 # Monitoring System Documentation
 
-This document describes the new append-only monitoring architecture implemented in issues #7 and #19.
+This document describes the monitoring and status tracking architecture implemented across issues #7, #19, and #33.
 
 ## Overview
 
-The monitoring system has been redesigned to:
-- Use append-only JSONL files to avoid Git history pollution
-- Maintain a hot file (`current.json`) for fast site loads
-- Store historical data in daily archive files
-- Compress old archives to save space
+The monitoring system uses a **three-file architecture** that separates monitoring data from incident tracking:
+
+- **Append-only monitoring data** to eliminate Git history pollution
+- **GitHub Issue-based incidents** for structured problem tracking
+- **Smart deployment triggers** for critical vs non-critical updates
+- **Optimized for performance** with hot files and compression
+
+## Three-File Architecture (v0.4.11+)
+
+### File Structure
+
+```
+status-data/
+├── current.json          # Time-series monitoring readings (updated every 5min)
+├── incidents.json        # Active and resolved incidents from GitHub Issues
+├── maintenance.json      # Scheduled maintenance windows
+└── archives/
+    └── 2025/11/
+        ├── history-2025-11-01.jsonl.gz   # Compressed daily archives
+        ├── history-2025-11-02.jsonl.gz
+        └── history-2025-11-03.jsonl      # Today (uncompressed)
+```
+
+### File Details
+
+#### 1. current.json (Monitoring Data)
+
+**Purpose**: Real-time endpoint health checks and response time tracking  
+**Updated By**: `monitor-systems.yml` workflow (every 5 minutes)  
+**Source**: Automated HTTP checks to configured endpoints  
+**Retention**: Rolling 14-day window (~4,000 readings for 5-minute checks)
+
+**Format**: Array of compact readings
+
+```json
+[
+  {
+    "t": 1699123456789,
+    "svc": "api",
+    "state": "up",
+    "code": 200,
+    "lat": 145,
+    "err": null
+  },
+  {
+    "t": 1699123756789,
+    "svc": "website",
+    "state": "down",
+    "code": 500,
+    "lat": 2500,
+    "err": "Connection timeout"
+  }
+]
+```
+
+**Fields:**
+- `t` - Timestamp (milliseconds since epoch)
+- `svc` - Service name (e.g., 'api', 'website', 'database')
+- `state` - Status: 'up', 'down', 'degraded', or 'maintenance'
+- `code` - HTTP status code
+- `lat` - Latency in milliseconds
+- `err` - Error message (optional, only present if request failed)
+
+**Commit Strategy**: 
+- Committed with `[skip ci]` tag
+- Does NOT trigger deployments (filtered by `paths-ignore` in `deploy.yml`)
+- Creates critical GitHub Issues when services go down
+
+#### 2. incidents.json (Issue-Based Incidents)
+
+**Purpose**: Track incidents reported via GitHub Issues  
+**Updated By**: `status-update.yml` workflow (on issue events + hourly)  
+**Source**: GitHub Issues with `status` label  
+**Retention**: Active incidents + last 30 days of resolved incidents
+
+**Format**: Array of incident objects
+
+```json
+[
+  {
+    "id": 123,
+    "title": "API experiencing high latency",
+    "severity": "major",
+    "status": "open",
+    "systems": ["api", "database"],
+    "createdAt": "2025-11-03T10:00:00Z",
+    "updatedAt": "2025-11-03T12:30:00Z",
+    "closedAt": null,
+    "body": "Users reporting slow API responses...",
+    "url": "https://github.com/org/repo/issues/123",
+    "comments": [
+      {
+        "author": "devops-bot",
+        "createdAt": "2025-11-03T11:00:00Z",
+        "body": "Database query optimization in progress"
+      }
+    ]
+  }
+]
+```
+
+**Severity Levels** (from issue labels):
+- `critical` - Complete service outage
+- `major` - Significant degradation
+- `minor` - Minor issues, partial impact
+- `maintenance` - Planned maintenance
+
+**Commit Strategy**:
+- Committed with `[skip ci]` tag
+- If contains `critical` incidents → triggers `repository_dispatch` event
+- `repository_dispatch` triggers immediate deployment (~2 min)
+
+#### 3. maintenance.json (Scheduled Maintenance)
+
+**Purpose**: Track scheduled and completed maintenance windows  
+**Updated By**: `status-update.yml` workflow (on issue events + hourly)  
+**Source**: GitHub Issues with `maintenance` label and YAML frontmatter  
+**Retention**: Upcoming + in-progress + last 60 days of completed
+
+**Format**: Array of maintenance objects
+
+```json
+[
+  {
+    "id": 456,
+    "title": "Database upgrade to v2.0",
+    "status": "upcoming",
+    "systems": ["api", "database"],
+    "start": "2025-11-15T02:00:00Z",
+    "end": "2025-11-15T04:00:00Z",
+    "createdAt": "2025-11-01T10:00:00Z",
+    "body": "Scheduled database upgrade to improve performance...",
+    "url": "https://github.com/org/repo/issues/456"
+  }
+]
+```
+
+**Status Calculation**:
+- `upcoming` - Start time is in the future
+- `in-progress` - Current time between start and end
+- `completed` - End time has passed OR issue is closed
+
+**Issue Format**:
+
+Create a GitHub issue with the `maintenance` label and YAML frontmatter:
+
+```markdown
+---
+start: 2025-11-15T02:00:00Z
+end: 2025-11-15T04:00:00Z
+systems:
+  - api
+  - database
+---
+
+Scheduled database upgrade to improve performance.
+
+**Expected Impact:**
+- API will be unavailable during the maintenance window
+```
+
+**Commit Strategy**:
+- Committed with `[skip ci]` tag
+- Does NOT trigger immediate deployment
+- Picked up by hourly scheduled deployment
 
 ## Architecture
 
@@ -112,52 +272,188 @@ node scripts/monitor.js \
 
 ### Workflows
 
-#### Monitor Systems (`monitor-systems.yml`)
+The monitoring system uses three coordinated workflows:
 
-Runs every 5 minutes to check all configured endpoints using **sequential monitoring** (v0.4.10+).
+#### 1. Monitor Systems (`monitor-systems.yml`)
 
-**Configuration:**
+**Trigger**: Every 5 minutes (cron: `*/5 * * * *`)
 
-Create `.monitorrc.json` in your repository root:
+**Purpose**: Check endpoint health and update monitoring data
+
+**Process**:
+1. Checkout repository
+2. Setup Node.js 20
+3. Run monitoring script with `--config .monitorrc.json`
+4. Script monitors each system sequentially
+5. Append readings to `archives/YYYY/MM/history-YYYY-MM-DD.jsonl`
+6. Rebuild `current.json` from last 14 days
+7. Commit with `[skip ci]` tag
+8. If critical failure detected → Create GitHub Issue with `critical` + `status` labels
+
+**Configuration**: `.monitorrc.json` in repository root
 
 ```json
 {
   "systems": [
     {
       "system": "api",
-      "url": "https://api.example.com/health"
+      "url": "https://api.example.com/health",
+      "expectedCodes": [200],
+      "maxResponseTime": 30000
     },
     {
       "system": "website",
       "url": "https://example.com"
-    },
-    {
-      "system": "admin",
-      "url": "https://admin.example.com"
     }
   ]
 }
 ```
 
-**Architecture (v0.4.10+):**
+**Sequential Architecture (v0.4.10+)**:
+- Single job monitors all systems in sequence
+- Zero data loss (no race conditions)
+- Single commit with all data
+- Runtime: ~5 seconds per system
 
-The workflow uses a **single job** that monitors all systems sequentially:
+**Commit Message**: `Update monitoring data [skip ci]`
 
+**Critical Issue Creation**:
+- When service goes down → Automatically creates GitHub Issue
+- Labels: `status`, `critical`, `<service-name>`
+- Title: `🔴 <Service> is down`
+- Triggers `status-update.yml` via issue event
+
+#### 2. Status Update (`status-update.yml`)
+
+**Trigger**: 
+- GitHub Issue events (opened, closed, labeled, edited)
+- Schedule: Every hour (cron: `0 * * * *`)
+- Manual: `workflow_dispatch`
+
+**Purpose**: Generate incidents.json and maintenance.json from GitHub Issues
+
+**Process**:
 1. Checkout repository
 2. Setup Node.js 20
-3. Run monitoring script with `--config .monitorrc.json`
-4. Script monitors each system sequentially
-5. Single commit with all systems' data
+3. Run `npx stentorosaur-update-status --write-incidents --write-maintenance`
+4. Fetch all GitHub Issues with `status` or `maintenance` labels
+5. Generate `incidents.json` (active + last 30 days resolved)
+6. Generate `maintenance.json` (upcoming + in-progress + last 60 days)
+7. Commit with `[skip ci]` tag
+8. **Smart Deployment Trigger**:
+   - If `incidents.json` contains `critical` incidents → Dispatch `repository_dispatch` event
+   - Event type: `status-updated`
+   - Triggers immediate deployment via `deploy.yml`
 
-**Why Sequential?**
+**CLI Command**:
+```bash
+npx stentorosaur-update-status \
+  --write-incidents \
+  --write-maintenance \
+  --output-dir status-data \
+  --verbose
+```
 
-- **Zero data loss**: All systems' data captured in one commit
-- **No race conditions**: Only one git push operation
-- **No merge conflicts**: Single job eliminates concurrent operations
-- **Reliable at scale**: Works with 10+ systems without data loss
+**Commit Message**: `Update status data [skip ci]`
 
-**Performance:**
-- Runtime: ~5 seconds per system
+**Critical Dispatch Logic**:
+```yaml
+- name: Trigger deployment for critical incidents
+  if: contains(github.event.issue.labels.*.name, 'critical')
+  uses: peter-evans/repository-dispatch@v2
+  with:
+    event-type: status-updated
+    token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+#### 3. Deploy Workflows
+
+**Two deployment workflows work together**:
+
+##### deploy.yml (Immediate Deployment)
+
+**Triggers**:
+- `push` to `main` branch (code changes)
+- `repository_dispatch` with type `status-updated` (critical incidents)
+- `workflow_dispatch` (manual)
+
+**Path Filtering (v0.4.13+)**:
+```yaml
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'status-data/current.json'
+      - 'status-data/archives/**'
+  repository_dispatch:
+    types: [status-updated]
+```
+
+**Result**:
+- Monitoring commits (every 5 min) → **NOT deployed**
+- Code changes → **Deployed immediately**
+- Critical incidents → **Deployed immediately** (~2 min)
+
+##### deploy-scheduled.yml (Hourly Deployment)
+
+**Trigger**: Schedule every hour (cron: `0 * * * *`)
+
+**Purpose**: Pick up non-critical status updates
+
+**Process**:
+1. Checkout repository with all status files
+2. Build Docusaurus site (plugin reads 3 status files)
+3. Deploy to GitHub Pages
+
+**Result**:
+- Non-critical incidents → **Deployed within 1 hour**
+- Maintenance updates → **Deployed within 1 hour**
+
+### Workflow Interaction Diagram
+
+```
+Every 5 min:
+  monitor-systems.yml
+    ↓ Check endpoints
+    ↓ Update current.json
+    ↓ Commit [skip ci]
+    ↓ NO DEPLOYMENT
+    ↓ If critical down
+    ↓ Create Issue → Triggers status-update.yml
+
+On Issue Events + Hourly:
+  status-update.yml
+    ↓ Fetch GitHub Issues
+    ↓ Generate incidents.json + maintenance.json
+    ↓ Commit [skip ci]
+    ↓ Check for critical
+    ├─ Critical → repository_dispatch → deploy.yml (immediate)
+    └─ Non-critical → Wait for deploy-scheduled.yml (hourly)
+
+Deployment:
+  deploy.yml (immediate)
+    ↓ Triggered by: code push, repository_dispatch, manual
+    ↓ Ignores: current.json, archives/**
+    ↓ Reads: incidents.json, maintenance.json
+    ↓ Build + Deploy
+  
+  deploy-scheduled.yml (hourly)
+    ↓ Triggered by: schedule
+    ↓ Reads: current.json, incidents.json, maintenance.json
+    ↓ Build + Deploy
+```
+
+### Data Flow Summary
+
+| Event | Workflow | Files Updated | Deployment | Latency |
+|-------|----------|---------------|------------|---------|
+| Endpoint check (every 5m) | `monitor-systems.yml` | `current.json` | None | N/A |
+| Critical endpoint down | `monitor-systems.yml` | `current.json` + creates Issue | Via `status-update.yml` → `deploy.yml` | ~2 min |
+| Issue opened/closed | `status-update.yml` | `incidents.json`, `maintenance.json` | `deploy.yml` if critical, else hourly | 2 min / 1 hour |
+| Hourly check | `status-update.yml` | `incidents.json`, `maintenance.json` | `deploy-scheduled.yml` | 1 hour |
+| Code push to main | N/A | N/A | `deploy.yml` | ~5 min |
+
+### Workflows
 - 2 systems: ~10s total (vs 5s parallel with 50% data loss)
 - 10 systems: ~50s total (vs 5s parallel with 90% data loss)
 - Still completes within 5-minute cron interval for most deployments

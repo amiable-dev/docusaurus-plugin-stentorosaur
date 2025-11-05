@@ -735,6 +735,118 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 
 See [MONITORING_SYSTEM.md](./MONITORING_SYSTEM.md) for complete documentation.
 
+### Three-File Data Architecture (v0.4.11+)
+
+The plugin now uses a **three-file data architecture** that separates monitoring data from incident data for improved performance and smart deployments:
+
+```
+status-data/
+├── current.json          # Time-series monitoring readings (every 5min, 14-day window)
+├── incidents.json        # Active and resolved incidents from GitHub Issues
+└── maintenance.json      # Scheduled maintenance windows
+```
+
+**File Purposes:**
+
+| File | Updated By | Update Frequency | Purpose |
+|------|------------|------------------|---------|
+| `current.json` | `monitor-systems.yml` | Every 5 minutes | Live endpoint status, response times, health checks |
+| `incidents.json` | `status-update.yml` | On issue events + hourly | Incidents tracked via GitHub Issues with `status` label |
+| `maintenance.json` | `status-update.yml` | On issue events + hourly | Maintenance windows with `maintenance` label |
+
+**Why Three Files?**
+
+- ✅ **Separation of Concerns**: Monitoring data separate from incident tracking
+- ✅ **Smart Deployments**: Critical incidents trigger immediate deploys, monitoring data doesn't
+- ✅ **Performance**: Plugin only reads incident data when needed
+- ✅ **Reduced Noise**: Monitoring commits use `[skip ci]`, don't trigger unnecessary builds
+
+**Data Flow:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  MONITORING FLOW (Every 5 minutes)                              │
+├─────────────────────────────────────────────────────────────────┤
+│  monitor-systems.yml                                            │
+│    ↓                                                            │
+│  Check all endpoints (sequential)                               │
+│    ↓                                                            │
+│  Append to archives/YYYY/MM/history-YYYY-MM-DD.jsonl           │
+│    ↓                                                            │
+│  Rebuild current.json (14-day rolling window)                   │
+│    ↓                                                            │
+│  Commit with [skip ci] → NO DEPLOYMENT TRIGGERED                │
+│    ↓                                                            │
+│  If critical failure → Create GitHub Issue with 'critical' label│
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  INCIDENT FLOW (On issue events + hourly)                       │
+├─────────────────────────────────────────────────────────────────┤
+│  GitHub Issue created/updated (with 'status' or 'maintenance')  │
+│    ↓                                                            │
+│  status-update.yml triggered                                    │
+│    ↓                                                            │
+│  Fetch issues from GitHub API                                   │
+│    ↓                                                            │
+│  Generate incidents.json + maintenance.json                     │
+│    ↓                                                            │
+│  Commit with [skip ci]                                          │
+│    ↓                                                            │
+│  If CRITICAL incident → Trigger repository_dispatch event       │
+│    ↓                                                            │
+│  deploy.yml triggered → IMMEDIATE DEPLOYMENT (~2 min)           │
+│                                                                 │
+│  If NON-CRITICAL → Wait for hourly scheduled deployment         │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  DEPLOYMENT FLOW                                                │
+├─────────────────────────────────────────────────────────────────┤
+│  Deploy Triggers:                                               │
+│    • Push to main (code changes)                                │
+│    • repository_dispatch: status-updated (critical incidents)   │
+│    • Hourly schedule (non-critical updates)                     │
+│    • Manual workflow_dispatch                                   │
+│    ↓                                                            │
+│  Checkout repository (includes all 3 status files)              │
+│    ↓                                                            │
+│  Plugin reads current.json + incidents.json + maintenance.json  │
+│    ↓                                                            │
+│  Build static site with aggregated data                         │
+│    ↓                                                            │
+│  Deploy to GitHub Pages                                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Smart Deployment Logic (v0.4.13+):**
+
+The `deploy.yml` workflow has been enhanced with intelligent triggers:
+
+- **Ignores monitoring data commits**: `paths-ignore` for `status-data/current.json` and archives
+- **Immediate critical deploys**: `repository_dispatch` event when critical incidents occur
+- **Scheduled non-critical**: `deploy-scheduled.yml` runs hourly to pick up routine updates
+
+This means:
+- ⚡ **Critical incidents** deploy within ~2 minutes via `repository_dispatch`
+- 🕐 **Non-critical incidents** deploy within 1 hour via scheduled workflow
+- 🚫 **Monitoring commits** (every 5 min) don't trigger any deployments
+
+**CLI Options for Status Update (v0.4.12+):**
+
+```bash
+# Generate all data files
+npx stentorosaur-update-status --write-incidents --write-maintenance
+
+# Verbose output
+npx stentorosaur-update-status --write-incidents --write-maintenance --verbose
+
+# Custom output directory
+npx stentorosaur-update-status --output-dir ./public/status --write-incidents --write-maintenance
+```
+
+See [CONFIGURATION.md](./CONFIGURATION.md) for CLI option details.
+
 ## Status Data Storage Patterns
 
 The plugin supports two different approaches for managing status data, depending on your deployment strategy:
