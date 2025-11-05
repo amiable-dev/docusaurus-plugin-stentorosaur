@@ -12,7 +12,7 @@ interface MaintenanceListProps {
 }
 
 export default function MaintenanceList({
-  maintenance,
+  maintenance = [],
   filterStatus = 'all',
   showComments = true,
   showAffectedSystems = true,

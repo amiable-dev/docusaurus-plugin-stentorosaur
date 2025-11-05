@@ -11,10 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **StatusPage & UptimeStatusPage**: Add defensive guards for undefined statusData properties
+- **StatusPage, UptimeStatusPage, IncidentHistory & MaintenanceList**: Add defensive guards for undefined props
   - Fix `TypeError: Cannot read properties of undefined (reading 'length')` during SSG
-  - Add default empty arrays for `items`, `incidents`, and `systems` when destructuring
-  - Add null check for `statusData` object itself
+  - Add default empty arrays for `items`, `incidents`, `systems`, and `maintenance` when destructuring
+  - Add null check for `statusData` object itself in page components
   - Prevents build failures when status data is not fully populated during static site generation
 
 ## [0.4.14] - 2025-11-05

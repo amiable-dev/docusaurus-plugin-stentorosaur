@@ -42,7 +42,7 @@ const severityConfig = {
 };
 
 export default function IncidentHistory({
-  incidents,
+  incidents = [],
   maxItems = 10,
   useDemoData = false,
   title,
