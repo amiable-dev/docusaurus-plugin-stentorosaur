@@ -71,6 +71,60 @@ async function readSystemFiles(systemsDir: string): Promise<Partial<StatusItem>[
 }
 
 /**
+ * Convert compact readings from current.json to SystemStatusFile format
+ */
+function convertReadingsToSystemFiles(readings: any[]): SystemStatusFile[] {
+  // Group readings by system
+  const systemMap = new Map<string, any[]>();
+  for (const reading of readings) {
+    if (!systemMap.has(reading.svc)) {
+      systemMap.set(reading.svc, []);
+    }
+    systemMap.get(reading.svc)!.push(reading);
+  }
+  
+  const systemFiles: SystemStatusFile[] = [];
+  
+  for (const [systemName, systemReadings] of systemMap.entries()) {
+    // Sort by timestamp (most recent first)
+    systemReadings.sort((a, b) => b.t - a.t);
+    
+    const latest = systemReadings[0];
+    
+    // Convert to StatusCheckHistory format
+    const history = systemReadings.map(r => ({
+      timestamp: new Date(r.t).toISOString(),
+      status: r.state,
+      responseTime: r.state === 'up' && r.code >= 200 && r.code < 300 ? r.lat : 0,
+      code: r.code,
+    }));
+    
+    // Calculate uptime percentage
+    const upReadings = systemReadings.filter(r => r.state === 'up').length;
+    const uptime = systemReadings.length > 0 ? (upReadings / systemReadings.length) * 100 : 0;
+    
+    // Calculate average response time from successful readings only
+    const successfulReadings = systemReadings.filter(r => r.state === 'up' && r.code >= 200 && r.code < 300);
+    const avgResponseTime = successfulReadings.length > 0
+      ? Math.round(successfulReadings.reduce((sum: number, r: any) => sum + r.lat, 0) / successfulReadings.length)
+      : undefined;
+    
+    systemFiles.push({
+      name: systemName,
+      url: '', // URL not stored in compact format
+      currentStatus: latest.state,
+      lastChecked: new Date(latest.t).toISOString(),
+      history,
+      uptime: `${(Math.round(uptime * 100) / 100).toFixed(2)}%`,
+      uptimeDay: `${(Math.round(uptime * 100) / 100).toFixed(2)}%`,
+      timeDay: avgResponseTime,
+    });
+  }
+  
+  return systemFiles;
+}
+
+/**
  * Returns a list of components that can be swizzled/ejected for customization.
  * Docusaurus uses this to provide better swizzle command support.
  */
@@ -204,10 +258,10 @@ export default async function pluginStatus(
               const upReadings = readings.filter(r => r.state === 'up').length;
               const uptime = readings.length > 0 ? (upReadings / readings.length) * 100 : 0;
               
-              // Calculate average response time (only from 'up' readings)
-              const upTimes = readings.filter(r => r.state === 'up').map(r => r.lat);
-              const avgResponseTime = upTimes.length > 0
-                ? Math.round(upTimes.reduce((sum: number, lat: number) => sum + lat, 0) / upTimes.length)
+              // Calculate average response time (ONLY from successful 'up' readings)
+              const successfulReadings = readings.filter(r => r.state === 'up' && r.code >= 200 && r.code < 300);
+              const avgResponseTime = successfulReadings.length > 0
+                ? Math.round(successfulReadings.reduce((sum: number, r: any) => sum + r.lat, 0) / successfulReadings.length)
                 : undefined;
               
               items.push({
@@ -436,24 +490,23 @@ export default async function pluginStatus(
         },
       });
 
-      // Add StatusHistory routes for each system (if demo data)
-      let shouldUseDemoData = useDemoData ?? !token;
-      if (shouldUseDemoData) {
-        const demoSystemFiles = getDemoSystemFiles();
-        demoSystemFiles.forEach(systemFile => {
-          const systemSlug = systemFile.name
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-');
-          
-          addRoute({
-            path: normalizeUrl([baseUrl, 'status', 'history', systemSlug]),
-            component: '@theme/StatusHistory',
-            exact: true,
-          });
+      // Add StatusHistory routes for each system
+      const systemsToRoute = content.items.map(item => ({
+        name: item.name,
+        slug: item.name
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-'),
+      }));
+      
+      systemsToRoute.forEach(({name, slug}) => {
+        addRoute({
+          path: normalizeUrl([baseUrl, 'status', 'history', slug]),
+          component: '@theme/StatusHistory',
+          exact: true,
         });
-      }
+      });
     },
 
     async postBuild({outDir}) {
@@ -481,6 +534,29 @@ export default async function pluginStatus(
           sourceCurrentJson,
           path.join(buildStatusDir, 'current.json')
         );
+        
+        // Generate system/*.json files from current.json for StatusHistory pages
+        try {
+          const currentData = await fs.readJson(sourceCurrentJson);
+          if (Array.isArray(currentData) && currentData.length > 0) {
+            console.log('[docusaurus-plugin-stentorosaur] Generating system files from current.json');
+            const systemFiles = convertReadingsToSystemFiles(currentData);
+            
+            for (const systemFile of systemFiles) {
+              const fileName = systemFile.name
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                + '.json';
+              const filePath = path.join(buildSystemsDir, fileName);
+              await fs.writeJson(filePath, systemFile, {spaces: 2});
+            }
+            console.log(`[docusaurus-plugin-stentorosaur] Generated ${systemFiles.length} system files`);
+          }
+        } catch (error) {
+          console.warn('[docusaurus-plugin-stentorosaur] Failed to generate system files from current.json:', error);
+        }
       }
       
       if (await fs.pathExists(sourceArchives)) {

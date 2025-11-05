@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.19] - 2025-11-05
+
+### Fixed
+
+- **Status History Pages - 404 Error** (#34)
+  - Fixed missing routes for system detail pages (`/status/history/{system}`)
+  - Now creates routes for ALL systems (real data), not just demo data
+  - Generates `systems/*.json` files from `current.json` in postBuild
+  - Status history pages now work for production systems
+
+- **Response Time for Down Systems**
+  - Response time now only calculated from successful HTTP 200-299 responses
+  - Down/error states (including getaddrinfo ENOTFOUND) no longer contribute to average
+  - Filters out readings where `state !== 'up'` or `code < 200` or `code >= 300`
+  - Systems with no successful checks show `undefined` response time instead of error latency
+
+- **Response Time Chart Historical Data**
+  - Generated `SystemStatusFile` objects now include full `history` array
+  - Converts compact readings format to `StatusCheckHistory` format for charts
+  - Response Time chart now displays full 7-day/30-day/90-day historical data
+  - Previously only showed current day due to missing historical conversion
+
 ## [0.4.18] - 2025-11-05
 
 ### Fixed
