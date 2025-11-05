@@ -79,7 +79,7 @@ export default function MaintenanceItem({
         <div className={styles.timeStatus}>{getTimeStatus()}</div>
       </div>
 
-      {showAffectedSystems && maintenance.affectedSystems.length > 0 && (
+      {showAffectedSystems && maintenance.affectedSystems && maintenance.affectedSystems.length > 0 && (
         <div className={styles.affectedSystems}>
           <strong>Affected Systems:</strong>{' '}
           {maintenance.affectedSystems.join(', ')}

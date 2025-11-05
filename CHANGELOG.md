@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.18] - 2025-11-05
+
+### Fixed
+
+- **Comprehensive affectedSystems Null Checks** (#34)
+  - Fixed runtime crash when clicking system cards to view performance charts
+  - Added null check in `UptimeChart` before calling `affectedSystems.includes()`
+  - Added null check in `MiniHeatmap` before calling `affectedSystems.includes()`
+  - Added null check in `MaintenanceItem` before accessing `affectedSystems.length`
+  - Prevents `TypeError: Cannot read properties of undefined (reading 'includes')` in production
+  - All components now safely handle incidents/maintenance with undefined `affectedSystems`
+
 ## [0.4.17] - 2025-11-05
 
 ### Fixed

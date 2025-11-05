@@ -166,7 +166,7 @@ export default function UptimeChart({
     const periodStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     
     return incidents
-      .filter(incident => incident.affectedSystems.includes(name))
+      .filter(incident => incident.affectedSystems && incident.affectedSystems.includes(name))
       .filter(incident => {
         const incidentDate = new Date(incident.createdAt);
         return incidentDate >= periodStart && incidentDate <= now;

@@ -85,7 +85,7 @@ export default function MiniHeatmap({
 
   // Filter incidents for this system
   const relevantIncidents = systemName 
-    ? incidents.filter(incident => incident.affectedSystems.includes(systemName))
+    ? incidents.filter(incident => incident.affectedSystems && incident.affectedSystems.includes(systemName))
     : incidents;
 
   if (history.length === 0) {
