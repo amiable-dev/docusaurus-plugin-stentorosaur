@@ -31,6 +31,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
+const zlib = require('zlib');
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -175,6 +176,7 @@ function appendToJSONL(file, data) {
 
 /**
  * Build current.json from last N days of JSONL files
+ * Supports both plain (.jsonl) and gzipped (.jsonl.gz) archives
  */
 function buildCurrentJson(archivesDir, days = 14) {
   const now = new Date();
@@ -190,9 +192,32 @@ function buildCurrentJson(archivesDir, days = 14) {
     
     const dir = path.join(archivesDir, String(year), month);
     const plainFile = path.join(dir, `history-${year}-${month}-${day}.jsonl`);
+    const gzFile = path.join(dir, `history-${year}-${month}-${day}.jsonl.gz`);
     
+    let content = null;
+    
+    // Try plain file first (today's file)
     if (fs.existsSync(plainFile)) {
-      const content = fs.readFileSync(plainFile, 'utf8');
+      try {
+        content = fs.readFileSync(plainFile, 'utf8');
+        verbose(`Read ${plainFile} (${content.length} bytes)`);
+      } catch (err) {
+        verbose(`Failed to read ${plainFile}:`, err.message);
+      }
+    }
+    // Try gzipped file (older days)
+    else if (fs.existsSync(gzFile)) {
+      try {
+        const compressed = fs.readFileSync(gzFile);
+        content = zlib.gunzipSync(compressed).toString('utf8');
+        verbose(`Read ${gzFile} (decompressed to ${content.length} bytes)`);
+      } catch (err) {
+        verbose(`Failed to decompress ${gzFile}:`, err.message);
+      }
+    }
+    
+    // Parse content if we got any
+    if (content) {
       const lines = content.trim().split('\n').filter(line => line.trim());
       
       for (const line of lines) {
@@ -210,6 +235,8 @@ function buildCurrentJson(archivesDir, days = 14) {
   
   // Sort by timestamp
   readings.sort((a, b) => a.t - b.t);
+  
+  verbose(`Built current.json with ${readings.length} readings from ${days} days`);
   
   return readings;
 }
