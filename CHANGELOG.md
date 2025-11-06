@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-01-18
+
+### Added
+
+- **Dataset Download Functionality** (#35)
+  - Export chart data as CSV or JSON for offline analysis
+  - Added `ExportButton` component with download icon and format label
+  - Integrated export buttons in all chart components:
+    - ResponseTimeChart: timestamp, responseTime, status, statusCode
+    - UptimeChart: date, uptimePercent, checks, incidents (both bar and heatmap views)
+    - SLIChart: date, sliPercent, errorBudgetRemaining, sloTarget
+    - MiniHeatmap: date, uptimePercent, incidentCount, incidents
+  - Created `useDataExport` React hook for unified export API
+  - Client-side data generation with no server load
+  - Smart filename generation with system name and date range
+
+- **CSV Utility Functions**
+  - `escapeCSVValue`: Handles special characters, quotes, and newlines
+  - `convertToCSV`: Converts array of objects to CSV with headers
+  - `downloadFile`: Triggers browser download with proper MIME types
+  - `formatDateForFilename`: Generates YYYY-MM-DD format for filenames
+  - `sanitizeFilename`: Removes invalid filename characters
+
+### Documentation
+
+- Added comprehensive Dataset Download section to CONFIGURATION.md
+- Updated README.md with dataset download feature
+- Detailed examples for CSV and JSON export formats
+- Use cases: Excel import, stakeholder reports, BI tools, compliance archiving, custom visualizations
+
+### Testing
+
+- Added 50+ new tests for export functionality
+- 100% coverage on CSV utilities and export hook
+- Comprehensive component tests for ExportButton
+- Total test count: 274 tests passing
+- Overall coverage: 81.32% statements, 69.58% branches, 79% functions
+
 ## [0.5.0] - 2025-11-05
 
 ### Added

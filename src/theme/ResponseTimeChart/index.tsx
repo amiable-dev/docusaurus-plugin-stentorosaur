@@ -20,6 +20,9 @@ import {
 import { Line } from 'react-chartjs-2';
 import type { StatusCheckHistory } from '../../types';
 import { useChartExport } from '../hooks/useChartExport';
+import { useDataExport } from '../hooks/useDataExport';
+import { ExportButton } from '../components/ExportButton';
+import { formatDateForFilename } from '../../utils/csv';
 import styles from './styles.module.css';
 
 // Register Chart.js components
@@ -74,6 +77,7 @@ export default function ResponseTimeChart({
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const chartRef = useRef<ChartJS<'line'>>(null);
   const { exportPNG, exportJPEG } = useChartExport();
+  const { exportData } = useDataExport();
   
   // Use internal state only if period selector is shown, otherwise use prop
   const activePeriod = showPeriodSelector ? internalPeriod : period;
@@ -112,6 +116,27 @@ export default function ResponseTimeChart({
       ? Math.round(filteredData.reduce((sum, check) => sum + check.responseTime, 0) / filteredData.length)
       : 0;
   }, [filteredData]);
+
+  // Prepare data for CSV/JSON export
+  const exportableData = useMemo(() => {
+    return filteredData.map(check => ({
+      timestamp: check.timestamp,
+      responseTime: check.responseTime,
+      status: check.status,
+      statusCode: check.code,
+    }));
+  }, [filteredData]);
+
+  // Generate filename with date range
+  const generateExportFilename = useCallback(() => {
+    if (filteredData.length === 0) return `${name}-response-time`;
+    
+    const firstDate = new Date(filteredData[0].timestamp);
+    const lastDate = new Date(filteredData[filteredData.length - 1].timestamp);
+    const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
+    
+    return `${systemSlug}-response-time-${formatDateForFilename(firstDate)}-to-${formatDateForFilename(lastDate)}`;
+  }, [filteredData, name]);
 
   // Prepare chart data
   const chartData = useMemo(() => ({
@@ -285,6 +310,19 @@ export default function ResponseTimeChart({
           >
             JPG
           </button>
+          <ExportButton
+            filename={generateExportFilename()}
+            data={exportableData}
+            columns={['timestamp', 'responseTime', 'status', 'statusCode']}
+            format="csv"
+            ariaLabel="Download response time data as CSV"
+          />
+          <ExportButton
+            filename={generateExportFilename()}
+            data={exportableData}
+            format="json"
+            ariaLabel="Download response time data as JSON"
+          />
         </div>
       </div>
 

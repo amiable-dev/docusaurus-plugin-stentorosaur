@@ -22,6 +22,8 @@ import { Line, Bar } from 'react-chartjs-2';
 import type { StatusCheckHistory } from '../../types';
 import { aggregateHistoricalData } from '../../historical-data';
 import { useChartExport } from '../hooks/useChartExport';
+import { ExportButton } from '../components/ExportButton';
+import { formatDateForFilename } from '../../utils/csv';
 import styles from './styles.module.css';
 
 // Register Chart.js components
@@ -160,11 +162,20 @@ export default function SLIChart({
       errorBudgetValues.push(budgetRemaining);
     });
 
+    // Prepare exportable data
+    const exportData = labels.map((date, index) => ({
+      date,
+      sliPercent: parseFloat(sliValues[index].toFixed(2)),
+      errorBudgetRemaining: parseFloat(errorBudgetValues[index].toFixed(2)),
+      sloTarget: parseFloat(sloTarget.toFixed(2)),
+    }));
+
     return {
       labels,
       sliValues,
       errorBudgetValues,
       sloTarget,
+      exportData,
     };
   }, [history, activePeriod, sloTarget]);
 
@@ -175,6 +186,24 @@ export default function SLIChart({
       </div>
     );
   }
+
+  // Generate filename with date range
+  const generateExportFilename = () => {
+    if (!chartData.exportData || chartData.exportData.length === 0) {
+      return `${name}-${showErrorBudget ? 'error-budget' : 'sli'}`;
+    }
+    
+    const firstDate = chartData.exportData[0].date;
+    const lastDate = chartData.exportData[chartData.exportData.length - 1].date;
+    const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
+    const metric = showErrorBudget ? 'error-budget' : 'sli';
+    
+    // Convert localized date strings to Date objects for formatting
+    const firstDateObj = new Date(firstDate);
+    const lastDateObj = new Date(lastDate);
+    
+    return `${systemSlug}-${metric}-${formatDateForFilename(firstDateObj)}-to-${formatDateForFilename(lastDateObj)}`;
+  };
 
   const textColor = isDarkTheme ? '#e3e3e3' : '#1c1e21';
   const gridColor = isDarkTheme ? '#2e2e2e' : '#e0e0e0';
@@ -310,6 +339,19 @@ export default function SLIChart({
             >
               JPG
             </button>
+            <ExportButton
+              filename={generateExportFilename()}
+              data={chartData.exportData}
+              columns={['date', 'sliPercent', 'errorBudgetRemaining', 'sloTarget']}
+              format="csv"
+              ariaLabel={`Download ${showErrorBudget ? 'error budget' : 'SLI'} data as CSV`}
+            />
+            <ExportButton
+              filename={generateExportFilename()}
+              data={chartData.exportData}
+              format="json"
+              ariaLabel={`Download ${showErrorBudget ? 'error budget' : 'SLI'} data as JSON`}
+            />
           </div>
         </div>
       <div className={styles.chart} style={{ height: `${height}px` }}>

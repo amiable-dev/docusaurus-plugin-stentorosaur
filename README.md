@@ -16,6 +16,11 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
   - Bar charts and heatmaps for uptime visualization
   - Multiple time period views (24h, 7d, 30d, 90d)
   - Automatic dark/light theme support
+- 💾 **Dataset Download** (v0.6.0+): Export chart data for offline analysis
+  - Download data from any chart as CSV or JSON
+  - All chart components include export buttons
+  - Client-side data generation with no server load
+  - Perfect for Excel, reports, BI tools, and compliance archiving
 - 🎭 **Performance Metrics** (v0.3.1+): Advanced monitoring visualizations
   - Click system cards to show/hide detailed performance metrics
   - Side-by-side responsive chart layouts

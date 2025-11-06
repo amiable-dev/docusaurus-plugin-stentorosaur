@@ -5,8 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { StatusCheckHistory, StatusIncident } from '../../types';
+import { ExportButton } from '../components/ExportButton';
+import { formatDateForFilename } from '../../utils/csv';
 import styles from './MiniHeatmap.module.css';
 
 export interface MiniHeatmapProps {
@@ -69,6 +71,46 @@ export default function MiniHeatmap({
 
   const dailyData = calculateDailyUptime();
 
+  // Filter incidents for this system
+  const relevantIncidents = systemName 
+    ? incidents.filter(incident => incident.affectedSystems && incident.affectedSystems.includes(systemName))
+    : incidents;
+
+  // Prepare data for CSV/JSON export
+  const exportableData = useMemo(() => {
+    return dailyData.map(({ date, uptime }) => {
+      // Find incidents for this day
+      const dayIncidents = relevantIncidents.filter(incident => {
+        const incidentDate = new Date(incident.createdAt).toISOString().split('T')[0];
+        return incidentDate === date;
+      });
+
+      return {
+        date,
+        uptimePercent: parseFloat(uptime.toFixed(2)),
+        incidentCount: dayIncidents.length,
+        incidents: dayIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('; '),
+      };
+    });
+  }, [dailyData, relevantIncidents]);
+
+  // Generate filename with date range
+  const generateExportFilename = () => {
+    if (dailyData.length === 0) {
+      return systemName 
+        ? `${systemName.toLowerCase().replace(/\s+/g, '-')}-heatmap`
+        : 'uptime-heatmap';
+    }
+    
+    const firstDate = new Date(dailyData[0].date);
+    const lastDate = new Date(dailyData[dailyData.length - 1].date);
+    const systemSlug = systemName 
+      ? systemName.toLowerCase().replace(/\s+/g, '-')
+      : 'uptime';
+    
+    return `${systemSlug}-heatmap-${formatDateForFilename(firstDate)}-to-${formatDateForFilename(lastDate)}`;
+  };
+
   const getColor = (uptime: number): string => {
     if (uptime >= 99) return 'var(--ifm-color-success)';
     if (uptime >= 95) return 'var(--ifm-color-warning)';
@@ -83,17 +125,30 @@ export default function MiniHeatmap({
     return title;
   };
 
-  // Filter incidents for this system
-  const relevantIncidents = systemName 
-    ? incidents.filter(incident => incident.affectedSystems && incident.affectedSystems.includes(systemName))
-    : incidents;
-
   if (history.length === 0) {
     return <div className={styles.noData}>No historical data</div>;
   }
 
   return (
     <div className={styles.miniHeatmap}>
+      <div className={styles.heatmapHeader}>
+        <span className={styles.legendLabel}>Last {days} days</span>
+        <div className={styles.exportButtons}>
+          <ExportButton
+            filename={generateExportFilename()}
+            data={exportableData}
+            columns={['date', 'uptimePercent', 'incidentCount', 'incidents']}
+            format="csv"
+            ariaLabel="Download heatmap data as CSV"
+          />
+          <ExportButton
+            filename={generateExportFilename()}
+            data={exportableData}
+            format="json"
+            ariaLabel="Download heatmap data as JSON"
+          />
+        </div>
+      </div>
       <div className={styles.cells}>
         {dailyData.map(({ date, uptime }) => {
           // Check if this day has any incidents
@@ -118,9 +173,6 @@ export default function MiniHeatmap({
             </div>
           );
         })}
-      </div>
-      <div className={styles.legend}>
-        <span className={styles.legendLabel}>Last {days} days</span>
       </div>
     </div>
   );

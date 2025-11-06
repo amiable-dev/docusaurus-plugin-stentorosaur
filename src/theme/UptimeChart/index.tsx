@@ -19,6 +19,8 @@ import annotationPlugin from 'chartjs-plugin-annotation';
 import { Bar } from 'react-chartjs-2';
 import type { StatusCheckHistory, StatusIncident } from '../../types';
 import { useChartExport } from '../hooks/useChartExport';
+import { ExportButton } from '../components/ExportButton';
+import { formatDateForFilename } from '../../utils/csv';
 import styles from './styles.module.css';
 
 // Register Chart.js components
@@ -173,6 +175,38 @@ export default function UptimeChart({
       });
   }, [incidents, name, activePeriod]);
 
+  // Prepare data for CSV/JSON export
+  const exportableData = useMemo(() => {
+    return dailyUptime.map(day => {
+      // Find incidents for this day
+      const dayIncidents = relevantIncidents.filter(incident => {
+        const incidentDate = new Date(incident.createdAt).toISOString().split('T')[0];
+        return incidentDate === day.date;
+      });
+
+      return {
+        date: day.date,
+        uptimePercent: parseFloat(day.uptime.toFixed(2)),
+        totalChecks: day.checks,
+        successfulChecks: day.upChecks,
+        failedChecks: day.checks - day.upChecks,
+        incidentCount: dayIncidents.length,
+        incidents: dayIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('; '),
+      };
+    });
+  }, [dailyUptime, relevantIncidents]);
+
+  // Generate filename with date range
+  const generateExportFilename = useCallback(() => {
+    if (dailyUptime.length === 0) return `${name}-uptime`;
+    
+    const firstDate = new Date(dailyUptime[0].date);
+    const lastDate = new Date(dailyUptime[dailyUptime.length - 1].date);
+    const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
+    
+    return `${systemSlug}-uptime-${formatDateForFilename(firstDate)}-to-${formatDateForFilename(lastDate)}`;
+  }, [dailyUptime, name]);
+
   // Bar chart data (computed even if showing heatmap to maintain hook order)
   const chartData = useMemo(() => ({
     labels: dailyUptime.map(day => {
@@ -241,6 +275,21 @@ export default function UptimeChart({
       <div className={styles.chartContainer}>
         <div className={styles.heatmapHeader}>
           <h3 className={styles.chartTitle}>{name} - Uptime Heatmap</h3>
+          <div className={styles.exportButtons}>
+            <ExportButton
+              filename={generateExportFilename()}
+              data={exportableData}
+              columns={['date', 'uptimePercent', 'totalChecks', 'successfulChecks', 'failedChecks', 'incidentCount', 'incidents']}
+              format="csv"
+              ariaLabel="Download uptime data as CSV"
+            />
+            <ExportButton
+              filename={generateExportFilename()}
+              data={exportableData}
+              format="json"
+              ariaLabel="Download uptime data as JSON"
+            />
+          </div>
         </div>
 
         <div className={styles.heatmapGrid}>
@@ -439,6 +488,19 @@ export default function UptimeChart({
           >
             JPG
           </button>
+          <ExportButton
+            filename={generateExportFilename()}
+            data={exportableData}
+            columns={['date', 'uptimePercent', 'totalChecks', 'successfulChecks', 'failedChecks', 'incidentCount', 'incidents']}
+            format="csv"
+            ariaLabel="Download uptime data as CSV"
+          />
+          <ExportButton
+            filename={generateExportFilename()}
+            data={exportableData}
+            format="json"
+            ariaLabel="Download uptime data as JSON"
+          />
         </div>
       </div>
 

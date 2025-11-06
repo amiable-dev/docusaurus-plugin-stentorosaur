@@ -1199,9 +1199,45 @@ All charts automatically adapt to your Docusaurus theme:
 - Match your site's design system
 - Fully responsive on mobile devices
 
+### Dataset Download (v0.6.0+)
+
+All charts now support downloading the underlying dataset in multiple formats:
+
+**Available Formats:**
+
+- **CSV** - Comma-separated values for Excel, Google Sheets, and data analysis tools
+- **JSON** - Machine-readable format for programmatic access
+
+**Export Buttons:**
+
+Each chart component includes export buttons:
+
+- Response Time Chart: timestamp, responseTime, status, statusCode
+- Uptime Chart: date, uptimePercent, totalChecks, successfulChecks, failedChecks, incidentCount, incidents
+- SLI Chart: date, sliPercent, errorBudgetRemaining, sloTarget
+- Mini Heatmap: date, uptimePercent, incidentCount, incidents
+
+**Filename Format:**
+
+Files are automatically named with the system name and date range:
+
+- `system-name-response-time-2024-11-01-to-2024-11-06.csv`
+- `system-name-uptime-2024-11-01-to-2024-11-06.json`
+- `system-name-sli-2024-11-01-to-2024-11-06.csv`
+- `system-name-heatmap-2024-11-01-to-2024-11-06.json`
+
+**Use Cases:**
+
+- Import historical data into Excel/Google Sheets for custom analysis
+- Generate reports for stakeholders with actual uptime data
+- Feed data into BI tools or custom dashboards
+- Archive performance metrics for compliance
+- Create custom visualizations with your preferred tools
+
 ### Performance Considerations
 
 - Charts are lazy-loaded only when visible
 - Historical data is loaded client-side from JSON files
 - Data can be decimated for large datasets (thousands of points)
 - Consider limiting history to 30-90 days for optimal performance
+- Dataset downloads are generated client-side with no server load
