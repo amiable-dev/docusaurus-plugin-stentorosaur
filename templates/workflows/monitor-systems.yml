@@ -27,6 +27,9 @@ jobs:
         id: check
         continue-on-error: true
         run: |
+          # Clear npm cache to ensure we always get the latest plugin version
+          npm cache clean --force
+          
           # Monitor all systems defined in .monitorrc.json
           # This runs sequentially to avoid race conditions and ensure zero data loss
           npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-monitor \
