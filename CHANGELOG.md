@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2025-11-06
+
+### Fixed
+
+- **Historical Data Loading Bug** (#36)
+  - Fixed `buildCurrentJson()` in `scripts/monitor.js` to read gzipped archive files (`.jsonl.gz`)
+  - Previously only read uncompressed `.jsonl` files, causing charts to show only today's data
+  - Now properly reads 14-day rolling window from both plain and gzipped archives
+  - Added `zlib` module for gzip decompression
+  - Added verbose logging for debugging archive reads
+  - Charts now correctly display historical trends across all time periods (24h, 7d, 30d, 90d)
+
+### Testing
+
+- Added `monitor-archive-reader.test.ts` with 4 new tests for gzip support
+- Total test count: 278 tests passing
+
 ## [0.6.0] - 2025-01-18
 
 ### Added
