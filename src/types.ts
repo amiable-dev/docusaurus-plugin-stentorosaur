@@ -170,6 +170,7 @@ export interface PluginOptions {
   scheduledMaintenance?: {
     enabled?: boolean;
     displayDuration?: number; // days to show in past maintenance
+    label?: string; // Deprecated: use labels instead
     labels?: string[]; // GitHub labels to identify maintenance
     showComments?: boolean;
     showAffectedSystems?: boolean;

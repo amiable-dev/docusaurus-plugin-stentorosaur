@@ -81,6 +81,7 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
   scheduledMaintenance: Joi.object({
     enabled: Joi.boolean(),
     displayDuration: Joi.number().min(1),
+    label: Joi.string(), // Deprecated: use labels instead
     labels: Joi.array().items(Joi.string()),
     showComments: Joi.boolean(),
     showAffectedSystems: Joi.boolean(),
