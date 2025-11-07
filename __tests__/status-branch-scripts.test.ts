@@ -28,6 +28,9 @@ describe('Status Branch Scripts', () => {
     execSync('git config user.email "test@example.com"', { stdio: 'pipe' });
     execSync('git config user.name "Test User"', { stdio: 'pipe' });
 
+    // Explicitly create and checkout main branch to ensure consistency
+    execSync('git checkout -b main', { stdio: 'pipe' });
+
     // Create initial commit
     await fs.writeFile('README.md', '# Test Repo\n');
     execSync('git add README.md', { stdio: 'pipe' });

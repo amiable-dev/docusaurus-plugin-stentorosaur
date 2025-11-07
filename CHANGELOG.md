@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2025-11-07
+
+### Fixed
+
+- **Test Suite Git Branch Compatibility**
+  - Fixed failing tests in `status-branch-scripts.test.ts` due to git default branch naming
+  - Added explicit `git checkout -b main` in test setup to ensure consistent branch naming
+  - All 336 tests now pass in CI/CD environments regardless of git configuration
+  - Resolves 6 failing tests related to branch naming (master vs main)
+
 ## [0.7.1] - 2025-11-07
 
 ### Fixed
