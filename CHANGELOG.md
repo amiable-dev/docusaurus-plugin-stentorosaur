@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2025-11-07
+
+### Fixed
+
+- **Exposed Setup and Migration Scripts as Bin Commands**
+  - Added `stentorosaur-setup-status-branch` to bin commands
+  - Added `stentorosaur-migrate-to-status-branch` to bin commands
+  - Users can now run `npx stentorosaur-setup-status-branch` as documented
+  - Fixes missing bin entries that prevented npx usage
+
 ## [0.7.2] - 2025-11-07
 
 ### Fixed

@@ -1,12 +1,14 @@
 {
   "name": "@amiable-dev/docusaurus-plugin-stentorosaur",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "A Docusaurus plugin for displaying status monitoring dashboard powered by GitHub Issues and Actions, similar to Upptime",
   "main": "lib/index.js",
   "types": "src/plugin-status.d.ts",
   "bin": {
     "stentorosaur-update-status": "scripts/update-status.cjs",
-    "stentorosaur-monitor": "scripts/monitor.js"
+    "stentorosaur-monitor": "scripts/monitor.js",
+    "stentorosaur-setup-status-branch": "scripts/setup-status-branch.js",
+    "stentorosaur-migrate-to-status-branch": "scripts/migrate-to-status-branch.js"
   },
   "keywords": [
     "docusaurus",

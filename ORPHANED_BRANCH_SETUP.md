@@ -43,11 +43,11 @@ With orphaned branch:
 ### For New Projects (No Existing Data)
 
 ```bash
-# Run the setup script
-npm run setup-status-branch
+# Run the setup script with npx
+npx stentorosaur-setup-status-branch
 
-# Or manually with npx
-npx @amiable-dev/docusaurus-plugin-stentorosaur setup-status-branch
+# Or if running from plugin development directory
+npm run setup-status-branch
 ```
 
 This creates an orphaned `status-data` branch with the proper structure.
@@ -56,16 +56,16 @@ This creates an orphaned `status-data` branch with the proper structure.
 
 ```bash
 # Step 1: Create the orphaned branch
-npm run setup-status-branch
+npx stentorosaur-setup-status-branch
 
 # Step 2: Migrate existing data
-npm run migrate-to-status-branch
+npx stentorosaur-migrate-to-status-branch
 
 # Optional: Keep data on main branch (not recommended)
-npm run migrate-to-status-branch -- --keep-on-main
+npx stentorosaur-migrate-to-status-branch --keep-on-main
 
 # Optional: Dry-run to see what would happen
-npm run migrate-to-status-branch -- --dry-run
+npx stentorosaur-migrate-to-status-branch --dry-run
 ```
 
 ## Manual Setup Instructions
@@ -281,8 +281,8 @@ git checkout main
 git log --oneline --since="1 day ago"
 # Should not show status update commits
 
-# 5. Test monitoring locally
-npm run setup-status-branch
+# 5. Test setup script
+npx stentorosaur-setup-status-branch --force
 git checkout status-data
 # Verify README.md and structure exist
 ```
@@ -325,7 +325,7 @@ git archive --format=tar.gz --output=status-data-backup.tar.gz status-data
 
 **Solution**: Run the setup script:
 ```bash
-npm run setup-status-branch
+npx stentorosaur-setup-status-branch
 ```
 
 ### Issue: "You have uncommitted changes"
@@ -333,7 +333,7 @@ npm run setup-status-branch
 **Solution**: Commit or stash your changes before running migration:
 ```bash
 git stash
-npm run migrate-to-status-branch
+npx stentorosaur-migrate-to-status-branch
 git stash pop
 ```
 
@@ -362,8 +362,8 @@ git push -u origin status-data
 ## Migration Checklist
 
 - [ ] Backup your repository before starting
-- [ ] Run `npm run setup-status-branch` to create orphaned branch
-- [ ] Run `npm run migrate-to-status-branch` to move existing data
+- [ ] Run `npx stentorosaur-setup-status-branch` to create orphaned branch
+- [ ] Run `npx stentorosaur-migrate-to-status-branch` to move existing data
 - [ ] Update `.github/workflows/monitor-systems.yml` to use orphaned branch pattern
 - [ ] Update deployment workflow to checkout both branches
 - [ ] Test workflows manually with `workflow_dispatch`
