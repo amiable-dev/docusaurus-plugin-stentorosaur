@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2025-11-07
+
+### Fixed
+
+- **Workflow Templates Use Orphaned Branch by Default**
+  - Updated all workflow templates to use orphaned branch pattern (addresses user feedback)
+  - `monitor-systems.yml`: Dual-checkout (main + status-data), writes to status-data
+  - `status-update.yml`: Dual-checkout, writes incidents/maintenance to status-data
+  - `deploy.yml`: Dual-checkout, copies status-data to build directory before build
+  - `deploy-scheduled.yml`: Dual-checkout, copies status-data to build directory
+  - `compress-archives.yml`: Single checkout of status-data branch
+  - Removed redundant `monitor-systems-orphan.yml` template
+  - Updated ORPHANED_BRANCH_SETUP.md to note v0.7.0+ defaults
+  - **Breaking Change**: Users must run `npm run setup-status-branch` before workflows function
+
+### Documentation
+
+- Updated ORPHANED_BRANCH_SETUP.md to clarify that templates now default to orphaned branch
+- Added prerequisites comments to all workflow headers
+- Documented the dual-checkout pattern and data copying step
+
+### Testing
+
+- All 336 tests passing ✅
+
+## [0.7.0] - 2025-11-07
+
+### Added
+
+- **Orphaned Branch Support for Status Data Storage** (#37)
+  - Following the Upptime pattern to store monitoring data in isolated orphaned branch
+  - Keeps main branch lean (avoids 100k+ automated commits per year)
+  - Setup script: `npm run setup-status-branch` to initialize orphaned branch
+  - Migration script: `npm run migrate-to-status-branch` to move existing data
+  - Supports `--dry-run`, `--keep-on-main`, `--data-dir`, `--force` flags
+  - Comprehensive 400+ line setup guide: ORPHANED_BRANCH_SETUP.md
+  - Workflow template: `monitor-systems-orphan.yml` with dual-checkout pattern
+  - Benefits: Repository size management, CI/CD isolation, performance optimization
+
+### Documentation
+
+- New comprehensive guide: ORPHANED_BRANCH_SETUP.md
+  - Why use orphaned branches (benefits comparison table)
+  - Quick start for new and existing projects
+  - Manual setup instructions
+  - Workflow update examples
+  - Build configuration guidance
+  - Troubleshooting guide
+  - Migration checklist
+- Updated README.md with v0.7.0 feature notice
+
+### Testing
+
+- Added 14 new tests for setup and migration scripts (336 total)
+- Tests verify orphaned branch creation (no shared history)
+- Tests cover all CLI flags and error scenarios
+- Integration tests validate full setup + migration workflow
+- 100% test pass rate ✅
+
+## [0.6.3] - 2025-11-07
+
+### Added
+
+- **Maintenance Display in Default Status Page**
+  - Added MaintenanceList component to default StatusPage view
+  - Displays upcoming/in-progress maintenance in dedicated section
+  - Shows past/completed maintenance in separate section
+  - Includes CSS styling for maintenance sections
+  - Supports showComments and showAffectedSystems props
+
+### Testing
+
+- Added 8 new tests for maintenance display (322 total tests)
+- All tests passing ✅
+
+## [0.6.2] - 2025-11-07
+
+### Fixed
+
+- **Test Failures in Maintenance Functionality**
+  - Fixed failing tests in maintenance-utils.test.ts
+  - Added backward compatibility for deprecated `scheduledMaintenance.label` property
+  - TypeScript type definitions now support both `label` (deprecated) and `affectedSystems` (new)
+  - All 314 tests passing with 92.76% coverage ✅
+
 ## [0.6.1] - 2025-11-06
 
 ### Fixed
