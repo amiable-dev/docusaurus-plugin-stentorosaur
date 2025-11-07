@@ -137,7 +137,8 @@ describe('docusaurus-plugin-stentorosaur', () => {
         'test-owner',
         'test-repo',
         'status',
-        ['api', 'web', 'database']
+        ['api', 'web', 'database'],
+        ['maintenance']
       );
       expect(mockServiceInstance.fetchStatusData).toHaveBeenCalled();
       expect(content.items).toEqual(mockGitHubData.items);
@@ -757,6 +758,252 @@ describe('docusaurus-plugin-stentorosaur', () => {
       const content = await plugin.loadContent!();
 
       expect(content.incidents.length).toBe(20);
+    });
+  });
+
+  describe('scheduledMaintenance configuration', () => {
+    beforeEach(() => {
+      // Override the global mock to return true for maintenance AND current.json files
+      (mockedFs.pathExists as any).mockImplementation((path: string) => {
+        if (path.includes('maintenance.json') || path.includes('current.json') || path.includes('incidents.json')) {
+          return Promise.resolve(true);
+        }
+        return Promise.resolve(false);
+      });
+    });
+
+    it('should load maintenance data when scheduledMaintenance.enabled is true', async () => {
+      const mockMaintenanceData = [
+        {
+          id: 10,
+          title: 'Database migration',
+          start: '2025-01-12T02:00:00Z',
+          end: '2025-01-12T04:00:00Z',
+          status: 'upcoming' as const,
+          affectedSystems: ['database'],
+          description: 'Upgrading database',
+          comments: [],
+          url: 'https://github.com/test-owner/test-repo/issues/10',
+          createdAt: '2025-01-09T10:00:00Z',
+        },
+      ];
+
+      (mockedFs.readJson as any).mockImplementation((path: string) => {
+        if (path.includes('maintenance.json')) {
+          return Promise.resolve(mockMaintenanceData);
+        }
+        if (path.includes('incidents.json')) {
+          return Promise.resolve([]);
+        }
+        if (path.includes('current.json')) {
+          // Return minimal mock data so the code enters the committed data block
+          return Promise.resolve([
+            { t: Date.now(), svc: 'api', state: 'up', code: 200, lat: 100 }
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      const options: PluginOptions = {
+        ...defaultOptions,
+        scheduledMaintenance: { enabled: true },
+        useDemoData: false,
+        token: 'test-token',
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue({
+          items: [],
+          incidents: [],
+        }),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      const plugin = await pluginStatusPage(mockContext, options);
+      const content = await plugin.loadContent!();
+
+      expect(content.maintenance).toEqual(mockMaintenanceData);
+    });
+
+    it('should not load maintenance data when scheduledMaintenance.enabled is false', async () => {
+      const mockMaintenanceData = [
+        {
+          id: 10,
+          title: 'Database migration',
+          start: '2025-01-12T02:00:00Z',
+          end: '2025-01-12T04:00:00Z',
+          status: 'upcoming' as const,
+          affectedSystems: ['database'],
+          description: 'Upgrading database',
+          comments: [],
+          url: 'https://github.com/test-owner/test-repo/issues/10',
+          createdAt: '2025-01-09T10:00:00Z',
+        },
+      ];
+
+      (mockedFs.readJson as any).mockResolvedValue(mockMaintenanceData);
+
+      const options: PluginOptions = {
+        ...defaultOptions,
+        scheduledMaintenance: { enabled: false },
+        useDemoData: true,
+      };
+
+      const plugin = await pluginStatusPage(mockContext, options);
+      const content = await plugin.loadContent!();
+
+      expect(content.maintenance).toEqual([]);
+    });
+
+    it('should pass maintenanceLabels array to GitHubStatusService', async () => {
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue({
+          items: [],
+          incidents: [],
+        }),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      const options: PluginOptions = {
+        ...defaultOptions,
+        scheduledMaintenance: {
+          labels: ['maintenance', 'planned-maintenance'],
+        },
+      };
+
+      const plugin = await pluginStatusPage(mockContext, options);
+      await plugin.loadContent!();
+
+      expect(MockedGitHubStatusService).toHaveBeenCalledWith(
+        'test-token',
+        'test-owner',
+        'test-repo',
+        'status',
+        ['api', 'web', 'database'],
+        ['maintenance', 'planned-maintenance']
+      );
+    });
+
+    it('should use default maintenance label when labels not specified', async () => {
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue({
+          items: [],
+          incidents: [],
+        }),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      const options: PluginOptions = {
+        ...defaultOptions,
+        scheduledMaintenance: {},
+      };
+
+      const plugin = await pluginStatusPage(mockContext, options);
+      await plugin.loadContent!();
+
+      expect(MockedGitHubStatusService).toHaveBeenCalledWith(
+        'test-token',
+        'test-owner',
+        'test-repo',
+        'status',
+        ['api', 'web', 'database'],
+        ['maintenance']
+      );
+    });
+
+    it('should filter maintenance by displayDuration', async () => {
+      const now = new Date('2025-01-15T00:00:00Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      const mockMaintenanceData = [
+        {
+          id: 8,
+          title: 'Old completed maintenance',
+          start: '2025-01-01T02:00:00Z',
+          end: '2025-01-01T04:00:00Z',
+          status: 'completed' as const,
+          affectedSystems: ['database'],
+          description: 'Old maintenance',
+          comments: [],
+          url: 'https://github.com/test-owner/test-repo/issues/8',
+          createdAt: '2024-12-29T10:00:00Z',
+        },
+        {
+          id: 9,
+          title: 'Recent completed maintenance',
+          start: '2025-01-13T02:00:00Z',
+          end: '2025-01-13T04:00:00Z',
+          status: 'completed' as const,
+          affectedSystems: ['api'],
+          description: 'Recent maintenance',
+          comments: [],
+          url: 'https://github.com/test-owner/test-repo/issues/9',
+          createdAt: '2025-01-11T10:00:00Z',
+        },
+        {
+          id: 10,
+          title: 'Upcoming maintenance',
+          start: '2025-01-20T02:00:00Z',
+          end: '2025-01-20T04:00:00Z',
+          status: 'upcoming' as const,
+          affectedSystems: ['database'],
+          description: 'Future maintenance',
+          comments: [],
+          url: 'https://github.com/test-owner/test-repo/issues/10',
+          createdAt: '2025-01-14T10:00:00Z',
+        },
+      ];
+
+      (mockedFs.readJson as any).mockImplementation((path: string) => {
+        if (path.includes('maintenance.json')) {
+          return Promise.resolve(mockMaintenanceData);
+        }
+        if (path.includes('incidents.json')) {
+          return Promise.resolve([]);
+        }
+        if (path.includes('current.json')) {
+          // Return minimal mock data so the code enters the committed data block
+          return Promise.resolve([
+            { t: Date.now(), svc: 'api', state: 'up', code: 200, lat: 100 }
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      const options: PluginOptions = {
+        ...defaultOptions,
+        scheduledMaintenance: {
+          enabled: true,
+          displayDuration: 7, // Only show maintenance from last 7 days
+        },
+        useDemoData: false,
+        token: 'test-token',
+      };
+
+      const mockServiceInstance = {
+        fetchStatusData: jest.fn().mockResolvedValue({
+          items: [],
+          incidents: [],
+        }),
+      };
+
+      MockedGitHubStatusService.mockImplementation(() => mockServiceInstance as any);
+
+      const plugin = await pluginStatusPage(mockContext, options);
+      const content = await plugin.loadContent!();
+
+      // Should include upcoming (always shown) and recent completed (within 7 days)
+      // Should exclude old completed (>7 days old)
+      expect(content.maintenance?.length).toBe(2);
+      expect(content.maintenance?.find(m => m.id === 8)).toBeUndefined(); // Old one filtered
+      expect(content.maintenance?.find(m => m.id === 9)).toBeDefined(); // Recent one kept
+      expect(content.maintenance?.find(m => m.id === 10)).toBeDefined(); // Upcoming kept
+
+      jest.useRealTimers();
     });
   });
 });

@@ -7,6 +7,8 @@ import {
   getMaintenanceStatus,
   parseMaintenanceComments,
   isScheduledMaintenance,
+  formatDateInTimezone,
+  formatShortDate,
 } from '../src/maintenance-utils';
 
 describe('maintenance-utils', () => {
@@ -167,6 +169,85 @@ Database upgrade work`;
       const result = isScheduledMaintenance([]);
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('formatDateInTimezone', () => {
+    const testDate = '2025-01-12T02:00:00Z';
+
+    it('should format date in UTC by default', () => {
+      const result = formatDateInTimezone(testDate);
+
+      expect(result).toContain('2025-01-12');
+      expect(result).toContain('UTC');
+    });
+
+    it('should format date in UTC when timezone is "UTC"', () => {
+      const result = formatDateInTimezone(testDate, 'UTC');
+
+      expect(result).toContain('2025-01-12');
+      expect(result).toContain('UTC');
+    });
+
+    it('should format date in local timezone when timezone is "local"', () => {
+      const result = formatDateInTimezone(testDate, 'local');
+
+      // Should return a locale string
+      expect(result).toBeTruthy();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should format date in specified timezone', () => {
+      const result = formatDateInTimezone(testDate, 'America/New_York');
+
+      expect(result).toContain('America/New_York');
+    });
+
+    it('should fall back to UTC for invalid timezone', () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = formatDateInTimezone(testDate, 'Invalid/Timezone');
+
+      expect(result).toContain('UTC');
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid timezone "Invalid/Timezone"')
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+  });
+
+  describe('formatShortDate', () => {
+    const testDate = '2025-01-12T14:30:00Z';
+
+    it('should format date in short format', () => {
+      const result = formatShortDate(testDate);
+
+      expect(result).toMatch(/Jan \d{1,2}, 2025/);
+    });
+
+    it('should format date with timezone when specified', () => {
+      const result = formatShortDate(testDate, 'America/Los_Angeles');
+
+      // Should return a formatted date
+      expect(result).toBeTruthy();
+      expect(typeof result).toBe('string');
+      expect(result).toMatch(/Jan \d{1,2}, 2025/);
+    });
+
+    it('should handle local timezone', () => {
+      const result = formatShortDate(testDate, 'local');
+
+      expect(result).toBeTruthy();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should fall back gracefully for invalid timezone', () => {
+      const result = formatShortDate(testDate, 'Invalid/Timezone');
+
+      // Should still return a formatted date
+      expect(result).toBeTruthy();
+      expect(typeof result).toBe('string');
     });
   });
 });

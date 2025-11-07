@@ -85,9 +85,52 @@ describe('monitor.js script', () => {
 
   it('should support config file and CLI args', async () => {
     const content = await fs.readFile(monitorScript, 'utf-8');
-    
+
     expect(content).toContain('--config');
     expect(content).toContain('--system');
     expect(content).toContain('--url');
+  });
+
+  describe('maintenance window support', () => {
+    it('should include checkMaintenanceWindow function', async () => {
+      const content = await fs.readFile(monitorScript, 'utf-8');
+
+      expect(content).toContain('checkMaintenanceWindow');
+    });
+
+    it('should read maintenance.json file', async () => {
+      const content = await fs.readFile(monitorScript, 'utf-8');
+
+      expect(content).toContain('maintenance.json');
+    });
+
+    it('should check for in-progress maintenance', async () => {
+      const content = await fs.readFile(monitorScript, 'utf-8');
+
+      expect(content).toContain('in-progress');
+      expect(content).toContain('affectedSystems');
+    });
+
+    it('should skip systems in maintenance', async () => {
+      const content = await fs.readFile(monitorScript, 'utf-8');
+
+      expect(content).toContain('inMaintenance');
+      expect(content).toContain('Skipping');
+      expect(content).toContain('continue');
+    });
+
+    it('should track skipped systems', async () => {
+      const content = await fs.readFile(monitorScript, 'utf-8');
+
+      expect(content).toContain('skipped');
+      expect(content).toContain('reason:');
+    });
+
+    it('should report skipped systems in summary', async () => {
+      const content = await fs.readFile(monitorScript, 'utf-8');
+
+      expect(content).toContain('Skipped');
+      expect(content).toContain('in maintenance');
+    });
   });
 });

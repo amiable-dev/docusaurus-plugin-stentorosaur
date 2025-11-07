@@ -52,6 +52,7 @@ docusaurus-plugin-stentorosaur/
 ├── src/                           # Source code
 │   ├── index.ts                   # Plugin lifecycle and orchestration
 │   ├── github-service.ts          # GitHub API integration
+│   ├── maintenance-utils.ts       # Maintenance utilities (v0.6.0+)
 │   ├── demo-data.ts              # Demo/fallback data
 │   ├── types.ts                  # TypeScript interfaces
 │   ├── options.ts                # Configuration schema
@@ -75,6 +76,8 @@ docusaurus-plugin-stentorosaur/
 │   ├── options.test.ts           # Configuration schema tests
 │   ├── github-service.test.ts    # GitHub API integration tests
 │   ├── historical-data.test.ts   # Historical data utilities
+│   ├── maintenance-utils.test.ts # Maintenance utilities (v0.6.0+)
+│   ├── monitor.test.ts           # Monitor script tests (v0.6.0+)
 │   ├── plugin.test.ts            # Plugin lifecycle tests
 │   ├── update-status.test.ts     # CLI tool tests
 │   ├── useChartExport.test.ts    # Chart export hook tests
@@ -91,8 +94,9 @@ docusaurus-plugin-stentorosaur/
 The project maintains high test coverage standards enforced in CI:
 
 - **Minimum**: 70% for all metrics (branches, functions, lines, statements)
-- **Current**: 88.41% overall coverage (208 tests passing)
+- **Current**: 92.76% overall coverage (314 tests passing)
 - **v0.5.0**: Added 39 new tests for maintenance and Upptime features
+- **v0.6.0**: Added 25+ new tests for maintenance-aware monitoring and config options
 
 ### Running Tests
 
@@ -143,12 +147,24 @@ Tests are organized into focused suites:
 4. **Plugin Integration Tests** (`plugin.test.ts`)
    - Tests full plugin lifecycle
    - Validates Docusaurus integration points
+   - Tests maintenance config options (v0.6.0+)
 
 5. **CLI Script Tests** (`update-status.test.ts`)
    - Tests standalone CLI tool
    - Validates command-line arguments and behavior
+   - Tests maintenance data fetching (v0.6.0+)
 
-6. **Component Tests** (v0.5.0+)
+6. **Maintenance Utilities Tests** (`maintenance-utils.test.ts`, v0.6.0+)
+   - Tests frontmatter parsing
+   - Tests status determination logic
+   - Tests timezone utilities (formatDateInTimezone, formatShortDate)
+
+7. **Monitor Script Tests** (`monitor.test.ts`, v0.6.0+)
+   - Tests monitoring script structure
+   - Validates maintenance window awareness
+   - Tests system skipping during maintenance
+
+8. **Component Tests** (v0.5.0+)
    - `MaintenanceItem.test.tsx` - Maintenance window display component
    - `MaintenanceList.test.tsx` - Maintenance list with filtering
    - `UptimeStatusPage.test.tsx` - Upptime-style status page layout
@@ -441,7 +457,11 @@ const serviceReadings = serviceMap.get(item.name.toLowerCase());
 
 This prevents mismatches between "Main Website" in config and "main website" in data.
 
-### Maintenance Issue Parsing
+### Maintenance System (v0.5.0+, Enhanced v0.6.0+)
+
+The maintenance system has evolved significantly to provide end-to-end lifecycle management.
+
+#### Maintenance Issue Format
 
 Maintenance issues use **YAML frontmatter** (not markdown fields):
 
@@ -457,7 +477,85 @@ systems:
 Description goes here after the frontmatter.
 ```
 
-The `extractFrontmatter()` utility in `github-service.ts` parses the YAML block. Required fields are `start` and `end` - `systems` is optional and falls back to issue labels.
+The `extractFrontmatter()` utility in `src/maintenance-utils.ts` parses the YAML block. Required fields are `start` and `end` - `systems` is optional and falls back to issue labels.
+
+#### Maintenance Status Determination
+
+Status is automatically calculated based on time and issue state:
+
+```typescript
+// src/maintenance-utils.ts getMaintenanceStatus()
+if (issueState === 'closed') return 'completed';
+if (now >= startDate && now <= endDate) return 'in-progress';
+if (now < startDate) return 'upcoming';
+return 'completed';
+```
+
+#### Maintenance-Aware Monitoring (v0.6.0+)
+
+The monitoring system intelligently skips systems during active maintenance windows:
+
+**Implementation:**
+- `scripts/monitor.js` checks `status-data/maintenance.json` before monitoring each system
+- If maintenance status is `'in-progress'` for a system, monitoring is skipped
+- `templates/workflows/monitor-systems.yml` prevents incident creation during maintenance
+- Skipped systems are logged for transparency
+
+**Why this matters:**
+- Prevents false incident alerts during planned maintenance
+- Keeps performance data clean (no abnormal metrics during maintenance)
+- Provides accurate uptime calculations
+
+**Testing maintenance-aware monitoring:**
+```bash
+# Create maintenance.json with in-progress maintenance
+echo '[{"id":1,"status":"in-progress","affectedSystems":["api"],"start":"2025-01-01T00:00:00Z","end":"2025-12-31T23:59:59Z"}]' > status-data/maintenance.json
+
+# Run monitor - should skip 'api' system
+node scripts/monitor.js --config .monitorrc.json --verbose
+# Output: ⏸️  Skipping api - in maintenance window: ...
+```
+
+#### Configuration Options (v0.6.0+)
+
+The `scheduledMaintenance` config object supports:
+
+```typescript
+scheduledMaintenance: {
+  enabled: true,                           // Enable/disable maintenance tracking
+  label: 'maintenance',                    // Single label (deprecated, use 'labels')
+  labels: ['maintenance', 'planned'],      // Multiple labels (preferred)
+  displayDuration: 30,                     // Show completed maintenance for N days
+  timezone: 'America/New_York',            // Display timezone (default: 'UTC')
+}
+```
+
+**Implementation details:**
+- `enabled: false` → maintenance array set to `[]` in plugin
+- `displayDuration` → filters completed maintenance older than N days (see `src/index.ts` lines 449-475)
+- `timezone` → used by `formatDateInTimezone()` and `formatShortDate()` utilities in `src/maintenance-utils.ts`
+- `labels` takes precedence over deprecated `label` option
+
+#### Key Files for Maintenance Development
+
+**Core Implementation:**
+- `src/maintenance-utils.ts` - Utility functions (frontmatter parsing, status determination, timezone formatting)
+- `src/github-service.ts` - `fetchScheduledMaintenance()`, `fetchMaintenanceIssues()`
+- `src/index.ts` - Plugin lifecycle integration (lines 301-321 for loading, 449-475 for filtering)
+- `scripts/monitor.js` - `checkMaintenanceWindow()` function (lines 308-345)
+- `templates/workflows/monitor-systems.yml` - Workflow integration (lines 82-150)
+
+**React Components:**
+- `src/theme/Maintenance/MaintenanceList/` - List component with filtering
+- `src/theme/Maintenance/MaintenanceItem/` - Individual maintenance card
+
+**Tests:**
+- `__tests__/maintenance-utils.test.ts` - Utility function tests (including timezone)
+- `__tests__/update-status.test.ts` - CLI maintenance tests
+- `__tests__/monitor.test.ts` - Monitoring maintenance tests
+- `__tests__/plugin.test.ts` - Config option tests
+- `__tests__/MaintenanceItem.test.tsx` - Component tests
+- `__tests__/MaintenanceList.test.tsx` - Component tests
 
 ### Component Props vs Route Data
 

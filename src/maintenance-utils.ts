@@ -127,3 +127,87 @@ export function isScheduledMaintenance(
 ): boolean {
   return labels.some((label) => maintenanceLabels.includes(label));
 }
+
+/**
+ * Format a date string in a specific timezone
+ * @param isoDate - ISO 8601 date string (e.g., "2025-01-12T02:00:00Z")
+ * @param timezone - Timezone string (e.g., "UTC", "America/New_York", "local")
+ * @returns Formatted date string
+ */
+export function formatDateInTimezone(
+  isoDate: string,
+  timezone?: string
+): string {
+  const date = new Date(isoDate);
+
+  // If no timezone specified or timezone is "UTC", use UTC
+  if (!timezone || timezone === 'UTC') {
+    return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+  }
+
+  // If timezone is "local", use browser's local timezone
+  if (timezone === 'local') {
+    return date.toLocaleString();
+  }
+
+  // Use Intl.DateTimeFormat for specific timezone
+  try {
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    };
+    const formatted = new Intl.DateTimeFormat('en-US', options).format(date);
+    return `${formatted} (${timezone})`;
+  } catch (error) {
+    // Fall back to UTC if timezone is invalid
+    console.warn(`Invalid timezone "${timezone}", falling back to UTC`);
+    return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+  }
+}
+
+/**
+ * Get a short, human-friendly date format for display
+ * @param isoDate - ISO 8601 date string
+ * @param timezone - Optional timezone
+ * @returns Short formatted date (e.g., "Jan 12, 2025 2:00 AM")
+ */
+export function formatShortDate(
+  isoDate: string,
+  timezone?: string
+): string {
+  const date = new Date(isoDate);
+
+  const options: Intl.DateTimeFormatOptions = {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  };
+
+  if (timezone && timezone !== 'local' && timezone !== 'UTC') {
+    options.timeZone = timezone;
+  }
+
+  try {
+    return new Intl.DateTimeFormat('en-US', options).format(date);
+  } catch (error) {
+    // Fall back to default formatting without timezone
+    const fallbackOptions: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    };
+    return date.toLocaleString('en-US', fallbackOptions);
+  }
+}

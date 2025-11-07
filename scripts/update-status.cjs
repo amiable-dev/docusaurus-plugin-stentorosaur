@@ -268,25 +268,17 @@ async function updateStatus() {
     if (options.writeMaintenance) {
       await fs.ensureDir(committedStatusDir);
       const maintenancePath = path.join(committedStatusDir, 'maintenance.json');
-      
-      // Filter for maintenance issues (labeled 'maintenance')
-      const maintenanceIssues = result.incidents.filter(issue => 
-        issue.labels?.some(label => label.toLowerCase() === 'maintenance')
-      );
-      
-      const maintenance = maintenanceIssues.map(issue => ({
-        title: issue.title,
-        number: issue.number,
-        state: issue.state,
-        scheduledStart: issue.scheduledStart || issue.createdAt,
-        scheduledEnd: issue.scheduledEnd || null,
-        createdAt: issue.createdAt,
-        url: issue.url,
-        body: issue.body,
-      }));
-      
+
+      log('\n📋 Fetching scheduled maintenance...');
+      verbose('Calling service.fetchScheduledMaintenance()');
+
+      // Use the correct method to fetch maintenance issues
+      const maintenance = await service.fetchScheduledMaintenance();
+
+      verbose('Fetched maintenance windows:', JSON.stringify(maintenance, null, 2));
+
       await fs.writeJson(maintenancePath, maintenance, {spaces: 2});
-      log(`✓ Wrote ${maintenance.length} maintenance windows to status-data/maintenance.json`);
+      log(`✓ Wrote ${maintenance.length} maintenance window(s) to status-data/maintenance.json`);
       verbose('Maintenance path:', maintenancePath);
     }
 

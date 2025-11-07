@@ -292,7 +292,9 @@ module.exports = {
         // NEW in v0.5.0: Scheduled maintenance tracking
         scheduledMaintenance: {
           enabled: true,
-          label: 'maintenance',  // GitHub label for maintenance issues
+          labels: ['maintenance'],    // GitHub labels for maintenance issues
+          displayDuration: 30,        // Show completed maintenance for 30 days
+          timezone: 'America/New_York', // Display times in specific timezone
         }
         
         // Demo data control (useful for testing)
@@ -447,6 +449,16 @@ The plugin automatically determines maintenance status:
 - **Upcoming**: Start time is in the future
 - **In Progress**: Current time is between start and end
 - **Completed**: End time has passed OR issue is closed
+
+#### Maintenance Window Monitoring Behavior
+
+During active maintenance windows (status = "in-progress"), the monitoring system automatically:
+
+- **Skips uptime monitoring** for affected systems to avoid polluting performance data with abnormal metrics
+- **Prevents incident creation** for systems undergoing maintenance (no false alarms)
+- **Logs skipped systems** in monitoring summaries for transparency
+
+This ensures your historical performance data remains accurate and incidents are only created for genuine outages.
 
 #### Example Maintenance Issue
 
@@ -995,7 +1007,10 @@ jobs:
   // Scheduled Maintenance (v0.5.0+)
   scheduledMaintenance: {
     enabled: true,                           // default: true
-    label: 'maintenance',                    // GitHub label, default: 'maintenance'
+    label: 'maintenance',                    // Single GitHub label (deprecated: use 'labels' instead)
+    labels: ['maintenance', 'planned'],      // Multiple GitHub labels (overrides 'label')
+    displayDuration: 30,                     // Show completed maintenance for N days (default: show all)
+    timezone: 'America/New_York',            // Display timezone (default: UTC)
   },
   
   // Update frequency

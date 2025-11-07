@@ -86,13 +86,37 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            
+
             // Load monitoring config to get system list
             const config = JSON.parse(fs.readFileSync('.monitorrc.json', 'utf8'));
-            
+
+            // Load maintenance data to check for active maintenance windows
+            let maintenanceData = [];
+            const maintenancePath = 'status-data/maintenance.json';
+            if (fs.existsSync(maintenancePath)) {
+              try {
+                maintenanceData = JSON.parse(fs.readFileSync(maintenancePath, 'utf8'));
+                console.log(`Loaded ${maintenanceData.length} maintenance window(s)`);
+              } catch (error) {
+                console.log('No maintenance data found or error reading:', error.message);
+              }
+            }
+
+            // Helper function to check if system is in maintenance
+            function isInMaintenance(systemName) {
+              for (const maintenance of maintenanceData) {
+                if (maintenance.status === 'in-progress' &&
+                    maintenance.affectedSystems &&
+                    maintenance.affectedSystems.includes(systemName)) {
+                  return { inMaintenance: true, maintenance };
+                }
+              }
+              return { inMaintenance: false };
+            }
+
             // Parse current.json to get latest status for each system
             const currentData = JSON.parse(fs.readFileSync('status-data/current.json', 'utf8'));
-            
+
             // Get latest reading for each system
             const latestBySystem = {};
             for (const reading of currentData) {
@@ -100,16 +124,17 @@ jobs:
                 latestBySystem[reading.svc] = reading;
               }
             }
-            
+
             // Check each configured system
             for (const systemConfig of config.systems) {
               const systemName = systemConfig.system;
               const latest = latestBySystem[systemName];
-              
+
               if (!latest) continue;
-              
+
               const isDown = latest.state === 'down';
-              
+              const maintenanceCheck = isInMaintenance(systemName);
+
               // Find existing automated issues for this system
               const issues = await github.rest.issues.listForRepo({
                 owner: context.repo.owner,
@@ -117,8 +142,14 @@ jobs:
                 labels: ['status', systemName, 'automated'],
                 state: 'open'
               });
-              
+
               if (isDown && issues.data.length === 0) {
+                // Skip creating incident if system is in maintenance
+                if (maintenanceCheck.inMaintenance) {
+                  console.log(`⏸️  Skipping incident creation for ${systemName} - in maintenance: ${maintenanceCheck.maintenance.title}`);
+                  continue;
+                }
+
                 // Create downtime issue
                 await github.rest.issues.create({
                   owner: context.repo.owner,

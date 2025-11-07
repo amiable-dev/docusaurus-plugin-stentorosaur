@@ -173,7 +173,12 @@ export default async function pluginStatus(
     showServices = true,
     showIncidents = true,
     showPerformanceMetrics = true,
+    scheduledMaintenance = { enabled: true, label: 'maintenance' },
   } = options;
+
+  // Build maintenance labels array from config
+  const maintenanceLabels = scheduledMaintenance.labels ||
+    (scheduledMaintenance.label ? [scheduledMaintenance.label] : ['maintenance']);
 
   const statusDataDir = path.join(generatedFilesDir, 'docusaurus-plugin-stentorosaur');
   const statusDataPath = path.join(statusDataDir, 'status.json');
@@ -201,7 +206,7 @@ export default async function pluginStatus(
         const demoData = getDemoStatusData();
         items = showServices ? demoData.items : [];
         incidents = showIncidents ? demoData.incidents : [];
-        maintenance = demoData.maintenance || [];
+        maintenance = (scheduledMaintenance.enabled !== false) ? (demoData.maintenance || []) : [];
         
         const statusData: StatusData = {
           items,
@@ -294,20 +299,25 @@ export default async function pluginStatus(
             }
             
             // Try to read committed maintenance.json (written by status-update.yml)
-            const committedMaintenanceFile = path.join(context.siteDir, 'status-data', 'maintenance.json');
-            if (await fs.pathExists(committedMaintenanceFile)) {
-              try {
-                const committedMaintenance = await fs.readJson(committedMaintenanceFile);
-                if (Array.isArray(committedMaintenance)) {
-                  maintenance = committedMaintenance;
-                  console.log(`[docusaurus-plugin-stentorosaur] Loaded ${maintenance.length} maintenance windows from maintenance.json`);
+            // Only load if scheduledMaintenance is enabled
+            if (scheduledMaintenance.enabled !== false) {
+              const committedMaintenanceFile = path.join(context.siteDir, 'status-data', 'maintenance.json');
+              if (await fs.pathExists(committedMaintenanceFile)) {
+                try {
+                  const committedMaintenance = await fs.readJson(committedMaintenanceFile);
+                  if (Array.isArray(committedMaintenance)) {
+                    maintenance = committedMaintenance;
+                    console.log(`[docusaurus-plugin-stentorosaur] Loaded ${maintenance.length} maintenance windows from maintenance.json`);
+                  }
+                } catch (error) {
+                  console.warn(
+                    '[docusaurus-plugin-stentorosaur] Failed to read maintenance.json:',
+                    error instanceof Error ? error.message : String(error)
+                  );
                 }
-              } catch (error) {
-                console.warn(
-                  '[docusaurus-plugin-stentorosaur] Failed to read maintenance.json:',
-                  error instanceof Error ? error.message : String(error)
-                );
               }
+            } else {
+              console.log('[docusaurus-plugin-stentorosaur] Scheduled maintenance disabled (scheduledMaintenance.enabled=false)');
             }
             
             // Only fetch from GitHub API if we don't have incidents/maintenance from files
@@ -318,7 +328,8 @@ export default async function pluginStatus(
                   owner,
                   repo,
                   statusLabel,
-                  systemLabels
+                  systemLabels,
+                  maintenanceLabels
                 );
                 const result = await service.fetchStatusData();
                 incidents = showIncidents ? result.incidents : [];
@@ -367,7 +378,7 @@ export default async function pluginStatus(
           const demoData = getDemoStatusData();
           items = showServices ? demoData.items : [];
           incidents = showIncidents ? demoData.incidents : [];
-          maintenance = demoData.maintenance || [];
+          maintenance = (scheduledMaintenance.enabled !== false) ? (demoData.maintenance || []) : [];
         } else {
           try {
             console.log('[docusaurus-plugin-stentorosaur] Fetching fresh status data from GitHub API');
@@ -376,7 +387,8 @@ export default async function pluginStatus(
               owner,
               repo,
               statusLabel,
-              systemLabels
+              systemLabels,
+              maintenanceLabels
             );
 
             const result = await service.fetchStatusData();
@@ -425,7 +437,7 @@ export default async function pluginStatus(
               const demoData = getDemoStatusData();
               items = showServices ? demoData.items : [];
               incidents = showIncidents ? demoData.incidents : [];
-              maintenance = demoData.maintenance || [];
+              maintenance = (scheduledMaintenance.enabled !== false) ? (demoData.maintenance || []) : [];
             }
           } catch (error) {
             console.warn(
@@ -435,8 +447,36 @@ export default async function pluginStatus(
             const demoData = getDemoStatusData();
             items = showServices ? demoData.items : [];
             incidents = showIncidents ? demoData.incidents : [];
-            maintenance = demoData.maintenance || [];
+            maintenance = (scheduledMaintenance.enabled !== false) ? (demoData.maintenance || []) : [];
           }
+        }
+      }
+
+      // Apply displayDuration filter to maintenance if configured
+      if (scheduledMaintenance.displayDuration && maintenance.length > 0) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - scheduledMaintenance.displayDuration);
+        const cutoffTime = cutoffDate.getTime();
+
+        const originalCount = maintenance.length;
+        maintenance = maintenance.filter(m => {
+          // Keep all upcoming and in-progress maintenance
+          if (m.status === 'upcoming' || m.status === 'in-progress') {
+            return true;
+          }
+          // For completed maintenance, check if within displayDuration
+          if (m.status === 'completed') {
+            const endTime = new Date(m.end).getTime();
+            return endTime >= cutoffTime;
+          }
+          return true;
+        });
+
+        const filteredCount = originalCount - maintenance.length;
+        if (filteredCount > 0) {
+          console.log(
+            `[docusaurus-plugin-stentorosaur] Filtered ${filteredCount} completed maintenance window(s) older than ${scheduledMaintenance.displayDuration} days`
+          );
         }
       }
 

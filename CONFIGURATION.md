@@ -97,8 +97,11 @@ When `--write-maintenance` is used:
   
   // Scheduled Maintenance
   scheduledMaintenance?: {
-    enabled: boolean;                            // Enable maintenance tracking
-    label: string;                               // GitHub label (default: 'maintenance')
+    enabled?: boolean;                           // Enable maintenance tracking (default: true)
+    label?: string;                              // Single GitHub label (default: 'maintenance', deprecated)
+    labels?: string[];                           // Multiple GitHub labels (overrides 'label')
+    displayDuration?: number;                    // Show completed maintenance for N days
+    timezone?: string;                           // Display timezone (default: 'UTC')
   };
 }
 ```
@@ -773,11 +776,22 @@ A structured layout inspired by Upptime with configurable sections:
 ```typescript
 {
   scheduledMaintenance: {
-    enabled: true,              // Enable maintenance tracking
-    label: 'maintenance',       // GitHub label to identify maintenance issues
+    enabled: true,                           // Enable maintenance tracking (default: true)
+    label: 'maintenance',                    // Single GitHub label (deprecated: use 'labels')
+    labels: ['maintenance', 'planned'],      // Multiple GitHub labels (overrides 'label')
+    displayDuration: 30,                     // Show completed maintenance for N days (default: all)
+    timezone: 'America/New_York',            // Display times in timezone (default: 'UTC')
   },
 }
 ```
+
+**Configuration Options:**
+
+- **`enabled`** (boolean, default: `true`) - Enable/disable maintenance tracking entirely
+- **`label`** (string, default: `'maintenance'`) - Single GitHub label (deprecated, use `labels` instead)
+- **`labels`** (string[], optional) - Multiple GitHub labels for maintenance issues (takes precedence over `label`)
+- **`displayDuration`** (number, optional) - Number of days to show completed maintenance. Omit to show all completed maintenance.
+- **`timezone`** (string, default: `'UTC'`) - Timezone for displaying maintenance times. Supports IANA timezone identifiers (e.g., `'America/New_York'`, `'Europe/London'`) or `'local'` for browser timezone.
 
 ### Creating Maintenance Issues
 

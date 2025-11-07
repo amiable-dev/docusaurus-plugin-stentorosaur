@@ -306,6 +306,45 @@ function generateStatusJson(currentJsonPath, outputDir) {
 }
 
 /**
+ * Check if a system is currently in a maintenance window
+ * @param {string} systemName - Name of the system to check
+ * @param {string} outputDir - Directory containing maintenance.json
+ * @returns {{ inMaintenance: boolean, maintenanceId: number | null, maintenanceTitle: string | null }}
+ */
+function checkMaintenanceWindow(systemName, outputDir) {
+  const maintenancePath = path.join(outputDir, 'maintenance.json');
+
+  // If maintenance.json doesn't exist, no maintenance scheduled
+  if (!fs.existsSync(maintenancePath)) {
+    return { inMaintenance: false, maintenanceId: null, maintenanceTitle: null };
+  }
+
+  try {
+    const maintenanceData = JSON.parse(fs.readFileSync(maintenancePath, 'utf8'));
+
+    // Check for active maintenance windows
+    for (const maintenance of maintenanceData) {
+      // Only check maintenance that's currently in progress
+      if (maintenance.status === 'in-progress') {
+        // Check if this system is affected
+        if (maintenance.affectedSystems && maintenance.affectedSystems.includes(systemName)) {
+          return {
+            inMaintenance: true,
+            maintenanceId: maintenance.id,
+            maintenanceTitle: maintenance.title,
+          };
+        }
+      }
+    }
+
+    return { inMaintenance: false, maintenanceId: null, maintenanceTitle: null };
+  } catch (error) {
+    verbose(`Error reading maintenance data: ${error.message}`);
+    return { inMaintenance: false, maintenanceId: null, maintenanceTitle: null };
+  }
+}
+
+/**
  * Monitor a single system
  */
 async function monitorSystem(systemConfig) {
@@ -414,13 +453,29 @@ async function main() {
     
     // Monitor all systems
     const results = [];
+    const skipped = [];
     for (const systemConfig of systems) {
       // Merge with defaults
       const config = {
         ...options,
         ...systemConfig,
       };
-      
+
+      // Check if system is in maintenance window
+      const maintenanceCheck = checkMaintenanceWindow(config.system, config.outputDir);
+
+      if (maintenanceCheck.inMaintenance) {
+        log(`⏸️  Skipping ${config.system} - in maintenance window: ${maintenanceCheck.maintenanceTitle}`);
+        verbose(`  Maintenance ID: ${maintenanceCheck.maintenanceId}`);
+        skipped.push({
+          system: config.system,
+          reason: 'maintenance',
+          maintenanceId: maintenanceCheck.maintenanceId,
+          maintenanceTitle: maintenanceCheck.maintenanceTitle,
+        });
+        continue; // Skip monitoring this system
+      }
+
       const result = await monitorSystem(config);
       results.push(result);
     }
@@ -437,6 +492,13 @@ async function main() {
     for (const result of results) {
       const emoji = result.status === 'up' ? '✅' : result.status === 'degraded' ? '⚠️' : '❌';
       log(`  ${emoji} ${result.system}: ${result.status} (${result.statusCode} in ${result.responseTime}ms)`);
+    }
+
+    if (skipped.length > 0) {
+      log(`\nSkipped ${skipped.length} system(s) (in maintenance):`);
+      for (const skip of skipped) {
+        log(`  ⏸️  ${skip.system}: ${skip.maintenanceTitle}`);
+      }
     }
     
   } catch (error) {

@@ -75,6 +75,89 @@ if (labels.includes('critical')) severity = 'critical';
 // 3. Worst status wins (down > degraded > maintenance > up)
 ```
 
+## Scheduled Maintenance System
+
+### Maintenance Data Flow
+```
+GitHub Issue (with maintenance label + YAML frontmatter)
+  ↓
+GitHubStatusService.fetchScheduledMaintenance()
+  ↓
+Parse YAML frontmatter (extractFrontmatter in maintenance-utils.ts)
+  ↓
+Determine status (getMaintenanceStatus in maintenance-utils.ts)
+  ↓
+Generate maintenance.json
+  ↓
+Plugin loads and filters by config (enabled, displayDuration)
+  ↓
+Display in MaintenanceList/MaintenanceItem components
+```
+
+### Maintenance Issue Format
+```yaml
+---
+start: 2025-01-12T02:00:00Z  # ISO 8601 format, UTC recommended
+end: 2025-01-12T04:00:00Z
+systems:
+  - api
+  - database
+---
+
+Maintenance description...
+```
+
+**Labels**: `maintenance` (or custom labels from `scheduledMaintenance.labels` config)
+
+### Maintenance Status Determination
+```typescript
+// src/maintenance-utils.ts getMaintenanceStatus()
+// If issue.state === 'closed' → 'completed'
+// Else if now >= start && now <= end → 'in-progress'
+// Else if now < start → 'upcoming'
+// Else → 'completed'
+```
+
+### Maintenance-Aware Monitoring
+**Key Implementation**: During active maintenance windows (status='in-progress'):
+- `scripts/monitor.js` skips uptime monitoring for affected systems
+- `templates/workflows/monitor-systems.yml` prevents incident creation
+- Avoids polluting performance data with abnormal metrics
+
+```typescript
+// scripts/monitor.js checkMaintenanceWindow()
+function checkMaintenanceWindow(systemName, outputDir) {
+  // Reads maintenance.json
+  // Checks if system is in active maintenance (status='in-progress')
+  // Returns { inMaintenance: boolean, maintenanceId, maintenanceTitle }
+}
+```
+
+### Configuration Options
+```typescript
+scheduledMaintenance: {
+  enabled: true,                    // Enable/disable maintenance tracking
+  label: 'maintenance',             // Single label (deprecated)
+  labels: ['maintenance', 'planned'], // Multiple labels (preferred)
+  displayDuration: 30,              // Show completed maintenance for N days
+  timezone: 'America/New_York',     // Display timezone (default: 'UTC')
+}
+```
+
+**Implementation Details**:
+- `enabled: false` → maintenance array set to `[]` in plugin
+- `displayDuration` → filters completed maintenance older than N days
+- `timezone` → used by `formatDateInTimezone()` and `formatShortDate()` utilities
+- `labels` takes precedence over `label`
+
+### Key Files for Maintenance
+- `src/maintenance-utils.ts` - Utility functions (frontmatter parsing, status determination, timezone formatting)
+- `src/github-service.ts` - `fetchScheduledMaintenance()`, `fetchMaintenanceIssues()`
+- `src/theme/Maintenance/MaintenanceList/` - List component
+- `src/theme/Maintenance/MaintenanceItem/` - Individual maintenance card
+- `scripts/monitor.js` - Maintenance window awareness
+- `templates/workflows/monitor-systems.yml` - Skip monitoring during maintenance
+
 ## Testing Requirements
 
 **Coverage Thresholds**: 70% for branches/functions/lines/statements (enforced in CI)
