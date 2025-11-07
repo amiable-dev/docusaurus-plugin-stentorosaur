@@ -52,6 +52,8 @@ npm install @amiable-dev/docusaurus-plugin-stentorosaur
 yarn add @amiable-dev/docusaurus-plugin-stentorosaur
 ```
 
+> **📚 New in v0.7.0**: We recommend using an orphaned `status-data` branch for storing monitoring data (following the Upptime pattern). This keeps your main branch lean and improves performance. See [Orphaned Branch Setup Guide](./ORPHANED_BRANCH_SETUP.md) for migration instructions.
+
 ## GitHub Token Setup
 
 The plugin uses a GitHub token to fetch status data from your repository's issues. This token is used in **two different contexts**:
