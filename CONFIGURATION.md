@@ -771,6 +771,10 @@ A structured layout inspired by Upptime with configurable sections:
 
 ## Scheduled Maintenance (v0.5.0+)
 
+Scheduled maintenance displays in **both** status page views (`statusView: 'default'` and `statusView: 'upptime'`):
+- **Default view** (v0.6.2+): Shows "Scheduled Maintenance" and "Past Maintenance" sections
+- **Upptime view** (v0.5.0+): Configurable via `uptimeConfig.sections`
+
 ### Enabling Maintenance Tracking
 
 ```typescript

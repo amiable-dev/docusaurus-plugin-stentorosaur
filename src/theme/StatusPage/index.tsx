@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '@theme/Layout';
 import StatusBoard from '../StatusBoard';
 import IncidentHistory from '../IncidentHistory';
+import MaintenanceList from '../Maintenance/MaintenanceList';
 import PerformanceMetrics from '../PerformanceMetrics';
 import type {StatusData, SystemStatusFile} from '../../types';
 import styles from './styles.module.css';
@@ -19,10 +20,11 @@ export interface Props {
 
 export default function StatusPage({statusData}: Props): JSX.Element {
   const {
-    items = [], 
-    incidents = [], 
-    lastUpdated, 
-    showServices = true, 
+    items = [],
+    incidents = [],
+    maintenance = [],
+    lastUpdated,
+    showServices = true,
     showIncidents = true,
     showPerformanceMetrics = true,
     useDemoData = false,
@@ -147,6 +149,12 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     return systemFiles.some((file) => file.name === systemName);
   };
 
+  // Split maintenance into upcoming/in-progress and past
+  const upcomingMaintenance = maintenance.filter(
+    m => m.status === 'upcoming' || m.status === 'in-progress'
+  );
+  const pastMaintenance = maintenance.filter(m => m.status === 'completed');
+
   return (
     <Layout title={title} description={description}>
       <main className={styles.statusPage}>
@@ -170,9 +178,35 @@ export default function StatusPage({statusData}: Props): JSX.Element {
             useDemoData={useDemoData}
           />
         )}
-        
+
+        {upcomingMaintenance.length > 0 && (
+          <section className={styles.maintenanceSection}>
+            <h2 className={styles.sectionTitle}>Scheduled Maintenance</h2>
+            <MaintenanceList
+              maintenance={upcomingMaintenance}
+              filterStatus="all"
+              showComments={true}
+              showAffectedSystems={true}
+              emptyMessage="No upcoming maintenance scheduled"
+            />
+          </section>
+        )}
+
         {showIncidents && incidents && incidents.length > 0 && (
           <IncidentHistory incidents={incidents} useDemoData={useDemoData} />
+        )}
+
+        {pastMaintenance.length > 0 && (
+          <section className={styles.maintenanceSection}>
+            <h2 className={styles.sectionTitle}>Past Maintenance</h2>
+            <MaintenanceList
+              maintenance={pastMaintenance}
+              filterStatus="completed"
+              showComments={false}
+              showAffectedSystems={true}
+              emptyMessage="No past maintenance to display"
+            />
+          </section>
         )}
 
         <div className={styles.footer}>
