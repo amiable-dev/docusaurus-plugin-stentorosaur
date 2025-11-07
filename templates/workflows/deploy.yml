@@ -1,13 +1,21 @@
 name: Deploy to GitHub Pages
 
+# IMPORTANT: This workflow reads from the 'status-data' orphaned branch
+#
+# Prerequisites:
+#   Run once to create the orphaned branch:
+#   npm run setup-status-branch
+#
+# The build process copies status data from the orphaned branch into the site build.
+
 on:
   push:
     branches:
       - main
     paths-ignore:
-      # Don't trigger deploy on monitoring data commits (they use [skip ci])
-      - 'status-data/current.json'
-      - 'status-data/archives/**'
+      # Don't trigger deploy when only monitoring workflows change
+      - '.github/workflows/monitor-systems.yml'
+      - '.github/workflows/status-update.yml'
   workflow_dispatch:
   # Deploy immediately when critical status updates occur
   # Triggered by status-update.yml when critical issues are detected
@@ -30,17 +38,43 @@ jobs:
     name: Build Docusaurus
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Checkout main branch for site code
+      - name: Checkout main branch
+        uses: actions/checkout@v4
         with:
+          ref: main
+          path: main
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+
+      # Checkout status-data branch for monitoring data
+      - name: Checkout status-data branch
+        uses: actions/checkout@v4
+        with:
+          ref: status-data
+          path: status-data
+          fetch-depth: 1  # Shallow clone for speed
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: main/package-lock.json
 
       - name: Install dependencies
+        working-directory: main
         run: npm ci
+
+      - name: Copy status data to site directory
+        working-directory: main
+        run: |
+          # Copy status data from orphaned branch to site directory
+          # This makes it available to the plugin during build
+          cp -r ../status-data ./status-data
+          echo "✓ Copied status data from orphaned branch"
+
       - name: Build website
+        working-directory: main
         env:
           # Plugin will read committed status data from status-data/
           # GITHUB_TOKEN is provided as fallback if committed data is stale
@@ -50,7 +84,7 @@ jobs:
       - name: Upload Build Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build
+          path: main/build
 
   deploy:
     name: Deploy to GitHub Pages

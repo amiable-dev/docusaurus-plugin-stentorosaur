@@ -1,5 +1,14 @@
 name: Monitor Systems
 
+# IMPORTANT: This workflow writes to the 'status-data' orphaned branch
+#
+# Prerequisites:
+#   Run once to create the orphaned branch:
+#   npm run setup-status-branch
+#
+# The 'status-data' branch is isolated from 'main' to keep the repository lean.
+# This pattern is used by Upptime and recommended for monitoring data storage.
+
 on:
   schedule:
     # Runs every 5 minutes
@@ -13,11 +22,23 @@ permissions:
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout repository
+      # Checkout main branch for scripts and config
+      - name: Checkout main branch
         uses: actions/checkout@v4
-        
+        with:
+          ref: main
+          path: main
+
+      # Checkout status-data branch for data storage
+      - name: Checkout status-data branch
+        uses: actions/checkout@v4
+        with:
+          ref: status-data
+          path: status-data
+          fetch-depth: 1  # Shallow clone for speed
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -26,58 +47,60 @@ jobs:
       - name: Monitor all systems
         id: check
         continue-on-error: true
+        working-directory: main
         run: |
           # Clear npm cache to ensure we always get the latest plugin version
           npm cache clean --force
-          
+
           # Monitor all systems defined in .monitorrc.json
-          # This runs sequentially to avoid race conditions and ensure zero data loss
+          # Output directory points to status-data branch checkout
           npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-monitor \
             --config .monitorrc.json \
+            --output-dir ../status-data \
             --verbose
-          
-      - name: Commit response time data
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { execSync } = require('child_process');
-            
-            // Configure git
-            execSync('git config user.name "github-actions[bot]"');
-            execSync('git config user.email "github-actions[bot]@users.noreply.github.com"');
-            
-            // Check if there are changes
-            const status = execSync('git status --porcelain status-data/').toString();
-            
-            if (status) {
-              execSync('git add status-data/');
-              execSync('git commit -m "Update monitoring data [skip ci]"');
-              
-              // Simple push with retry (no race conditions since single job)
-              let retries = 3;
-              let delay = 1000;
-              
-              while (retries > 0) {
-                try {
-                  execSync('git pull --rebase origin ${{ github.ref_name }}');
-                  execSync('git push origin HEAD:${{ github.ref_name }}');
-                  console.log('Successfully pushed changes');
-                  break;
-                } catch (error) {
-                  retries--;
-                  
-                  if (retries === 0) {
-                    console.error('Failed to push after 3 attempts');
-                    throw error;
-                  }
-                  console.log(`Push failed, retrying in ${delay}ms...`);
-                  execSync(`sleep ${delay / 1000}`);
-                  delay *= 2;
-                }
-              }
-            } else {
-              console.log('No changes to commit');
-            }
+        env:
+          STATUS_DATA_DIR: ../status-data
+
+      - name: Commit status data
+        working-directory: status-data
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if there are changes
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          # Stage all changes
+          git add current.json incidents.json maintenance.json archives/ 2>/dev/null || true
+
+          # Commit with timestamp
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          git commit -m "📊 Status update: $TIMESTAMP" || echo "Nothing to commit"
+
+          # Push with retry logic
+          MAX_RETRIES=3
+          RETRY_DELAY=2
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            if git push origin status-data; then
+              echo "✅ Successfully pushed changes"
+              exit 0
+            else
+              if [ $i -lt $MAX_RETRIES ]; then
+                echo "⚠️  Push failed, retrying in ${RETRY_DELAY}s... (attempt $i/$MAX_RETRIES)"
+                sleep $RETRY_DELAY
+                RETRY_DELAY=$((RETRY_DELAY * 2))
+                git pull --rebase origin status-data
+              else
+                echo "❌ Failed to push after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
           
       - name: Manage downtime issues
         if: always()
@@ -87,10 +110,10 @@ jobs:
             const fs = require('fs');
             const path = require('path');
 
-            // Load monitoring config to get system list
-            const config = JSON.parse(fs.readFileSync('.monitorrc.json', 'utf8'));
+            // Load monitoring config from main branch
+            const config = JSON.parse(fs.readFileSync('main/.monitorrc.json', 'utf8'));
 
-            // Load maintenance data to check for active maintenance windows
+            // Load maintenance data from status-data branch
             let maintenanceData = [];
             const maintenancePath = 'status-data/maintenance.json';
             if (fs.existsSync(maintenancePath)) {
@@ -114,7 +137,7 @@ jobs:
               return { inMaintenance: false };
             }
 
-            // Parse current.json to get latest status for each system
+            // Parse current.json from status-data branch
             const currentData = JSON.parse(fs.readFileSync('status-data/current.json', 'utf8'));
 
             // Get latest reading for each system

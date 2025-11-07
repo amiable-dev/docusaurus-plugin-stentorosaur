@@ -1,5 +1,13 @@
 name: Status Update
 
+# IMPORTANT: This workflow writes to the 'status-data' orphaned branch
+#
+# Prerequisites:
+#   Run once to create the orphaned branch:
+#   npm run setup-status-branch
+#
+# The 'status-data' branch is isolated from 'main' to keep the repository lean.
+
 on:
   schedule:
     # Runs every hour to keep status page fresh
@@ -7,12 +15,6 @@ on:
   workflow_dispatch:
   issues:
     types: [opened, closed, labeled, unlabeled, edited]
-  push:
-    branches:
-      - main
-    paths:
-      # Only run when non-status files change (prevents infinite loop)
-      - '!status-data/**'
 
 permissions:
   contents: write  # Required to commit status data changes
@@ -21,44 +23,82 @@ permissions:
 jobs:
   update-status:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout repository
+      # Checkout main branch for dependencies
+      - name: Checkout main branch
         uses: actions/checkout@v4
-          
+        with:
+          ref: main
+          path: main
+
+      # Checkout status-data branch for data storage
+      - name: Checkout status-data branch
+        uses: actions/checkout@v4
+        with:
+          ref: status-data
+          path: status-data
+          fetch-depth: 1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          
+
       - name: Install dependencies
+        working-directory: main
         run: npm ci
-          
+
       - name: Update incidents and maintenance data
+        working-directory: main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx stentorosaur-update-status --write-incidents --write-maintenance --verbose
-        
+        run: npx stentorosaur-update-status --write-incidents --write-maintenance --verbose --output-dir ../status-data
+
       - name: Commit status data changes
+        working-directory: status-data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Check if there are changes to commit
-          if [ -n "$(git status --porcelain status-data/)" ]; then
-            git add status-data/
-            git commit -m "� Update incidents and maintenance data [skip ci]"
-            git push
-            echo "✓ Committed status data changes"
-          else
+          if git diff --quiet && git diff --staged --quiet; then
             echo "ℹ No changes to commit"
+            exit 0
           fi
-      
+
+          # Stage changes
+          git add incidents.json maintenance.json 2>/dev/null || true
+
+          # Commit with timestamp
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          git commit -m "📝 Update incidents and maintenance data: $TIMESTAMP" || echo "Nothing to commit"
+
+          # Push with retry logic
+          MAX_RETRIES=3
+          RETRY_DELAY=2
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            if git push origin status-data; then
+              echo "✓ Committed status data changes"
+              exit 0
+            else
+              if [ $i -lt $MAX_RETRIES ]; then
+                echo "⚠️  Push failed, retrying in ${RETRY_DELAY}s..."
+                sleep $RETRY_DELAY
+                RETRY_DELAY=$((RETRY_DELAY * 2))
+                git pull --rebase origin status-data
+              else
+                echo "❌ Failed to push after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
+
       # DEPLOYMENT TRIGGER:
       # For critical incidents, trigger immediate deployment to update status page
       # This only fires when issues are opened/closed/labeled with critical severity
-      # 
+      #
       # Note: Requires repository_dispatch trigger in deploy.yml
       - name: Trigger deployment for critical issues
         if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
@@ -66,4 +106,3 @@ jobs:
         with:
           event-type: status-updated
           token: ${{ secrets.GITHUB_TOKEN }}
-

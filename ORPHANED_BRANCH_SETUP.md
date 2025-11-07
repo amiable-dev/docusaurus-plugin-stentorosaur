@@ -1,6 +1,10 @@
 # Orphaned Branch Setup Guide
 
-This guide explains how to migrate your status monitoring data from the main branch to an orphaned `status-data` branch, following best practices used by Upptime and other monitoring tools.
+**As of v0.7.0, all workflow templates use the orphaned branch pattern by default.**
+
+This guide explains how to set up the orphaned `status-data` branch for storing monitoring data, following best practices used by Upptime and other monitoring tools.
+
+> **Note**: If you're migrating from an older version where data was stored on the main branch, see the "For Existing Projects" section below.
 
 ## Why Use an Orphaned Branch?
 
@@ -95,20 +99,26 @@ git checkout main
 
 ## Updating Workflows
 
-After setting up the orphaned branch, update your GitHub Actions workflows:
+**As of v0.7.0, all workflow templates use the orphaned branch pattern by default.**
 
-### Option 1: Use the Provided Template (Recommended)
-
-Copy the orphaned branch workflow template:
+If you're setting up a new project or updating from templates, simply copy the workflows from the plugin:
 
 ```bash
-cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/monitor-systems-orphan.yml \
-   .github/workflows/monitor-systems.yml
+# Copy all workflow templates
+cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/*.yml \
+   .github/workflows/
 ```
 
-### Option 2: Update Existing Workflow
+The following workflows are already configured for orphaned branch:
+- `monitor-systems.yml` - Monitors systems and writes to status-data branch
+- `status-update.yml` - Updates incidents/maintenance from GitHub issues
+- `deploy.yml` - Builds and deploys, reading from status-data branch
+- `deploy-scheduled.yml` - Scheduled deployments
+- `compress-archives.yml` - Compresses old JSONL files
 
-If you have an existing workflow, update it to use the orphaned branch pattern:
+### Migrating Existing Workflows
+
+If you have existing workflows from v0.6.x or earlier, update them to use the orphaned branch pattern:
 
 ```yaml
 name: Monitor Systems
