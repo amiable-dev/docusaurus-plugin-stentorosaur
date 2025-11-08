@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4] - 2025-11-07
+
+### Added
+
+- **Cleanup Script for Status-Data Branch**
+  - New `stentorosaur-cleanup-status-branch` command to remove unwanted files from status-data branch
+  - Fixes accidental commits of build artifacts, node_modules, or other project files
+  - Dry-run mode available with `--dry-run` flag
+  - Automatically keeps only status monitoring data files
+
+### Fixed
+
+- **Migration Script Bug Fix**
+  - Fixed `git add .` in migration script that could stage untracked files
+  - Now only stages the specific files that were copied from main branch
+  - Prevents accidental commits of build artifacts to status-data branch
+
 ## [0.7.3] - 2025-11-07
 
 ### Fixed

@@ -209,7 +209,10 @@ async function migrateStatusData(options = {}) {
   // Step 9: Commit to status-data branch
   console.log(`💾 Committing migration to '${BRANCH_NAME}'...`);
   if (!dryRun) {
-    exec('git add .');
+    // Only add the files we explicitly copied, not everything in working directory
+    for (const file of files) {
+      exec(`git add ${file}`);
+    }
     const timestamp = new Date().toISOString();
     exec(`git commit -m "📦 Migrate status data from ${currentBranch} branch\\n\\nMigrated at: ${timestamp}"`);
     console.log(`   ✅ Committed changes\n`);
