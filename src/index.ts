@@ -57,6 +57,7 @@ async function readSystemFiles(systemsDir: string): Promise<Partial<StatusItem>[
           lastChecked: data.lastChecked,
           responseTime: avgResponseTime,
           uptime: data.uptime || data.uptimeDay, // Prefer all-time, fallback to 24h
+          history: data.history, // Include history for mini heatmap
         });
       } catch (error) {
         console.warn(`Failed to read system file ${file}:`, error);
@@ -412,6 +413,8 @@ export default async function pluginStatus(
                     ...item,
                     responseTime: systemData.responseTime,
                     lastChecked: systemData.lastChecked,
+                    uptime: systemData.uptime,
+                    history: systemData.history, // Include history for mini heatmap
                   };
                 }
                 return item;
@@ -425,6 +428,8 @@ export default async function pluginStatus(
                     status: systemData.status || 'up',
                     lastChecked: systemData.lastChecked,
                     responseTime: systemData.responseTime,
+                    uptime: systemData.uptime,
+                    history: systemData.history, // Include history for mini heatmap
                     incidentCount: 0,
                   });
                 }

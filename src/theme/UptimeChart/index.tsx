@@ -235,7 +235,13 @@ export default function UptimeChart({
     if (timeBlocks.length === 0) return [];
 
     const periodStart = new Date(timeBlocks[0].timestamp);
-    const periodEnd = new Date(timeBlocks[timeBlocks.length - 1].timestamp);
+    const lastBlockStart = new Date(timeBlocks[timeBlocks.length - 1].timestamp);
+
+    // Calculate period end by adding one block duration to the last block start
+    const blockDuration = activePeriod === '24h' ? 60 * 60 * 1000 :
+                          activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
+                          24 * 60 * 60 * 1000;
+    const periodEnd = new Date(lastBlockStart.getTime() + blockDuration);
 
     return incidents
       .filter(incident => incident.affectedSystems && incident.affectedSystems.includes(name))
@@ -243,7 +249,7 @@ export default function UptimeChart({
         const incidentDate = new Date(incident.createdAt);
         return incidentDate >= periodStart && incidentDate <= periodEnd;
       });
-  }, [incidents, name, timeBlocks]);
+  }, [incidents, name, timeBlocks, activePeriod]);
 
   // Prepare data for CSV/JSON export
   const exportableData = useMemo(() => {

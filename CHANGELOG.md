@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] - 2025-11-10
+
+### Fixed
+
+- **Mini Heatmaps Not Showing on Default View System Cards**
+  - Fixed `readSystemFiles()` to include `history` field when reading system status files
+  - Updated merge logic to pass `history` and `uptime` from system files to StatusItem components
+  - Mini heatmaps now display correctly on system cards in default view
+  - Regression introduced when history data wasn't being propagated to components
+
+- **Incident/Maintenance Annotations Missing from Charts (Regression)**
+  - Fixed `periodEnd` calculation in incident filtering - was using last block start instead of end
+  - Incidents now correctly filtered to include the full time range including the last block
+  - Annotation pins now show correctly on UptimeChart bar charts and heatmaps
+  - Regression introduced in v0.9.0 when implementing granular time blocks
+
 ## [0.9.2] - 2025-11-10
 
 ### Fixed
