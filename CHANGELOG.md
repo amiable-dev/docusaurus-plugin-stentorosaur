@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.6] - 2025-11-07
+
+### Fixed
+
+- **Cleanup Script Git Command Buffer Overflow Fix**
+  - Fixed ENOBUFS error during `git checkout` when already on status-data branch with 40k+ untracked files
+  - Changed `hasUncommittedChanges()` from `git status --porcelain` to `git diff-index --quiet HEAD`
+  - Skip checkout if already on target branch (avoids unnecessary git operations)
+  - Use `--quiet` flag on checkout to minimize output buffering
+
 ## [0.7.5] - 2025-11-07
 
 ### Fixed

@@ -76,10 +76,12 @@ function getCurrentBranch() {
 
 function hasUncommittedChanges() {
   try {
-    const status = exec('git status --porcelain').trim();
-    return status.length > 0;
+    // Use git diff-index which doesn't buffer all output
+    // Returns exit code 0 if no changes, 1 if changes exist
+    exec('git diff-index --quiet HEAD --');
+    return false; // No changes
   } catch (error) {
-    return false;
+    return true; // Changes exist
   }
 }
 
@@ -153,17 +155,23 @@ async function cleanupStatusBranch(options = {}) {
   const originalBranch = getCurrentBranch() || 'main';
   console.log(`📌 Current branch: ${originalBranch}\n`);
 
-  // Step 4: Check for uncommitted changes on current branch
-  if (getCurrentBranch() !== BRANCH_NAME && hasUncommittedChanges()) {
-    throw new Error('You have uncommitted changes on current branch. Please commit or stash them first.');
-  }
+  // Step 4: Check if we're already on status-data branch
+  if (originalBranch === BRANCH_NAME) {
+    console.log(`✅ Already on '${BRANCH_NAME}' branch\n`);
+  } else {
+    // Check for uncommitted changes before switching
+    if (hasUncommittedChanges()) {
+      throw new Error('You have uncommitted changes on current branch. Please commit or stash them first.');
+    }
 
-  // Step 5: Checkout status-data branch
-  console.log(`🔀 Switching to '${BRANCH_NAME}' branch...`);
-  if (!dryRun) {
-    exec(`git checkout ${BRANCH_NAME}`);
+    // Step 5: Checkout status-data branch
+    console.log(`🔀 Switching to '${BRANCH_NAME}' branch...`);
+    if (!dryRun) {
+      // Use --quiet and --force to avoid buffer overflow with large file lists
+      exec(`git checkout --quiet ${BRANCH_NAME}`);
+    }
+    console.log(`   ✅ Checked out ${BRANCH_NAME}\n`);
   }
-  console.log(`   ✅ Checked out ${BRANCH_NAME}\n`);
 
   // Step 6: Scan for all files in working directory
   console.log(`📂 Scanning files on ${BRANCH_NAME} branch...`);
