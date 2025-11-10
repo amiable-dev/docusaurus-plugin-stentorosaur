@@ -611,7 +611,27 @@ export default async function pluginStatus(
           path.join(buildStatusDir, 'archives')
         );
       }
-      
+
+      // Copy incidents.json if it exists
+      const sourceIncidents = path.join(sourceDataDir, 'incidents.json');
+      if (await fs.pathExists(sourceIncidents)) {
+        console.log('[docusaurus-plugin-stentorosaur] Copying incidents.json');
+        await fs.copy(
+          sourceIncidents,
+          path.join(buildStatusDir, 'incidents.json')
+        );
+      }
+
+      // Copy maintenance.json if it exists
+      const sourceMaintenance = path.join(sourceDataDir, 'maintenance.json');
+      if (await fs.pathExists(sourceMaintenance)) {
+        console.log('[docusaurus-plugin-stentorosaur] Copying maintenance.json');
+        await fs.copy(
+          sourceMaintenance,
+          path.join(buildStatusDir, 'maintenance.json')
+        );
+      }
+
       // If using demo data, write demo system files with historical data for charts
       let shouldUseDemoData = useDemoData ?? !token;
       if (shouldUseDemoData) {

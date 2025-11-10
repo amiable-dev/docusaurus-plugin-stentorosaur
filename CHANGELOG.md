@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2025-11-10
+
+### Fixed
+
+- **Critical: postBuild Hook Missing File Copies**
+  - Added copying of `incidents.json` to build output directory (`build/status-data/incidents.json`)
+  - Added copying of `maintenance.json` to build output directory (`build/status-data/maintenance.json`)
+  - These files are now available at `/status-data/incidents.json` and `/status-data/maintenance.json` on deployed sites
+  - Fixes issue where incidents and maintenance data loaded during SSR but wasn't available for client-side fetching
+  - **Impact**: This enables incident pins on charts and proper incident/maintenance tracking throughout the application
+  - Root cause identified: v0.9.3 fixes worked during SSR but client-side components couldn't fetch the JSON files (404 errors)
+  - Related to orphaned branch deployment pattern introduced in v0.7.0
+
 ## [0.9.4] - 2025-11-10
 
 ### Fixed
