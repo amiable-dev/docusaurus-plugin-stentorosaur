@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-11-10
+
+### Fixed
+
+- **No Data vs Downtime Distinction**
+  - Charts now properly distinguish between "no monitoring data" and actual "downtime"
+  - Days without monitoring data show as gray with diagonal stripe pattern instead of green (100% uptime)
+  - UptimeChart bar charts: No-data bars display in gray with dashed borders
+  - UptimeChart heatmap: No-data cells display gray with diagonal stripes
+  - MiniHeatmap: No-data cells display gray with fine diagonal stripes
+  - Tooltips show "No monitoring data" for days without checks
+  - Overall uptime calculations now exclude days with no data (more accurate)
+  - Export data shows "No data" string for days without monitoring instead of 100%
+  - Added "No data" legend item to all charts
+  - Fixes misleading 100% uptime display when monitoring hasn't started yet
+
 ## [0.7.9] - 2025-11-10
 
 ### Fixed

@@ -54,15 +54,15 @@ export default function MiniHeatmap({
     });
 
     // Fill in all days even if no data
-    const result: Array<{ date: string; uptime: number }> = [];
+    const result: Array<{ date: string; uptime: number | null }> = [];
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dateKey = date.toISOString().split('T')[0];
       const stats = dailyStats.get(dateKey);
-      
+
       result.push({
         date: dateKey,
-        uptime: stats ? (stats.up / stats.total) * 100 : 100,
+        uptime: stats ? (stats.up / stats.total) * 100 : null, // null = no data
       });
     }
 
@@ -87,7 +87,7 @@ export default function MiniHeatmap({
 
       return {
         date,
-        uptimePercent: parseFloat(uptime.toFixed(2)),
+        uptimePercent: uptime !== null ? parseFloat(uptime.toFixed(2)) : 'No data',
         incidentCount: dayIncidents.length,
         incidents: dayIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('; '),
       };
@@ -111,14 +111,17 @@ export default function MiniHeatmap({
     return `${systemSlug}-heatmap-${formatDateForFilename(firstDate)}-to-${formatDateForFilename(lastDate)}`;
   };
 
-  const getColor = (uptime: number): string => {
+  const getColor = (uptime: number | null): string => {
+    if (uptime === null) return 'var(--ifm-color-emphasis-300)'; // Gray for no data
     if (uptime >= 99) return 'var(--ifm-color-success)';
     if (uptime >= 95) return 'var(--ifm-color-warning)';
     return 'var(--ifm-color-danger)';
   };
 
-  const getTitle = (date: string, uptime: number, dayIncidents: StatusIncident[]): string => {
-    let title = `${date}: ${uptime.toFixed(2)}% uptime`;
+  const getTitle = (date: string, uptime: number | null, dayIncidents: StatusIncident[]): string => {
+    let title = uptime !== null
+      ? `${date}: ${uptime.toFixed(2)}% uptime`
+      : `${date}: No monitoring data`;
     if (dayIncidents.length > 0) {
       title += '\n' + dayIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('\n');
     }
@@ -151,19 +154,21 @@ export default function MiniHeatmap({
       </div>
       <div className={styles.cells}>
         {dailyData.map(({ date, uptime }) => {
+          const isNoData = uptime === null;
+
           // Check if this day has any incidents
           const dayIncidents = relevantIncidents.filter(incident => {
             const incidentDate = new Date(incident.createdAt).toISOString().split('T')[0];
             return incidentDate === date;
           });
-          
+
           const hasIncident = dayIncidents.length > 0;
           const hasCritical = dayIncidents.some(i => i.severity === 'critical');
-          
+
           return (
             <div
               key={date}
-              className={`${styles.cell} ${hasIncident ? styles.hasIncident : ''}`}
+              className={`${styles.cell} ${hasIncident ? styles.hasIncident : ''} ${isNoData ? styles.noData : ''}`}
               style={{ backgroundColor: getColor(uptime) }}
               title={getTitle(date, uptime, dayIncidents)}
             >

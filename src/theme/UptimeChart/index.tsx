@@ -69,7 +69,7 @@ const PERIOD_DAYS: Record<TimePeriod, number> = {
 
 interface DayUptime {
   date: string;
-  uptime: number;
+  uptime: number | null; // null indicates no data for this day
   checks: number;
   upChecks: number;
 }
@@ -139,7 +139,7 @@ export default function UptimeChart({
     // Calculate uptime percentages
     return Array.from(dailyData.entries()).map(([date, data]) => ({
       date,
-      uptime: data.totalChecks > 0 ? (data.upChecks / data.totalChecks) * 100 : 100,
+      uptime: data.totalChecks > 0 ? (data.upChecks / data.totalChecks) * 100 : null, // null = no data
       checks: data.totalChecks,
       upChecks: data.upChecks,
     }));
@@ -147,15 +147,17 @@ export default function UptimeChart({
 
   const dailyUptime = useMemo(() => calculateDailyUptime(), [calculateDailyUptime]);
 
-  // Calculate overall uptime
+  // Calculate overall uptime (exclude days with no data)
   const overallUptime = useMemo(() => {
-    return dailyUptime.length > 0
-      ? dailyUptime.reduce((sum, day) => sum + day.uptime, 0) / dailyUptime.length
-      : 100;
+    const daysWithData = dailyUptime.filter(day => day.uptime !== null);
+    return daysWithData.length > 0
+      ? daysWithData.reduce((sum, day) => sum + (day.uptime || 0), 0) / daysWithData.length
+      : null; // null if no data at all
   }, [dailyUptime]);
 
   // Get color based on uptime percentage
-  const getUptimeColor = useCallback((uptime: number): string => {
+  const getUptimeColor = useCallback((uptime: number | null): string => {
+    if (uptime === null) return isDarkTheme ? 'rgb(100, 100, 100)' : 'rgb(200, 200, 200)'; // Gray for no data
     if (uptime >= 99) return isDarkTheme ? 'rgb(75, 192, 192)' : 'rgb(34, 197, 94)'; // Green
     if (uptime >= 95) return 'rgb(255, 205, 86)'; // Yellow
     return 'rgb(255, 99, 132)'; // Red
@@ -186,7 +188,7 @@ export default function UptimeChart({
 
       return {
         date: day.date,
-        uptimePercent: parseFloat(day.uptime.toFixed(2)),
+        uptimePercent: day.uptime !== null ? parseFloat(day.uptime.toFixed(2)) : 'No data',
         totalChecks: day.checks,
         successfulChecks: day.upChecks,
         failedChecks: day.checks - day.upChecks,
@@ -216,10 +218,12 @@ export default function UptimeChart({
     datasets: [
       {
         label: 'Uptime %',
-        data: dailyUptime.map(day => day.uptime),
+        data: dailyUptime.map(day => day.uptime ?? 0), // Use 0 for chart rendering, will style as no-data
         backgroundColor: dailyUptime.map(day => getUptimeColor(day.uptime)),
         borderColor: dailyUptime.map(day => getUptimeColor(day.uptime)),
         borderWidth: 1,
+        // Add pattern for no-data bars
+        borderDash: dailyUptime.map(day => day.uptime === null ? [5, 5] : []),
       },
     ],
   }), [dailyUptime, getUptimeColor]);
@@ -296,22 +300,27 @@ export default function UptimeChart({
           {dailyUptime.map((day) => {
             const uptimePercent = day.uptime;
             const color = getUptimeColor(uptimePercent);
-            
+            const isNoData = uptimePercent === null;
+
             // Check if this day has any incidents
             const dayIncidents = relevantIncidents.filter(incident => {
               const incidentDate = new Date(incident.createdAt).toISOString().split('T')[0];
               return incidentDate === day.date;
             });
-            
+
             const hasIncident = dayIncidents.length > 0;
             const incidentIcon = hasIncident && dayIncidents[0].severity === 'critical' ? '⚠️' : (hasIncident ? '📌' : '');
-            
+
+            const tooltipText = isNoData
+              ? `${day.date}: No monitoring data`
+              : `${day.date}: ${uptimePercent.toFixed(2)}% uptime (${day.upChecks}/${day.checks} checks)${hasIncident ? '\n' + dayIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('\n') : ''}`;
+
             return (
               <div
                 key={day.date}
-                className={styles.heatmapCell}
+                className={`${styles.heatmapCell} ${isNoData ? styles.noData : ''}`}
                 style={{ backgroundColor: color }}
-                title={`${day.date}: ${uptimePercent.toFixed(2)}% uptime (${day.upChecks}/${day.checks} checks)${hasIncident ? '\n' + dayIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('\n') : ''}`}
+                title={tooltipText}
               >
                 <span className={styles.heatmapDate}>
                   {new Date(day.date).getDate()}
@@ -336,12 +345,18 @@ export default function UptimeChart({
             <div className={styles.legendColor} style={{ backgroundColor: isDarkTheme ? 'rgb(75, 192, 192)' : 'rgb(34, 197, 94)' }} />
             <span>≥ 99%</span>
           </div>
+          <div className={styles.legendItem}>
+            <div className={styles.legendColor} style={{ backgroundColor: isDarkTheme ? 'rgb(100, 100, 100)' : 'rgb(200, 200, 200)' }} />
+            <span>No data</span>
+          </div>
         </div>
 
         <div className={styles.stats}>
           <div className={styles.stat}>
             <span className={styles.statLabel}>Overall Uptime:</span>
-            <span className={styles.statValue}>{overallUptime.toFixed(2)}%</span>
+            <span className={styles.statValue}>
+              {overallUptime !== null ? `${overallUptime.toFixed(2)}%` : 'No data'}
+            </span>
           </div>
         </div>
       </div>
@@ -371,16 +386,22 @@ export default function UptimeChart({
           label: (context: any) => {
             const dataIndex = context.dataIndex;
             const day = dailyUptime[dataIndex];
+
+            // Handle no data case
+            if (day.uptime === null) {
+              return ['No monitoring data available'];
+            }
+
             const dayIncidents = relevantIncidents.filter(incident => {
               const incidentDate = new Date(incident.createdAt).toISOString().split('T')[0];
               return incidentDate === day.date;
             });
-            
+
             const lines = [
               `Uptime: ${day.uptime.toFixed(2)}%`,
               `Successful: ${day.upChecks}/${day.checks} checks`,
             ];
-            
+
             if (dayIncidents.length > 0) {
               lines.push('');
               lines.push('📌 Incidents:');
@@ -388,7 +409,7 @@ export default function UptimeChart({
                 lines.push(`  ${incident.severity.toUpperCase()}: ${incident.title}`);
               });
             }
-            
+
             return lines;
           },
         },
@@ -464,7 +485,9 @@ export default function UptimeChart({
         <div className={styles.stats}>
           <div className={styles.stat}>
             <span className={styles.statLabel}>Average Uptime:</span>
-            <span className={styles.statValue}>{overallUptime.toFixed(2)}%</span>
+            <span className={styles.statValue}>
+              {overallUptime !== null ? `${overallUptime.toFixed(2)}%` : 'No data'}
+            </span>
           </div>
           <div className={styles.stat}>
             <span className={styles.statLabel}>Total Checks:</span>

@@ -63,6 +63,28 @@
   z-index: 1;
 }
 
+.cell.noData {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 1px,
+    rgba(0, 0, 0, 0.1) 1px,
+    rgba(0, 0, 0, 0.1) 2px
+  );
+  opacity: 0.5;
+}
+
+/* Dark theme no-data pattern */
+[data-theme='dark'] .cell.noData {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 1px,
+    rgba(255, 255, 255, 0.15) 1px,
+    rgba(255, 255, 255, 0.15) 2px
+  );
+}
+
 .legend {
   display: flex;
   justify-content: space-between;

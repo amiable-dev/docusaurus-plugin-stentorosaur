@@ -144,6 +144,28 @@
   z-index: 1;
 }
 
+.heatmapCell.noData {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.1) 3px,
+    rgba(0, 0, 0, 0.1) 6px
+  );
+  opacity: 0.6;
+}
+
+/* Dark theme no-data pattern */
+[data-theme='dark'] .heatmapCell.noData {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    rgba(255, 255, 255, 0.15) 3px,
+    rgba(255, 255, 255, 0.15) 6px
+  );
+}
+
 .heatmapDate {
   font-size: 0.75rem;
   font-weight: 600;
