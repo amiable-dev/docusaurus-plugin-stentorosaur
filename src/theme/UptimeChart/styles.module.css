@@ -136,6 +136,8 @@
   cursor: pointer;
   transition: transform 0.2s ease, opacity 0.2s ease;
   position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .heatmapCell:hover {
@@ -153,6 +155,9 @@
     rgba(0, 0, 0, 0.1) 6px
   );
   opacity: 0.6;
+  /* Ensure no-data cells don't expand */
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Dark theme no-data pattern */

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2025-11-10
+
+### Fixed
+
+- **Heatmap Cell Overlap**
+  - Fixed no-data cells appearing larger than uptime cells causing overlap
+  - Added `box-sizing: border-box` and `overflow: hidden` to all heatmap cells
+  - Ensures consistent cell dimensions regardless of data state
+
 ## [0.8.0] - 2025-11-10
 
 ### Fixed
