@@ -679,8 +679,8 @@ describe('docusaurus-plugin-stentorosaur', () => {
 
       const dbItem = content.items.find(item => item.name === 'database');
       expect(dbItem).toBeDefined();
-      // For systems added from files only, uptime is undefined (not merged)
-      expect(dbItem?.uptime).toBeUndefined();
+      // For systems added from files only, uptime should be included
+      expect(dbItem?.uptime).toBe(95);
     });
 
     it('should handle readdir throwing error', async () => {
