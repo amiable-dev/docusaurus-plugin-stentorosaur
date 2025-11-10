@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2025-11-10
+
+### Fixed
+
+- **Heatmap No-Data Cell Styling**
+  - Removed diagonal stripe pattern that was causing visual overlap and sizing issues
+  - No-data cells now use solid gray background like other status colors (red/yellow/green)
+  - Simplified CSS eliminates complexity and ensures consistent cell dimensions
+  - v0.8.1's box-sizing/overflow fix didn't resolve the pattern rendering issue
+
 ## [0.9.0] - 2025-11-10
 
 ### Added
