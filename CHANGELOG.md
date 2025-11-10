@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2025-11-10
+
+### Fixed
+
+- **Completely Remove .noData CSS Class**
+  - Removed `.noData` class application from UptimeChart and MiniHeatmap components
+  - Deleted all `.noData` CSS rules (were empty but still applied)
+  - No-data cells now use exact same styling as other status cells
+  - Fixes remaining size inconsistency issues with gray boxes
+
 ## [0.9.1] - 2025-11-10
 
 ### Fixed

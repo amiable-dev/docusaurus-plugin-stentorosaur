@@ -146,12 +146,6 @@
   z-index: 1;
 }
 
-/* No-data cells use solid gray like other status colors */
-.heatmapCell.noData {
-  /* Gray color is set via inline style from getUptimeColor() */
-  /* No special styling needed - uses same dimensions as other cells */
-}
-
 .heatmapDate {
   font-size: 0.75rem;
   font-weight: 600;

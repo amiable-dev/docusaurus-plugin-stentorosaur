@@ -168,7 +168,7 @@ export default function MiniHeatmap({
           return (
             <div
               key={date}
-              className={`${styles.cell} ${hasIncident ? styles.hasIncident : ''} ${isNoData ? styles.noData : ''}`}
+              className={`${styles.cell} ${hasIncident ? styles.hasIncident : ''}`}
               style={{ backgroundColor: getColor(uptime) }}
               title={getTitle(date, uptime, dayIncidents)}
             >

@@ -404,7 +404,7 @@ export default function UptimeChart({
             return (
               <div
                 key={block.timestamp}
-                className={`${styles.heatmapCell} ${isNoData ? styles.noData : ''}`}
+                className={styles.heatmapCell}
                 style={{ backgroundColor: color }}
                 title={tooltipText}
               >

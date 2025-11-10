@@ -63,12 +63,6 @@
   z-index: 1;
 }
 
-/* No-data cells use solid gray like other status colors */
-.cell.noData {
-  /* Gray color is set via inline style from getColor() */
-  /* No special styling needed - uses same dimensions as other cells */
-}
-
 .legend {
   display: flex;
   justify-content: space-between;
