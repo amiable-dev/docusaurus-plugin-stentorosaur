@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.9] - 2025-11-10
+
+### Fixed
+
+- **Deploy Workflow Data Precedence Issue**
+  - Fixed critical bug where deploy workflows would use stale status-data from main branch instead of fresh orphaned branch data
+  - Added `rm -rf ./status-data` before copying orphaned branch data to ensure clean slate
+  - Resolves issue where status page showed only 2-4 data points despite orphaned branch having full history
+  - Updated both `deploy.yml` and `deploy-scheduled.yml` templates
+  - **Action Required**: Users must update their deploy workflows from latest templates to get this fix
+
 ## [0.7.8] - 2025-11-10
 
 ### Fixed

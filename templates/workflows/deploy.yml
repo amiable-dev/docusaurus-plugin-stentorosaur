@@ -68,6 +68,10 @@ jobs:
       - name: Copy status data to site directory
         working-directory: main
         run: |
+          # Remove any existing status-data directory from main branch
+          # This ensures we get fresh data from the orphaned branch
+          rm -rf ./status-data
+
           # Copy status data from orphaned branch to site directory
           # This makes it available to the plugin during build
           cp -r ../status-data ./status-data
