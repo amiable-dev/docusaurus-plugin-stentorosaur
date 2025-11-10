@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.6] - 2025-11-10
+
+### Fixed
+
+- **Critical: Missing history field in items from current.json**
+  - Items created from committed monitoring data (`current.json`) were missing the `history` field
+  - This prevented mini heatmaps from rendering on system cards (line 119 in StatusItem checks for `item.history`)
+  - Fixed by mapping `readings` array to `history` format when creating items (src/index.ts:280-287)
+  - Mini heatmaps now display correctly on status page for all deployment patterns
+  - **Root cause**: v0.9.3 fix only added history in `readSystemFiles()` merge path, but not in the `current.json` direct load path
+  - Completes the fix started in v0.9.3 for mini heatmap display
+
 ## [0.9.5] - 2025-11-10
 
 ### Fixed

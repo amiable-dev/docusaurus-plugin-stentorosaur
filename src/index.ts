@@ -277,6 +277,14 @@ export default async function pluginStatus(
                 responseTime: avgResponseTime,
                 uptime: `${(Math.round(uptime * 100) / 100).toFixed(2)}%`,
                 incidentCount: 0,
+                history: readings.map(r => ({
+                  timestamp: new Date(r.t).toISOString(),
+                  status: r.state,
+                  code: r.code,
+                  responseTime: r.lat,
+                  latency: r.lat,
+                  error: r.err,
+                })),
               });
             }
             
