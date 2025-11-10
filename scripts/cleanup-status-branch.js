@@ -237,11 +237,33 @@ async function cleanupStatusBranch(options = {}) {
   if (!dryRun && filesToRemove.length > 0) {
     console.log(`💾 Committing cleanup...`);
 
-    // Check if there are changes to commit
-    exec('git add -A');
+    // Stage deletions by explicitly removing from git index
+    // This avoids buffer overflow with massive file lists
+    const topLevelToRemove = new Set();
+    filesToRemove.forEach(file => {
+      topLevelToRemove.add(file.split(path.sep)[0]);
+    });
 
-    const status = exec('git status --porcelain').trim();
-    if (status.length > 0) {
+    for (const topLevel of topLevelToRemove) {
+      try {
+        // Use git rm to stage deletions without buffering output
+        exec(`git rm -rf ${topLevel}`, { stdio: 'inherit' });
+      } catch (error) {
+        // File may already be deleted, that's okay
+        console.log(`   ℹ️  ${topLevel} already removed from git`);
+      }
+    }
+
+    // Check if there are changes to commit (use --short to minimize output)
+    let hasChanges = false;
+    try {
+      const status = exec('git diff --cached --quiet', { ignoreError: true });
+      hasChanges = false; // Command succeeded = no changes
+    } catch (error) {
+      hasChanges = true; // Command failed = there are changes
+    }
+
+    if (hasChanges) {
       const timestamp = new Date().toISOString();
       const commitMsg = `🧹 Clean up status-data branch
 

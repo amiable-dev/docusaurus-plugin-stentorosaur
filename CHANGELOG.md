@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.5] - 2025-11-07
+
+### Fixed
+
+- **Cleanup Script Buffer Overflow Fix**
+  - Fixed ENOBUFS error when cleaning up large numbers of files (40k+ files)
+  - Now uses `git rm -rf` per directory instead of buffering all changes
+  - Uses `git diff --cached --quiet` to check for changes without buffering output
+  - Successfully handles cleanup of massive node_modules and build directories
+
 ## [0.7.4] - 2025-11-07
 
 ### Added
