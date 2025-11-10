@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4] - 2025-11-10
+
+### Fixed
+
+- **Test Suite Compatibility**
+  - Fixed failing test assertion in `plugin.test.ts` for system file uptime inclusion
+  - Test "should include uptime from system files for systems not in GitHub" now correctly expects uptime value (95)
+  - Previously expected undefined, contradicting the test name and v0.9.3 behavior
+  - All 336 tests now passing with >75% coverage (92.76% statements, 79.57% branches)
+
 ## [0.9.3] - 2025-11-10
 
 ### Fixed
