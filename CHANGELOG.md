@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.7] - 2025-11-07
+
+### Fixed
+
+- **Cleanup Script Return Branch Buffer Overflow Fix**
+  - Fixed ENOBUFS error when returning to original branch after cleanup
+  - Skip unnecessary checkout if already on target branch at end of cleanup
+  - Cleanup now completes successfully when run from status-data branch
+
 ## [0.7.6] - 2025-11-07
 
 ### Fixed

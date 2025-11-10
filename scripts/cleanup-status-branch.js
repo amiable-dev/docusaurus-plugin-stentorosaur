@@ -297,12 +297,16 @@ Cleaned at: ${timestamp}`;
     }
   }
 
-  // Step 11: Return to original branch
-  console.log(`🔙 Returning to ${originalBranch}...`);
-  if (!dryRun) {
-    exec(`git checkout ${originalBranch}`);
+  // Step 11: Return to original branch (only if we switched away from it)
+  if (getCurrentBranch() !== originalBranch) {
+    console.log(`🔙 Returning to ${originalBranch}...`);
+    if (!dryRun) {
+      exec(`git checkout --quiet ${originalBranch}`);
+    }
+    console.log(`   ✅ Checked out ${originalBranch}\n`);
+  } else {
+    console.log(`✅ Staying on ${originalBranch}\n`);
   }
-  console.log(`   ✅ Checked out ${originalBranch}\n`);
 
   // Step 12: Success message
   console.log(`✨ Cleanup complete!\n`);
