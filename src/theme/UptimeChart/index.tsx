@@ -67,9 +67,10 @@ const PERIOD_DAYS: Record<TimePeriod, number> = {
   '90d': 90,
 };
 
-interface DayUptime {
-  date: string;
-  uptime: number | null; // null indicates no data for this day
+interface TimeBlockUptime {
+  timestamp: string; // ISO timestamp or date string
+  label: string; // Display label (e.g., "3 AM", "Mon 12 PM", "Jan 15")
+  uptime: number | null; // null indicates no data for this time block
   checks: number;
   upChecks: number;
 }
@@ -109,51 +110,117 @@ export default function UptimeChart({
     return () => observer.disconnect();
   }, []);
 
-  // Calculate daily uptime percentages
-  const calculateDailyUptime = useCallback((): DayUptime[] => {
+  // Calculate uptime by time blocks (hourly for 24h, 4-hour for 7d, daily for 30d/90d)
+  const calculateTimeBlockUptime = useCallback((): TimeBlockUptime[] => {
     const now = new Date();
-    const days = PERIOD_DAYS[activePeriod];
-    const dailyData: Map<string, { upChecks: number; totalChecks: number }> = new Map();
+    const blockData: Map<string, { upChecks: number; totalChecks: number }> = new Map();
 
-    // Initialize all days
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      dailyData.set(dateStr, { upChecks: 0, totalChecks: 0 });
+    // Determine granularity based on period
+    let blockSizeMs: number;
+    let blockCount: number;
+    let formatLabel: (timestamp: Date) => string;
+
+    if (activePeriod === '24h') {
+      // Hourly blocks for 24 hours
+      blockSizeMs = 60 * 60 * 1000; // 1 hour
+      blockCount = 24;
+      formatLabel = (date: Date) => {
+        const hour = date.getHours();
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        return `${displayHour} ${ampm}`;
+      };
+    } else if (activePeriod === '7d') {
+      // 4-hour blocks for 7 days (42 blocks)
+      blockSizeMs = 4 * 60 * 60 * 1000; // 4 hours
+      blockCount = 42; // 7 days * 6 blocks per day
+      formatLabel = (date: Date) => {
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const hour = date.getHours();
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        return `${dayNames[date.getDay()]} ${displayHour}${ampm}`;
+      };
+    } else {
+      // Daily blocks for 30d/90d (existing behavior)
+      blockSizeMs = 24 * 60 * 60 * 1000; // 1 day
+      blockCount = PERIOD_DAYS[activePeriod];
+      formatLabel = (date: Date) => {
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      };
     }
 
-    // Count checks per day
+    // Initialize all time blocks
+    const blocks: TimeBlockUptime[] = [];
+    for (let i = blockCount - 1; i >= 0; i--) {
+      const blockStart = new Date(now.getTime() - i * blockSizeMs);
+      // Round down to block boundary
+      if (activePeriod === '24h') {
+        blockStart.setMinutes(0, 0, 0);
+      } else if (activePeriod === '7d') {
+        const hour = Math.floor(blockStart.getHours() / 4) * 4;
+        blockStart.setHours(hour, 0, 0, 0);
+      } else {
+        blockStart.setHours(0, 0, 0, 0);
+      }
+
+      const timestamp = blockStart.toISOString();
+      blockData.set(timestamp, { upChecks: 0, totalChecks: 0 });
+      blocks.push({
+        timestamp,
+        label: formatLabel(blockStart),
+        uptime: null,
+        checks: 0,
+        upChecks: 0,
+      });
+    }
+
+    // Count checks per time block
     history.forEach(check => {
-      const checkDate = new Date(check.timestamp).toISOString().split('T')[0];
-      const dayData = dailyData.get(checkDate);
-      
-      if (dayData) {
-        dayData.totalChecks++;
-        if (check.status === 'up' || check.status === 'maintenance') {
-          dayData.upChecks++;
+      const checkTime = new Date(check.timestamp);
+
+      // Find which block this check belongs to
+      for (const block of blocks) {
+        const blockStart = new Date(block.timestamp);
+        const blockEnd = new Date(blockStart.getTime() + blockSizeMs);
+
+        if (checkTime >= blockStart && checkTime < blockEnd) {
+          const data = blockData.get(block.timestamp);
+          if (data) {
+            data.totalChecks++;
+            if (check.status === 'up' || check.status === 'maintenance') {
+              data.upChecks++;
+            }
+          }
+          break;
         }
       }
     });
 
     // Calculate uptime percentages
-    return Array.from(dailyData.entries()).map(([date, data]) => ({
-      date,
-      uptime: data.totalChecks > 0 ? (data.upChecks / data.totalChecks) * 100 : null, // null = no data
-      checks: data.totalChecks,
-      upChecks: data.upChecks,
-    }));
+    return blocks.map(block => {
+      const data = blockData.get(block.timestamp);
+      if (data) {
+        return {
+          ...block,
+          uptime: data.totalChecks > 0 ? (data.upChecks / data.totalChecks) * 100 : null,
+          checks: data.totalChecks,
+          upChecks: data.upChecks,
+        };
+      }
+      return block;
+    });
   }, [history, activePeriod]);
 
-  const dailyUptime = useMemo(() => calculateDailyUptime(), [calculateDailyUptime]);
+  const timeBlocks = useMemo(() => calculateTimeBlockUptime(), [calculateTimeBlockUptime]);
 
-  // Calculate overall uptime (exclude days with no data)
+  // Calculate overall uptime (exclude blocks with no data)
   const overallUptime = useMemo(() => {
-    const daysWithData = dailyUptime.filter(day => day.uptime !== null);
-    return daysWithData.length > 0
-      ? daysWithData.reduce((sum, day) => sum + (day.uptime || 0), 0) / daysWithData.length
+    const blocksWithData = timeBlocks.filter(block => block.uptime !== null);
+    return blocksWithData.length > 0
+      ? blocksWithData.reduce((sum, block) => sum + (block.uptime || 0), 0) / blocksWithData.length
       : null; // null if no data at all
-  }, [dailyUptime]);
+  }, [timeBlocks]);
 
   // Get color based on uptime percentage
   const getUptimeColor = useCallback((uptime: number | null): string => {
@@ -165,78 +232,91 @@ export default function UptimeChart({
 
   // Filter incidents relevant to this system and period
   const relevantIncidents = useMemo(() => {
-    const now = new Date();
-    const days = PERIOD_DAYS[activePeriod];
-    const periodStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    
+    if (timeBlocks.length === 0) return [];
+
+    const periodStart = new Date(timeBlocks[0].timestamp);
+    const periodEnd = new Date(timeBlocks[timeBlocks.length - 1].timestamp);
+
     return incidents
       .filter(incident => incident.affectedSystems && incident.affectedSystems.includes(name))
       .filter(incident => {
         const incidentDate = new Date(incident.createdAt);
-        return incidentDate >= periodStart && incidentDate <= now;
+        return incidentDate >= periodStart && incidentDate <= periodEnd;
       });
-  }, [incidents, name, activePeriod]);
+  }, [incidents, name, timeBlocks]);
 
   // Prepare data for CSV/JSON export
   const exportableData = useMemo(() => {
-    return dailyUptime.map(day => {
-      // Find incidents for this day
-      const dayIncidents = relevantIncidents.filter(incident => {
-        const incidentDate = new Date(incident.createdAt).toISOString().split('T')[0];
-        return incidentDate === day.date;
+    return timeBlocks.map(block => {
+      // Find incidents for this time block
+      const blockStart = new Date(block.timestamp);
+      const blockEnd = new Date(blockStart.getTime() +
+        (activePeriod === '24h' ? 60 * 60 * 1000 :
+         activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
+         24 * 60 * 60 * 1000));
+
+      const blockIncidents = relevantIncidents.filter(incident => {
+        const incidentDate = new Date(incident.createdAt);
+        return incidentDate >= blockStart && incidentDate < blockEnd;
       });
 
       return {
-        date: day.date,
-        uptimePercent: day.uptime !== null ? parseFloat(day.uptime.toFixed(2)) : 'No data',
-        totalChecks: day.checks,
-        successfulChecks: day.upChecks,
-        failedChecks: day.checks - day.upChecks,
-        incidentCount: dayIncidents.length,
-        incidents: dayIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('; '),
+        timestamp: block.timestamp,
+        label: block.label,
+        uptimePercent: block.uptime !== null ? parseFloat(block.uptime.toFixed(2)) : 'No data',
+        totalChecks: block.checks,
+        successfulChecks: block.upChecks,
+        failedChecks: block.checks - block.upChecks,
+        incidentCount: blockIncidents.length,
+        incidents: blockIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('; '),
       };
     });
-  }, [dailyUptime, relevantIncidents]);
+  }, [timeBlocks, relevantIncidents, activePeriod]);
 
   // Generate filename with date range
   const generateExportFilename = useCallback(() => {
-    if (dailyUptime.length === 0) return `${name}-uptime`;
-    
-    const firstDate = new Date(dailyUptime[0].date);
-    const lastDate = new Date(dailyUptime[dailyUptime.length - 1].date);
+    if (timeBlocks.length === 0) return `${name}-uptime`;
+
+    const firstDate = new Date(timeBlocks[0].timestamp);
+    const lastDate = new Date(timeBlocks[timeBlocks.length - 1].timestamp);
     const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
-    
+
     return `${systemSlug}-uptime-${formatDateForFilename(firstDate)}-to-${formatDateForFilename(lastDate)}`;
-  }, [dailyUptime, name]);
+  }, [timeBlocks, name]);
 
   // Bar chart data (computed even if showing heatmap to maintain hook order)
   const chartData = useMemo(() => ({
-    labels: dailyUptime.map(day => {
-      const date = new Date(day.date);
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }),
+    labels: timeBlocks.map(block => block.label),
     datasets: [
       {
         label: 'Uptime %',
-        data: dailyUptime.map(day => day.uptime ?? 0), // Use 0 for chart rendering, will style as no-data
-        backgroundColor: dailyUptime.map(day => getUptimeColor(day.uptime)),
-        borderColor: dailyUptime.map(day => getUptimeColor(day.uptime)),
+        data: timeBlocks.map(block => block.uptime ?? 0), // Use 0 for chart rendering, will style as no-data
+        backgroundColor: timeBlocks.map(block => getUptimeColor(block.uptime)),
+        borderColor: timeBlocks.map(block => getUptimeColor(block.uptime)),
         borderWidth: 1,
         // Add pattern for no-data bars
-        borderDash: dailyUptime.map(day => day.uptime === null ? [5, 5] : []),
+        borderDash: timeBlocks.map(block => block.uptime === null ? [5, 5] : []),
       },
     ],
-  }), [dailyUptime, getUptimeColor]);
+  }), [timeBlocks, getUptimeColor]);
 
   // Create incident annotations (computed even if showing heatmap to maintain hook order)
   const annotations = useMemo(() => {
     const annotationMap: Record<string, any> = {};
-    
+
     relevantIncidents.forEach((incident, index) => {
       const incidentDate = new Date(incident.createdAt);
-      const dateStr = incidentDate.toISOString().split('T')[0];
-      const dataIndex = dailyUptime.findIndex(day => day.date === dateStr);
-      
+
+      // Find which time block this incident belongs to
+      const dataIndex = timeBlocks.findIndex(block => {
+        const blockStart = new Date(block.timestamp);
+        const blockEnd = new Date(blockStart.getTime() +
+          (activePeriod === '24h' ? 60 * 60 * 1000 :
+           activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
+           24 * 60 * 60 * 1000));
+        return incidentDate >= blockStart && incidentDate < blockEnd;
+      });
+
       if (dataIndex !== -1) {
         const severityColors = {
           critical: 'rgba(220, 38, 38, 0.8)',
@@ -272,7 +352,7 @@ export default function UptimeChart({
     });
 
     return annotationMap;
-  }, [relevantIncidents, dailyUptime]);
+  }, [relevantIncidents, timeBlocks, activePeriod]);
 
   if (chartType === 'heatmap') {
     return (
@@ -283,7 +363,7 @@ export default function UptimeChart({
             <ExportButton
               filename={generateExportFilename()}
               data={exportableData}
-              columns={['date', 'uptimePercent', 'totalChecks', 'successfulChecks', 'failedChecks', 'incidentCount', 'incidents']}
+              columns={['timestamp', 'label', 'uptimePercent', 'totalChecks', 'successfulChecks', 'failedChecks', 'incidentCount', 'incidents']}
               format="csv"
               ariaLabel="Download uptime data as CSV"
             />
@@ -297,33 +377,39 @@ export default function UptimeChart({
         </div>
 
         <div className={styles.heatmapGrid}>
-          {dailyUptime.map((day) => {
-            const uptimePercent = day.uptime;
+          {timeBlocks.map((block) => {
+            const uptimePercent = block.uptime;
             const color = getUptimeColor(uptimePercent);
             const isNoData = uptimePercent === null;
+            const blockStart = new Date(block.timestamp);
 
-            // Check if this day has any incidents
-            const dayIncidents = relevantIncidents.filter(incident => {
-              const incidentDate = new Date(incident.createdAt).toISOString().split('T')[0];
-              return incidentDate === day.date;
+            // Check if this block has any incidents
+            const blockEnd = new Date(blockStart.getTime() +
+              (activePeriod === '24h' ? 60 * 60 * 1000 :
+               activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
+               24 * 60 * 60 * 1000));
+
+            const blockIncidents = relevantIncidents.filter(incident => {
+              const incidentDate = new Date(incident.createdAt);
+              return incidentDate >= blockStart && incidentDate < blockEnd;
             });
 
-            const hasIncident = dayIncidents.length > 0;
-            const incidentIcon = hasIncident && dayIncidents[0].severity === 'critical' ? '⚠️' : (hasIncident ? '📌' : '');
+            const hasIncident = blockIncidents.length > 0;
+            const incidentIcon = hasIncident && blockIncidents[0].severity === 'critical' ? '⚠️' : (hasIncident ? '📌' : '');
 
             const tooltipText = isNoData
-              ? `${day.date}: No monitoring data`
-              : `${day.date}: ${uptimePercent.toFixed(2)}% uptime (${day.upChecks}/${day.checks} checks)${hasIncident ? '\n' + dayIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('\n') : ''}`;
+              ? `${block.label}: No monitoring data`
+              : `${block.label}: ${uptimePercent.toFixed(2)}% uptime (${block.upChecks}/${block.checks} checks)${hasIncident ? '\n' + blockIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('\n') : ''}`;
 
             return (
               <div
-                key={day.date}
+                key={block.timestamp}
                 className={`${styles.heatmapCell} ${isNoData ? styles.noData : ''}`}
                 style={{ backgroundColor: color }}
                 title={tooltipText}
               >
                 <span className={styles.heatmapDate}>
-                  {new Date(day.date).getDate()}
+                  {block.label}
                 </span>
                 {hasIncident && <span className={styles.incidentMarker}>{incidentIcon}</span>}
               </div>
@@ -385,27 +471,33 @@ export default function UptimeChart({
         callbacks: {
           label: (context: any) => {
             const dataIndex = context.dataIndex;
-            const day = dailyUptime[dataIndex];
+            const block = timeBlocks[dataIndex];
 
             // Handle no data case
-            if (day.uptime === null) {
+            if (block.uptime === null) {
               return ['No monitoring data available'];
             }
 
-            const dayIncidents = relevantIncidents.filter(incident => {
-              const incidentDate = new Date(incident.createdAt).toISOString().split('T')[0];
-              return incidentDate === day.date;
+            const blockStart = new Date(block.timestamp);
+            const blockEnd = new Date(blockStart.getTime() +
+              (activePeriod === '24h' ? 60 * 60 * 1000 :
+               activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
+               24 * 60 * 60 * 1000));
+
+            const blockIncidents = relevantIncidents.filter(incident => {
+              const incidentDate = new Date(incident.createdAt);
+              return incidentDate >= blockStart && incidentDate < blockEnd;
             });
 
             const lines = [
-              `Uptime: ${day.uptime.toFixed(2)}%`,
-              `Successful: ${day.upChecks}/${day.checks} checks`,
+              `Uptime: ${block.uptime.toFixed(2)}%`,
+              `Successful: ${block.upChecks}/${block.checks} checks`,
             ];
 
-            if (dayIncidents.length > 0) {
+            if (blockIncidents.length > 0) {
               lines.push('');
               lines.push('📌 Incidents:');
-              dayIncidents.forEach(incident => {
+              blockIncidents.forEach(incident => {
                 lines.push(`  ${incident.severity.toUpperCase()}: ${incident.title}`);
               });
             }
@@ -416,7 +508,7 @@ export default function UptimeChart({
       },
       title: {
         display: true,
-        text: `${name} - Daily Uptime`,
+        text: `${name} - ${activePeriod === '24h' ? 'Hourly' : activePeriod === '7d' ? '4-Hour Block' : 'Daily'} Uptime`,
         color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
       },
       annotation: {
@@ -458,7 +550,7 @@ export default function UptimeChart({
     },
   };
 
-  if (dailyUptime.length === 0) {
+  if (timeBlocks.length === 0) {
     return (
       <div className={styles.noData}>
         <p>No uptime data available for the selected period.</p>
@@ -492,7 +584,7 @@ export default function UptimeChart({
           <div className={styles.stat}>
             <span className={styles.statLabel}>Total Checks:</span>
             <span className={styles.statValue}>
-              {dailyUptime.reduce((sum, day) => sum + day.checks, 0)}
+              {timeBlocks.reduce((sum, block) => sum + block.checks, 0)}
             </span>
           </div>
         </div>
@@ -514,7 +606,7 @@ export default function UptimeChart({
           <ExportButton
             filename={generateExportFilename()}
             data={exportableData}
-            columns={['date', 'uptimePercent', 'totalChecks', 'successfulChecks', 'failedChecks', 'incidentCount', 'incidents']}
+            columns={['timestamp', 'label', 'uptimePercent', 'totalChecks', 'successfulChecks', 'failedChecks', 'incidentCount', 'incidents']}
             format="csv"
             ariaLabel="Download uptime data as CSV"
           />

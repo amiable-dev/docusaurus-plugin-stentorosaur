@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2025-11-10
+
+### Added
+
+- **Granular Time Blocks for Short Periods**
+  - 24h period now shows hourly blocks (24 bars) instead of single day aggregate
+  - 7d period now shows 4-hour blocks (42 bars) instead of 7 daily bars
+  - 30d and 90d periods remain daily (unchanged)
+  - Time-based labels: "3 AM", "9 PM" for 24h; "Mon 12PM", "Tue 4AM" for 7d
+  - Chart titles dynamically update: "Hourly Uptime", "4-Hour Block Uptime", "Daily Uptime"
+  - Export data includes both timestamp and human-readable label
+  - Heatmap grid adapts to show appropriate granularity
+  - Incident annotations map to correct time blocks
+  - Better insights for troubleshooting and incident correlation
+
+### Changed
+
+- Renamed `DayUptime` interface to `TimeBlockUptime` to reflect flexible granularity
+- Export CSV/JSON now includes `timestamp` and `label` fields instead of just `date`
+
 ## [0.8.1] - 2025-11-10
 
 ### Fixed
