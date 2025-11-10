@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.8] - 2025-11-10
+
+### Fixed
+
+- **Comprehensive .gitignore for Status-Data Branch**
+  - Added extensive .gitignore to orphaned status-data branch
+  - Ignores node_modules/, build/, .docusaurus/, package files, source code, and config files
+  - Enables seamless branch switching without seeing build artifacts or dependencies
+  - Users can now switch between main and status-data branches without git showing thousands of untracked files
+
 ## [0.7.7] - 2025-11-07
 
 ### Fixed

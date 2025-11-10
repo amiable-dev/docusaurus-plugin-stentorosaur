@@ -181,7 +181,54 @@ async function setupOrphanedBranch(force = false) {
 
   // Step 8: Create initial .gitignore
   console.log(`🚫 Creating .gitignore...`);
-  const gitignore = `# macOS
+  const gitignore = `# Status Data Branch .gitignore
+#
+# This orphaned branch only contains monitoring data.
+# Ignore everything from the main branch to enable easy switching.
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+build/
+dist/
+.docusaurus/
+.cache/
+.parcel-cache/
+out/
+
+# Package manager files
+package.json
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Source code (this branch is data-only)
+src/
+docs/
+blog/
+static/
+i18n/
+
+# Config files (use main branch config)
+docusaurus.config.js
+docusaurus.config.ts
+babel.config.js
+tsconfig.json
+.eslintrc*
+.prettierrc*
+
+# CI/CD (use main branch workflows)
+.github/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# macOS
 .DS_Store
 
 # Editor directories and files
@@ -194,6 +241,13 @@ async function setupOrphanedBranch(force = false) {
 # Temporary files
 *.tmp
 .temp/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 `;
   await fs.writeFile('.gitignore', gitignore);
   console.log(`   ✅ .gitignore created\n`);
