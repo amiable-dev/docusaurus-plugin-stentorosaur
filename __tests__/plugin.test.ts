@@ -25,7 +25,11 @@ describe('docusaurus-plugin-stentorosaur', () => {
     owner: 'test-owner',
     repo: 'test-repo',
     token: 'test-token',
-    systemLabels: ['api', 'web', 'database'],
+    entities: [
+      { name: 'api', type: 'system' },
+      { name: 'web', type: 'system' },
+      { name: 'database', type: 'system' },
+    ],
     statusLabel: 'status',
     useDemoData: false,
     showServices: true,
@@ -137,7 +141,12 @@ describe('docusaurus-plugin-stentorosaur', () => {
         'test-owner',
         'test-repo',
         'status',
-        ['api', 'web', 'database'],
+        [
+          { name: 'api', type: 'system' },
+          { name: 'web', type: 'system' },
+          { name: 'database', type: 'system' },
+        ],
+        undefined, // labelScheme
         ['maintenance']
       );
       expect(mockServiceInstance.fetchStatusData).toHaveBeenCalled();
@@ -881,7 +890,12 @@ describe('docusaurus-plugin-stentorosaur', () => {
         'test-owner',
         'test-repo',
         'status',
-        ['api', 'web', 'database'],
+        [
+          { name: 'api', type: 'system' },
+          { name: 'web', type: 'system' },
+          { name: 'database', type: 'system' },
+        ],
+        undefined, // labelScheme
         ['maintenance', 'planned-maintenance']
       );
     });
@@ -909,7 +923,12 @@ describe('docusaurus-plugin-stentorosaur', () => {
         'test-owner',
         'test-repo',
         'status',
-        ['api', 'web', 'database'],
+        [
+          { name: 'api', type: 'system' },
+          { name: 'web', type: 'system' },
+          { name: 'database', type: 'system' },
+        ],
+        undefined, // labelScheme
         ['maintenance']
       );
     });

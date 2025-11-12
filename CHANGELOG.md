@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2025-11-12
+
+### Fixed
+
+- Fixed test failures in `plugin.test.ts` due to updated GitHubStatusService constructor signature
+- Updated test expectations to use Entity model instead of systemLabels
+
 ## [0.11.0] - 2025-11-12
 
 ### BREAKING CHANGES
