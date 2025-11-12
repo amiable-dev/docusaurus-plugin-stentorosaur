@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.5] - 2025-11-12
+
+### Added
+
+- **Plugin version display in footer**
+  - Status page footer now shows plugin version (e.g., "Docusaurus Stentorosaur Plugin v0.10.5")
+  - Auto-generated from package.json during build via `scripts/generate-version.js`
+  - Created `src/version.ts` that exports `PLUGIN_VERSION` constant
+  - Version file regenerated on every build to stay in sync with package.json
+  - Helps users identify which version they're running for debugging and support
+
+### Changed
+
+- **Build process updated**
+  - Added `prebuild` script that generates version file before TypeScript compilation
+  - Build now runs three steps: version generation → TypeScript compilation → CSS copying
+  - `src/version.ts` is auto-generated and should not be edited manually
+
+### Documentation
+
+- **Updated README.md**
+  - Added "UI Enhancements (v0.10.0+)" section documenting recent features
+  - Documented extensible annotation system (v0.10.0)
+  - Documented mini heatmap redesign (v0.10.1)
+  - Documented markdown rendering support (v0.10.3)
+  - Documented version display feature (v0.10.4/v0.10.5)
+  - Added version annotations to feature bullet points for clarity
+
 ## [0.10.4] - 2025-11-12
 
 ### Fixed

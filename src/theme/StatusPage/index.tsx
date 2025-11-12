@@ -12,6 +12,7 @@ import IncidentHistory from '../IncidentHistory';
 import MaintenanceList from '../Maintenance/MaintenanceList';
 import PerformanceMetrics from '../PerformanceMetrics';
 import type {StatusData, SystemStatusFile} from '../../types';
+import {PLUGIN_VERSION} from '../../version';
 import styles from './styles.module.css';
 
 export interface Props {
@@ -222,7 +223,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Docusaurus Stentorosaur Plugin
+              Docusaurus Stentorosaur Plugin v{PLUGIN_VERSION}
             </a>
           </p>
         </div>

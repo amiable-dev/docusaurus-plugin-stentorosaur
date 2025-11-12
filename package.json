@@ -1,6 +1,6 @@
 {
   "name": "@amiable-dev/docusaurus-plugin-stentorosaur",
-  "version": "0.10.4",
+  "version": "0.10.5",
   "description": "A Docusaurus plugin for displaying status monitoring dashboard powered by GitHub Issues and Actions, similar to Upptime",
   "main": "lib/index.js",
   "types": "src/plugin-status.d.ts",
@@ -31,9 +31,10 @@
   "license": "MIT",
   "author": "Amiable Development <dev@amiable.dev>",
   "scripts": {
-    "build": "tsc --build && node copyUntypedFiles.js",
+    "build": "node scripts/generate-version.js && tsc --build && node copyUntypedFiles.js",
     "watch": "tsc --build --watch",
     "dev": "tsc --build --watch",
+    "prebuild": "node scripts/generate-version.js",
     "update-status": "node scripts/update-status.js",
     "setup-status-branch": "node scripts/setup-status-branch.js",
     "migrate-to-status-branch": "node scripts/migrate-to-status-branch.js",

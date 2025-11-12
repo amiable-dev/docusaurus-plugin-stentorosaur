@@ -16,6 +16,9 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
   - Bar charts and heatmaps for uptime visualization
   - Multiple time period views (24h, 7d, 30d, 90d)
   - Automatic dark/light theme support
+  - Mini heatmaps on system cards (v0.10.1+): Redesigned 90-day uptime visualization with vertical rectangles
+  - Extensible annotation system (v0.10.0+): Display maintenance windows and incidents as chart annotations
+  - Markdown rendering support (v0.10.3+): Full GitHub-flavored markdown in incident and maintenance descriptions
 - 💾 **Dataset Download** (v0.6.0+): Export chart data for offline analysis
   - Download data from any chart as CSV or JSON
   - All chart components include export buttons
@@ -1177,6 +1180,51 @@ graph LR
 | `useDemoData` | boolean | `!token` | Use demo data when no token provided |
 | `showServices` | boolean | `true` | Show/hide services status board |
 | `showIncidents` | boolean | `true` | Show/hide incident history |
+
+## UI Enhancements (v0.10.0+)
+
+### Extensible Chart Annotation System (v0.10.0)
+
+The plugin now features an extensible annotation system that displays events directly on uptime charts:
+
+- **Maintenance Windows**: Box annotations showing the full duration of maintenance periods
+  - Color-coded by status: blue (upcoming), purple (in-progress), gray (completed)
+  - Icons indicate status: 🔔 upcoming, 🔧 in-progress, ✅ completed
+- **Incidents**: Line annotations marking when incidents occurred
+  - Different icons based on severity (⚠️ for critical incidents)
+- **Extensible Design**: Architecture supports future event types (deployments, releases, etc.)
+
+The `ChartAnnotation` interface allows for easy addition of new annotation types without breaking changes.
+
+### Mini Heatmap Redesign (v0.10.1)
+
+Inspired by modern status pages like status.claude.com, mini heatmaps now feature:
+
+- **Vertical Rectangles**: Changed from square dots to 3px × 30px rectangles for better visibility
+- **Uptime Percentage Display**: Shows percentage and time period below each heatmap (e.g., "99.71% uptime • 90 days ago")
+- **Color-Coded Stats**: Green (≥99%), yellow (≥95%), red (<95%)
+- **Mobile Responsive**: Scales to 2px × 20px on smaller screens
+- **Horizontal Scrolling**: Maintains smooth scrolling for long time periods
+
+### Markdown Rendering Support (v0.10.3)
+
+GitHub Issues markdown content now renders with full formatting:
+
+- **Incident Descriptions**: Click "View details" to expand formatted incident details
+- **Maintenance Descriptions**: Full markdown support in maintenance window descriptions
+- **Comment Rendering**: Maintenance updates and comments display with proper formatting
+- **GitHub-Flavored Markdown**: Supports headings, lists, code blocks, blockquotes, tables, images, links
+- **XSS Protection**: All content sanitized with DOMPurify for security
+- **Comprehensive Styling**: Professional typography matching Docusaurus theme
+
+### Version Display (v0.10.4)
+
+The status page footer now displays the plugin version (e.g., "Docusaurus Stentorosaur Plugin v0.10.4"):
+
+- Auto-generated from package.json during build
+- Links to the plugin's GitHub repository
+- Helps users identify which version they're running
+- Useful for debugging and support
 
 ## Components API
 
