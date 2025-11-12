@@ -474,12 +474,26 @@ export default function UptimeChart({
               return incidentDate >= blockStart && incidentDate < blockEnd;
             });
 
+            // Check for maintenance windows
+            const blockMaintenances = relevantAnnotations
+              .filter(a => a.type === 'maintenance')
+              .filter(annotation => {
+                const annotationDate = new Date(annotation.timestamp);
+                return annotationDate >= blockStart && annotationDate < blockEnd;
+              });
+
             const hasIncident = blockIncidents.length > 0;
+            const hasMaintenance = blockMaintenances.length > 0;
             const incidentIcon = hasIncident && blockIncidents[0].severity === 'critical' ? '⚠️' : (hasIncident ? '📌' : '');
+            const maintenanceIcon = hasMaintenance ? '🔧' : '';
 
             const tooltipText = isNoData
               ? `${block.label}: No monitoring data`
-              : `${block.label}: ${uptimePercent.toFixed(2)}% uptime (${block.upChecks}/${block.checks} checks)${hasIncident ? '\n' + blockIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('\n') : ''}`;
+              : `${block.label}: ${uptimePercent.toFixed(2)}% uptime (${block.upChecks}/${block.checks} checks)${
+                  hasIncident ? '\n' + blockIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('\n') : ''
+                }${
+                  hasMaintenance ? '\n' + blockMaintenances.map(m => `MAINTENANCE: ${m.title}`).join('\n') : ''
+                }`;
 
             return (
               <div
@@ -492,6 +506,7 @@ export default function UptimeChart({
                   {block.label}
                 </span>
                 {hasIncident && <span className={styles.incidentMarker}>{incidentIcon}</span>}
+                {hasMaintenance && <span className={styles.maintenanceMarker}>{maintenanceIcon}</span>}
               </div>
             );
           })}
@@ -569,6 +584,12 @@ export default function UptimeChart({
               return incidentDate >= blockStart && incidentDate < blockEnd;
             });
 
+            // Filter annotations for this block (incidents + maintenance)
+            const blockAnnotations = relevantAnnotations.filter(annotation => {
+              const annotationDate = new Date(annotation.timestamp);
+              return annotationDate >= blockStart && annotationDate < blockEnd;
+            });
+
             const lines = [
               `Uptime: ${block.uptime.toFixed(2)}%`,
               `Successful: ${block.upChecks}/${block.checks} checks`,
@@ -579,6 +600,21 @@ export default function UptimeChart({
               lines.push('📌 Incidents:');
               blockIncidents.forEach(incident => {
                 lines.push(`  ${incident.severity.toUpperCase()}: ${incident.title}`);
+              });
+            }
+
+            // Add maintenance windows section
+            const blockMaintenances = blockAnnotations.filter(a => a.type === 'maintenance');
+            if (blockMaintenances.length > 0) {
+              lines.push('');
+              lines.push('🔧 Maintenance:');
+              blockMaintenances.forEach(maint => {
+                lines.push(`  ${maint.title}`);
+                if (maint.data?.start && maint.data?.end) {
+                  const startTime = new Date(maint.data.start).toLocaleTimeString();
+                  const endTime = new Date(maint.data.end).toLocaleTimeString();
+                  lines.push(`    ${startTime} - ${endTime}`);
+                }
               });
             }
 

@@ -6,7 +6,7 @@
  */
 
 import React, { useMemo } from 'react';
-import type { StatusCheckHistory, StatusIncident } from '../../types';
+import type { StatusCheckHistory, StatusIncident, ScheduledMaintenance } from '../../types';
 import { ExportButton } from '../components/ExportButton';
 import { formatDateForFilename } from '../../utils/csv';
 import styles from './MiniHeatmap.module.css';
@@ -16,7 +16,9 @@ export interface MiniHeatmapProps {
   history: StatusCheckHistory[];
   /** Incidents to display */
   incidents?: StatusIncident[];
-  /** System name to filter incidents */
+  /** Maintenance windows to display */
+  maintenance?: ScheduledMaintenance[];
+  /** System name to filter incidents and maintenance */
   systemName?: string;
   /** Number of days to show (default 90) */
   days?: number;
@@ -29,6 +31,7 @@ export interface MiniHeatmapProps {
 export default function MiniHeatmap({
   history,
   incidents = [],
+  maintenance = [],
   systemName,
   days = 90,
 }: MiniHeatmapProps): JSX.Element {
@@ -179,18 +182,44 @@ export default function MiniHeatmap({
             return incidentDate === date;
           });
 
+          // Check if this day has any maintenance windows
+          const dayMaintenance = systemName
+            ? maintenance.filter(m =>
+                m.affectedSystems &&
+                m.affectedSystems.includes(systemName) &&
+                new Date(m.start).toISOString().split('T')[0] <= date &&
+                new Date(m.end).toISOString().split('T')[0] >= date
+              )
+            : [];
+
           const hasIncident = dayIncidents.length > 0;
+          const hasMaintenance = dayMaintenance.length > 0;
           const hasCritical = dayIncidents.some(i => i.severity === 'critical');
+
+          let tooltipText = isNoData
+            ? `${date}: No monitoring data`
+            : `${date}: ${uptime.toFixed(2)}% uptime`;
+
+          if (dayIncidents.length > 0) {
+            tooltipText += '\n' + dayIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('\n');
+          }
+
+          if (dayMaintenance.length > 0) {
+            tooltipText += '\n' + dayMaintenance.map(m => `MAINTENANCE: ${m.title}`).join('\n');
+          }
 
           return (
             <div
               key={date}
-              className={`${styles.cell} ${hasIncident ? styles.hasIncident : ''}`}
+              className={`${styles.cell} ${hasIncident ? styles.hasIncident : ''} ${hasMaintenance ? styles.hasMaintenance : ''}`}
               style={{ backgroundColor: getColor(uptime) }}
-              title={getTitle(date, uptime, dayIncidents)}
+              title={tooltipText}
             >
               {hasIncident && (
                 <span className={styles.incidentDot} data-critical={hasCritical} />
+              )}
+              {hasMaintenance && (
+                <span className={styles.maintenanceDot} />
               )}
             </div>
           );

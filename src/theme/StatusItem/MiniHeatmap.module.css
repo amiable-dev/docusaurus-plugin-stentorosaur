@@ -39,6 +39,11 @@
   outline-offset: -1px;
 }
 
+.cell.hasMaintenance {
+  outline: 1px solid rgba(59, 130, 246, 0.5);
+  outline-offset: -1px;
+}
+
 .incidentDot {
   position: absolute;
   top: 0;
@@ -55,6 +60,17 @@
   height: 3px;
   background: rgb(220, 38, 38);
   box-shadow: 0 0 3px rgba(220, 38, 38, 1);
+}
+
+.maintenanceDot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 2px;
+  height: 2px;
+  background: rgba(59, 130, 246, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 2px rgba(59, 130, 246, 0.8);
 }
 
 .cell:hover {

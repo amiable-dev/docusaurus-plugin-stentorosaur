@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.2] - 2025-11-12
+
+### Fixed
+
+- **Critical: Maintenance windows not displaying correctly across all chart types**
+  - **UptimeChart bar chart tooltip**: Now shows maintenance window details (title, start/end times) alongside incidents
+  - **UptimeChart heatmap**: Now displays maintenance markers (🔧 icon) on affected days with tooltip details
+  - **MiniHeatmap**: Now accepts and displays maintenance windows with blue outline and tooltip
+  - **Component chain**: Fixed data flow from StatusPage → StatusBoard → StatusItem → MiniHeatmap
+  - Added CSS styling for maintenance markers (bottom-right position to avoid conflict with incident markers)
+  - Maintenance windows now check date range overlap (start ≤ date ≤ end) for correct multi-day display
+  - All three display modes now show complete maintenance information consistently
+
 ## [0.10.1] - 2025-11-12
 
 ### Changed

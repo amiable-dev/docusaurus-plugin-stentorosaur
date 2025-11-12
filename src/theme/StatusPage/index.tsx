@@ -159,10 +159,11 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     <Layout title={title} description={description}>
       <main className={styles.statusPage}>
         {showServices && (
-          <StatusBoard 
+          <StatusBoard
             items={items}
             incidents={incidents}
-            title={title} 
+            maintenance={maintenance}
+            title={title}
             description={description}
             onSystemClick={showPerformanceMetrics && systemFiles.length > 0 ? handleSystemClick : undefined}
             hasSystemData={showPerformanceMetrics ? hasSystemData : undefined}

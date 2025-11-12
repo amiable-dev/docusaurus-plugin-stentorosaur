@@ -216,8 +216,10 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
           {/* Live Status Section */}
           {isEnabled('live-status') && (
             <>
-              <StatusBoard 
+              <StatusBoard
                 items={statusItems}
+                incidents={incidents}
+                maintenance={maintenance}
                 title={sectionTitles['live-status']}
                 onSystemClick={handleSystemClick}
                 hasSystemData={hasSystemData}

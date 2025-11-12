@@ -6,13 +6,14 @@
  */
 
 import React from 'react';
-import type {StatusItem as StatusItemType, StatusIncident} from '../../types';
+import type {StatusItem as StatusItemType, StatusIncident, ScheduledMaintenance} from '../../types';
 import StatusItem from '../StatusItem';
 import styles from './styles.module.css';
 
 export interface Props {
   items: StatusItemType[];
   incidents?: StatusIncident[];
+  maintenance?: ScheduledMaintenance[];
   title?: string;
   description?: string;
   onSystemClick?: (systemName: string) => void;
@@ -22,6 +23,7 @@ export interface Props {
 export default function StatusBoard({
   items,
   incidents = [],
+  maintenance = [],
   title = 'System Status',
   description,
   onSystemClick,
@@ -59,10 +61,11 @@ export default function StatusBoard({
           items.map((item, index) => {
             const isClickable = onSystemClick && (!hasSystemData || hasSystemData(item.name));
             return (
-              <StatusItem 
-                key={`${item.name}-${index}`} 
+              <StatusItem
+                key={`${item.name}-${index}`}
                 item={item}
                 incidents={incidents}
+                maintenance={maintenance}
                 onClick={isClickable ? () => onSystemClick(item.name) : undefined}
               />
             );
