@@ -76,6 +76,62 @@ export interface ScheduledMaintenance {
   createdAt: string;
 }
 
+/**
+ * Chart annotation types for extensible event marking
+ */
+export type ChartAnnotationType = 'incident' | 'maintenance' | 'deployment' | 'custom';
+
+/**
+ * Generic chart annotation interface for marking events on charts
+ * Designed to be extensible for future event types (deployments, releases, etc.)
+ */
+export interface ChartAnnotation {
+  /** Unique identifier for the annotation */
+  id: string;
+
+  /** Type of annotation */
+  type: ChartAnnotationType;
+
+  /** ISO 8601 timestamp of the event */
+  timestamp: string;
+
+  /** Display title for the event */
+  title: string;
+
+  /** Severity level (used for incidents and some custom events) */
+  severity?: 'critical' | 'major' | 'minor' | 'info';
+
+  /** Systems affected by this event */
+  affectedSystems: string[];
+
+  /** URL to more details (issue, PR, deployment log, etc.) */
+  url?: string;
+
+  /** Icon to display (emoji or icon name) */
+  icon?: string;
+
+  /** Custom color for the annotation (CSS color string) */
+  color?: string;
+
+  /** Type-specific data for different annotation types */
+  data?: {
+    // For incidents
+    status?: 'open' | 'closed';
+
+    // For maintenance windows (has duration)
+    start?: string;
+    end?: string;
+    maintenanceStatus?: 'upcoming' | 'in-progress' | 'completed';
+
+    // For deployments
+    version?: string;
+    environment?: string;
+
+    // For custom events
+    [key: string]: any;
+  };
+}
+
 export interface PluginOptions {
   /**
    * GitHub repository owner (defaults to the site's organizationName)

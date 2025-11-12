@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2025-11-12
+
+### Added
+
+- **Extensible chart annotation system for maintenance windows and future event types**
+  - New `ChartAnnotation` interface supporting multiple event types: incidents, maintenance, deployments, custom
+  - Maintenance windows now display as box annotations on UptimeChart with duration visualization
+  - Incidents display as line annotations with distinct icons based on severity
+  - Created `annotation-utils.ts` with conversion functions for backward compatibility
+  - UptimeChart now accepts `maintenance` prop alongside `incidents`
+  - New `annotations` prop for future extensibility (deployments, releases, etc.)
+  - Updated all callers: PerformanceMetrics, StatusPage, UptimeStatusPage
+  - Maintenance annotations use different styling than incidents:
+    - Box annotations showing duration from start to end time
+    - Different colors based on status (upcoming: blue, in-progress: purple, completed: gray)
+    - Distinct icons (🔔 upcoming, 🔧 in-progress, ✅ completed)
+  - Design allows easy addition of future annotation types without breaking changes
+
+### Changed
+
+- UptimeChart interface now includes `maintenance` and `annotations` props
+- StatusIncident severity 'maintenance' maps to 'info' for ChartAnnotation compatibility
+- PerformanceMetrics component updated to pass maintenance data to charts
+
 ## [0.9.9] - 2025-11-12
 
 ### Fixed

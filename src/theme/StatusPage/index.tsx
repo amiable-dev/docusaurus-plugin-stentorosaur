@@ -173,6 +173,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
           <PerformanceMetrics
             systemFile={systemFiles[activeSystemIndex]}
             incidents={incidents}
+            maintenance={maintenance}
             isVisible={true}
             onClose={() => setActiveSystemIndex(null)}
             useDemoData={useDemoData}

@@ -17,7 +17,8 @@ import {
 } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { Bar } from 'react-chartjs-2';
-import type { StatusCheckHistory, StatusIncident } from '../../types';
+import type { StatusCheckHistory, StatusIncident, ScheduledMaintenance, ChartAnnotation } from '../../types';
+import { createAnnotations, filterAnnotationsBySystem } from '../../annotation-utils';
 import { useChartExport } from '../hooks/useChartExport';
 import { ExportButton } from '../components/ExportButton';
 import { formatDateForFilename } from '../../utils/csv';
@@ -39,8 +40,12 @@ export interface UptimeChartProps {
   name: string;
   /** Historical check data */
   history: StatusCheckHistory[];
-  /** Incidents affecting this system */
+  /** Incidents affecting this system (deprecated - use annotations instead) */
   incidents?: StatusIncident[];
+  /** Maintenance windows affecting this system (deprecated - use annotations instead) */
+  maintenance?: ScheduledMaintenance[];
+  /** Generic annotations for extensibility (incidents, maintenance, deployments, etc.) */
+  annotations?: ChartAnnotation[];
   /** Chart type */
   chartType?: 'bar' | 'heatmap';
   /** Time period to display */
@@ -79,6 +84,8 @@ export default function UptimeChart({
   name,
   history,
   incidents = [],
+  maintenance = [],
+  annotations,
   chartType = 'bar',
   period = '30d',
   height = 300,
@@ -230,8 +237,17 @@ export default function UptimeChart({
     return 'rgb(255, 99, 132)'; // Red
   }, [isDarkTheme]);
 
-  // Filter incidents relevant to this system and period
-  const relevantIncidents = useMemo(() => {
+  // Create annotations from incidents and maintenance (backward compatibility + new system)
+  const allAnnotations = useMemo(() => {
+    // If annotations prop is provided, use it directly; otherwise convert legacy props
+    if (annotations) {
+      return annotations;
+    }
+    return createAnnotations(incidents, maintenance);
+  }, [annotations, incidents, maintenance]);
+
+  // Filter annotations relevant to this system and period
+  const relevantAnnotations = useMemo(() => {
     if (timeBlocks.length === 0) return [];
 
     const periodStart = new Date(timeBlocks[0].timestamp);
@@ -243,13 +259,32 @@ export default function UptimeChart({
                           24 * 60 * 60 * 1000;
     const periodEnd = new Date(lastBlockStart.getTime() + blockDuration);
 
-    return incidents
-      .filter(incident => incident.affectedSystems && incident.affectedSystems.includes(name))
-      .filter(incident => {
-        const incidentDate = new Date(incident.createdAt);
-        return incidentDate >= periodStart && incidentDate <= periodEnd;
+    // Filter by system
+    const systemAnnotations = filterAnnotationsBySystem(allAnnotations, name);
+
+    // Filter by time period
+    return systemAnnotations.filter(annotation => {
+      const annotationDate = new Date(annotation.timestamp);
+      return annotationDate >= periodStart && annotationDate <= periodEnd;
+    });
+  }, [allAnnotations, name, timeBlocks, activePeriod]);
+
+  // Keep relevantIncidents for backward compatibility in export data
+  const relevantIncidents = useMemo(() => {
+    return relevantAnnotations
+      .filter(a => a.type === 'incident')
+      .map(a => {
+        // Convert annotation back to incident shape for export
+        const incident: Partial<StatusIncident> = {
+          id: parseInt(a.id.replace('incident-', '')) || 0,
+          title: a.title,
+          severity: a.severity as any || 'minor',
+          createdAt: a.timestamp,
+          affectedSystems: a.affectedSystems,
+        };
+        return incident as StatusIncident;
       });
-  }, [incidents, name, timeBlocks, activePeriod]);
+  }, [relevantAnnotations]);
 
   // Prepare data for CSV/JSON export
   const exportableData = useMemo(() => {
@@ -306,59 +341,98 @@ export default function UptimeChart({
     ],
   }), [timeBlocks, getUptimeColor]);
 
-  // Create incident annotations (computed even if showing heatmap to maintain hook order)
-  const annotations = useMemo(() => {
+  // Create chart.js annotations from our annotation data (computed even if showing heatmap to maintain hook order)
+  const chartAnnotations = useMemo(() => {
     const annotationMap: Record<string, any> = {};
 
-    relevantIncidents.forEach((incident, index) => {
-      const incidentDate = new Date(incident.createdAt);
+    relevantAnnotations.forEach((annotation, index) => {
+      const annotationDate = new Date(annotation.timestamp);
 
-      // Find which time block this incident belongs to
+      // Find which time block this annotation belongs to
       const dataIndex = timeBlocks.findIndex(block => {
         const blockStart = new Date(block.timestamp);
         const blockEnd = new Date(blockStart.getTime() +
           (activePeriod === '24h' ? 60 * 60 * 1000 :
            activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
            24 * 60 * 60 * 1000));
-        return incidentDate >= blockStart && incidentDate < blockEnd;
+        return annotationDate >= blockStart && annotationDate < blockEnd;
       });
 
       if (dataIndex !== -1) {
-        const severityColors = {
-          critical: 'rgba(220, 38, 38, 0.8)',
-          major: 'rgba(249, 115, 22, 0.8)',
-          minor: 'rgba(234, 179, 8, 0.8)',
-          maintenance: 'rgba(107, 114, 128, 0.8)',
-        };
+        // Use color from annotation or fall back to defaults
+        const borderColor = annotation.color || 'rgba(107, 114, 128, 0.8)';
+        const icon = annotation.icon || '📌';
 
-        annotationMap[`incident${index}`] = {
-          type: 'line',
-          xMin: dataIndex,
-          xMax: dataIndex,
-          borderColor: severityColors[incident.severity],
-          borderWidth: 2,
-          borderDash: [5, 5],
-          label: {
-            display: true,
-            content: incident.severity === 'critical' ? '⚠️' : '📌',
-            position: 'start',
-            backgroundColor: severityColors[incident.severity],
-            color: 'white',
-            font: {
-              size: 10,
+        // For maintenance windows, show duration as a box instead of line
+        if (annotation.type === 'maintenance' && annotation.data?.end) {
+          const endDate = new Date(annotation.data.end);
+          const endIndex = timeBlocks.findIndex(block => {
+            const blockStart = new Date(block.timestamp);
+            const blockEnd = new Date(blockStart.getTime() +
+              (activePeriod === '24h' ? 60 * 60 * 1000 :
+               activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
+               24 * 60 * 60 * 1000));
+            return endDate >= blockStart && endDate < blockEnd;
+          });
+
+          // Create a box annotation for maintenance window
+          annotationMap[annotation.id] = {
+            type: 'box',
+            xMin: dataIndex,
+            xMax: endIndex !== -1 ? endIndex : dataIndex,
+            yMin: 0,
+            yMax: 100,
+            backgroundColor: borderColor.replace('0.8', '0.1'), // Very transparent background
+            borderColor: borderColor,
+            borderWidth: 2,
+            borderDash: [5, 5],
+            label: {
+              display: true,
+              content: icon,
+              position: 'start',
+              backgroundColor: borderColor,
+              color: 'white',
+              font: {
+                size: 10,
+              },
             },
-          },
-          click: (ctx: any, event: any) => {
-            if (incident.url) {
-              window.open(incident.url, '_blank');
-            }
-          },
-        };
+            click: (ctx: any, event: any) => {
+              if (annotation.url) {
+                window.open(annotation.url, '_blank');
+              }
+            },
+          };
+        } else {
+          // Create a line annotation for incidents and point events
+          annotationMap[annotation.id] = {
+            type: 'line',
+            xMin: dataIndex,
+            xMax: dataIndex,
+            borderColor: borderColor,
+            borderWidth: 2,
+            borderDash: annotation.type === 'incident' ? [5, 5] : [2, 2],
+            label: {
+              display: true,
+              content: icon,
+              position: 'start',
+              backgroundColor: borderColor,
+              color: 'white',
+              font: {
+                size: 10,
+              },
+            },
+            click: (ctx: any, event: any) => {
+              if (annotation.url) {
+                window.open(annotation.url, '_blank');
+              }
+            },
+          };
+        }
       }
     });
 
     return annotationMap;
-  }, [relevantIncidents, timeBlocks, activePeriod]);
+  }, [relevantAnnotations, timeBlocks, activePeriod]);
 
   if (chartType === 'heatmap') {
     return (
@@ -518,7 +592,7 @@ export default function UptimeChart({
         color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
       },
       annotation: {
-        annotations,
+        annotations: chartAnnotations,
       },
     },
     scales: {

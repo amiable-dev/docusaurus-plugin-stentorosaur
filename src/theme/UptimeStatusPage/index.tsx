@@ -223,8 +223,10 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
                 hasSystemData={hasSystemData}
               />
               {selectedSystemIndex !== null && systemFiles[selectedSystemIndex] && (
-                <PerformanceMetrics 
+                <PerformanceMetrics
                   systemFile={systemFiles[selectedSystemIndex]}
+                  incidents={incidents}
+                  maintenance={maintenance}
                   isVisible={true}
                   onClose={() => setSelectedSystemIndex(null)}
                   useDemoData={useDemoData}

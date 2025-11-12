@@ -9,7 +9,7 @@ import React, { useState, useCallback } from 'react';
 import ResponseTimeChart from '../ResponseTimeChart';
 import UptimeChart from '../UptimeChart';
 import SLIChart from '../SLIChart';
-import type { SystemStatusFile, StatusIncident } from '../../types';
+import type { SystemStatusFile, StatusIncident, ScheduledMaintenance } from '../../types';
 import styles from './styles.module.css';
 
 export interface PerformanceMetricsProps {
@@ -17,6 +17,8 @@ export interface PerformanceMetricsProps {
   systemFile: SystemStatusFile;
   /** Incidents that may affect this system */
   incidents?: StatusIncident[];
+  /** Maintenance windows that may affect this system */
+  maintenance?: ScheduledMaintenance[];
   /** Whether to show the metrics (controlled externally) */
   isVisible: boolean;
   /** Callback when close/collapse is requested */
@@ -31,6 +33,7 @@ type ChartType = 'response' | 'uptime' | 'sli' | 'error-budget';
 export default function PerformanceMetrics({
   systemFile,
   incidents,
+  maintenance = [],
   isVisible,
   onClose,
   useDemoData = false,
@@ -131,6 +134,7 @@ export default function PerformanceMetrics({
               name={systemFile.name}
               history={systemFile.history}
               incidents={incidents}
+              maintenance={maintenance}
               chartType={uptimeChartType}
               period={selectedPeriod}
               height={280}
@@ -214,6 +218,7 @@ export default function PerformanceMetrics({
                     name={systemFile.name}
                     history={systemFile.history}
                     incidents={incidents}
+                    maintenance={maintenance}
                     chartType={uptimeChartType}
                     period={selectedPeriod}
                     height={600}
