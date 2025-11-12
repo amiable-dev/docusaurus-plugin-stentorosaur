@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import type { ScheduledMaintenance } from '../../../types';
+import { markdownToHtml } from '../../../utils/markdown';
 import styles from './styles.module.css';
 
 interface MaintenanceItemProps {
@@ -87,7 +88,10 @@ export default function MaintenanceItem({
       )}
 
       {maintenance.description && (
-        <div className={styles.description}>{maintenance.description}</div>
+        <div
+          className={styles.description}
+          dangerouslySetInnerHTML={{ __html: markdownToHtml(maintenance.description) }}
+        />
       )}
 
       {showComments && maintenance.comments.length > 0 && (
@@ -118,7 +122,10 @@ export default function MaintenanceItem({
                       })}
                     </span>
                   </div>
-                  <div className={styles.commentBody}>{comment.body}</div>
+                  <div
+                    className={styles.commentBody}
+                    dangerouslySetInnerHTML={{ __html: markdownToHtml(comment.body) }}
+                  />
                 </div>
               ))}
             </div>

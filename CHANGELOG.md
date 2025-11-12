@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2025-11-12
+
+### Added
+
+- **Markdown rendering support for incident and maintenance descriptions**
+  - GitHub Issues markdown content now renders as formatted HTML with proper styling
+  - Added `marked` library for GitHub-flavored markdown parsing
+  - Added `dompurify` library for XSS protection when rendering user-generated HTML
+  - Created `src/utils/markdown.ts` utility with `markdownToHtml()` function
+  - Supports full markdown syntax: headings, lists, code blocks, blockquotes, tables, images, links
+
+### Changed
+
+- **IncidentHistory component**: Incident body now renders markdown in collapsible `<details>` element
+  - Click "View details" to expand incident description
+  - Full markdown rendering with proper formatting for lists, code, headings, etc.
+  - Added comprehensive CSS styling for all markdown elements
+- **MaintenanceItem component**: Descriptions and comment bodies now render markdown
+  - Maintenance descriptions display formatted markdown content
+  - Maintenance update comments support full markdown formatting
+  - Added comprehensive CSS styling for markdown in both descriptions and comments
+- **CSS improvements**: Added markdown-specific styles to both components
+  - Proper spacing for paragraphs, headings, lists, code blocks
+  - Syntax highlighting-ready code blocks with monospace font
+  - Styled tables, blockquotes, and horizontal rules
+  - Responsive images with max-width constraints
+  - Consistent link styling matching Docusaurus theme
+
+### Security
+
+- All markdown content is sanitized using DOMPurify to prevent XSS attacks
+- Only allowed HTML tags and attributes are rendered
+- User-generated content is safely converted without executing scripts
+
 ## [0.10.2] - 2025-11-12
 
 ### Fixed

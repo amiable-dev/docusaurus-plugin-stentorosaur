@@ -109,7 +109,111 @@
 .description {
   margin-bottom: 0.75rem;
   color: var(--ifm-color-emphasis-800);
-  line-height: 1.5;
+  line-height: 1.6;
+}
+
+/* Markdown content styling for description */
+.description p {
+  margin: 0 0 1rem 0;
+}
+
+.description p:last-child {
+  margin-bottom: 0;
+}
+
+.description h1,
+.description h2,
+.description h3,
+.description h4,
+.description h5,
+.description h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.description h1:first-child,
+.description h2:first-child,
+.description h3:first-child {
+  margin-top: 0;
+}
+
+.description ul,
+.description ol {
+  margin: 0 0 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.description li {
+  margin-bottom: 0.25rem;
+}
+
+.description code {
+  background: var(--ifm-color-emphasis-200);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-size: 0.875em;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.description pre {
+  background: var(--ifm-color-emphasis-200);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 0 0 1rem 0;
+}
+
+.description pre code {
+  background: none;
+  padding: 0;
+}
+
+.description blockquote {
+  margin: 0 0 1rem 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--ifm-color-primary);
+  color: var(--ifm-color-emphasis-700);
+  font-style: italic;
+}
+
+.description a {
+  color: var(--ifm-color-primary);
+  text-decoration: underline;
+}
+
+.description a:hover {
+  color: var(--ifm-color-primary-dark);
+}
+
+.description img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.description hr {
+  border: none;
+  border-top: 1px solid var(--ifm-color-emphasis-300);
+  margin: 1.5rem 0;
+}
+
+.description table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1rem 0;
+}
+
+.description th,
+.description td {
+  padding: 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  text-align: left;
+}
+
+.description th {
+  background: var(--ifm-color-emphasis-200);
+  font-weight: 600;
 }
 
 .commentsSection {
@@ -168,8 +272,112 @@
 
 .commentBody {
   color: var(--ifm-color-emphasis-800);
-  line-height: 1.5;
-  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+/* Markdown content styling for comments */
+.commentBody p {
+  margin: 0 0 0.75rem 0;
+}
+
+.commentBody p:last-child {
+  margin-bottom: 0;
+}
+
+.commentBody h1,
+.commentBody h2,
+.commentBody h3,
+.commentBody h4,
+.commentBody h5,
+.commentBody h6 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.commentBody h1:first-child,
+.commentBody h2:first-child,
+.commentBody h3:first-child {
+  margin-top: 0;
+}
+
+.commentBody ul,
+.commentBody ol {
+  margin: 0 0 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.commentBody li {
+  margin-bottom: 0.25rem;
+}
+
+.commentBody code {
+  background: var(--ifm-color-emphasis-300);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-size: 0.875em;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.commentBody pre {
+  background: var(--ifm-color-emphasis-300);
+  padding: 0.75rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 0 0 0.75rem 0;
+}
+
+.commentBody pre code {
+  background: none;
+  padding: 0;
+}
+
+.commentBody blockquote {
+  margin: 0 0 0.75rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--ifm-color-primary);
+  color: var(--ifm-color-emphasis-700);
+  font-style: italic;
+}
+
+.commentBody a {
+  color: var(--ifm-color-primary);
+  text-decoration: underline;
+}
+
+.commentBody a:hover {
+  color: var(--ifm-color-primary-dark);
+}
+
+.commentBody img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.commentBody hr {
+  border: none;
+  border-top: 1px solid var(--ifm-color-emphasis-300);
+  margin: 1rem 0;
+}
+
+.commentBody table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+}
+
+.commentBody th,
+.commentBody td {
+  padding: 0.375rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  text-align: left;
+}
+
+.commentBody th {
+  background: var(--ifm-color-emphasis-300);
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {

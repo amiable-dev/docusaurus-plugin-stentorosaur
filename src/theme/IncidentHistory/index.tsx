@@ -9,6 +9,7 @@ import React from 'react';
 import {formatDistanceToNow} from 'date-fns';
 import type {StatusIncident} from '../../types';
 import {formatResolutionInfo} from '../../time-utils';
+import {markdownToHtml} from '../../utils/markdown';
 import styles from './styles.module.css';
 
 export interface Props {
@@ -150,10 +151,15 @@ export default function IncidentHistory({
                 </div>
 
                 {incident.body && (
-                  <div className={styles.incidentBody}>
-                    {incident.body.substring(0, 200)}
-                    {incident.body.length > 200 && '...'}
-                  </div>
+                  <details className={styles.incidentBody}>
+                    <summary className={styles.incidentSummary}>
+                      View details
+                    </summary>
+                    <div
+                      className={styles.incidentBodyContent}
+                      dangerouslySetInnerHTML={{ __html: markdownToHtml(incident.body) }}
+                    />
+                  </details>
                 )}
               </div>
             </div>
