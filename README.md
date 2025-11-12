@@ -98,7 +98,11 @@ module.exports = {
         owner: 'your-org',
         repo: 'your-repo',
         token: process.env.GITHUB_TOKEN, // Uses .env token
-        systemLabels: ['api', 'website', 'database'],
+        entities: [
+          { name: 'api', type: 'system', displayName: 'API Service' },
+          { name: 'website', type: 'system', displayName: 'Website' },
+          { name: 'database', type: 'system', displayName: 'Database' },
+        ],
       },
     ],
   ],
@@ -250,15 +254,37 @@ module.exports = {
         // GitHub repository (defaults to site's organizationName/projectName)
         owner: 'your-org',
         repo: 'your-repo',
-        
-        // Systems/processes to track
-        systemLabels: [
-          'api',
-          'website',
-          'database',
-          'authentication',
-          'deployment',
-          'documentation'
+
+        // NEW in v0.11.0: Entity Configuration (REQUIRED)
+        // Define entities to track - replaces systemLabels
+        entities: [
+          // Systems (technical infrastructure)
+          {
+            name: 'api',
+            type: 'system',
+            displayName: 'API Service',
+            description: 'Main REST API',
+          },
+          {
+            name: 'database',
+            type: 'system',
+            displayName: 'Database',
+          },
+
+          // Processes (business flows)
+          {
+            name: 'customer-onboarding',
+            type: 'process',
+            displayName: 'Customer Onboarding',
+            description: 'End-to-end onboarding flow',
+          },
+
+          // Projects (time-bound initiatives)
+          {
+            name: 'migration-aurora',
+            type: 'project',
+            displayName: 'Aurora Migration',
+          },
         ],
         
         // Optional: GitHub token for API requests
@@ -317,6 +343,76 @@ module.exports = {
   ],
 };
 ```
+
+### Entity Configuration (v0.11.0+)
+
+Starting in v0.11.0, the plugin uses an **entity model** instead of simple `systemLabels`. This allows you to track different types of entities with rich metadata.
+
+#### Entity Types
+
+The plugin supports six entity types:
+
+- **system**: Technical infrastructure (APIs, databases, services)
+- **process**: Business processes (onboarding, billing, support)
+- **project**: Time-bound initiatives (migrations, feature launches)
+- **event**: Scheduled events (campaigns, product launches)
+- **sla**: Service level tracking (uptime SLAs, performance targets)
+- **custom**: User-defined entity types
+
+#### Entity Fields
+
+```typescript
+interface Entity {
+  name: string;              // Required: Unique identifier (kebab-case recommended)
+  type: EntityType;          // Required: Entity type
+  displayName?: string;      // Optional: Human-readable name
+  description?: string;      // Optional: Short description
+  icon?: string;             // Optional: Emoji or icon identifier
+  metadata?: Record<string, any>; // Optional: Custom metadata
+}
+```
+
+#### Label Parsing
+
+Entities can be identified from GitHub issue labels using two schemes:
+
+**Namespaced Labels** (default):
+```
+system:api
+process:onboarding
+project:migration-aurora
+```
+
+**Legacy Labels** (backward compatible):
+```
+api
+onboarding
+migration-aurora
+```
+
+Configure the label scheme in plugin options:
+```javascript
+{
+  entities: [...],
+  labelScheme: 'namespaced',  // 'namespaced' | 'legacy' (default: 'namespaced')
+}
+```
+
+#### Migration from systemLabels
+
+If you're upgrading from v0.10.x or earlier, use the migration script:
+
+```bash
+node node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/scripts/migrate-config.js docusaurus.config.ts
+```
+
+The script will:
+1. Convert `systemLabels` array to `entities` array
+2. Create entities with type='system'
+3. Preserve your existing configuration
+4. Show a diff of changes before applying
+
+See `ENTITY-MODEL-IMPLEMENTATION.md` for full technical details.
 
 ### GitHub Actions Setup
 
@@ -422,7 +518,7 @@ Database snapshots created. Can restore within 15 minutes if needed.
 
 - **`start`** (required): Maintenance start time in ISO 8601 format (UTC recommended)
 - **`end`** (required): Maintenance end time in ISO 8601 format
-- **`systems`** (optional): Array of affected system names. If omitted, uses issue labels matching your `systemLabels` configuration
+- **`systems`** (optional): Array of affected entity names. If omitted, uses issue labels matching your `entities` configuration
 
 #### Labels
 
@@ -665,9 +761,10 @@ The plugin uses GitHub issue labels to track status:
 **Required Labels:**
 - `status` - Identifies status-related issues
 
-**System Labels:**
-- Use labels matching your `systemLabels` config to tag which system is affected
-- Example: `api`, `website`, `database`, etc.
+**Entity Labels:**
+- Use labels matching your `entities` config to tag which entity is affected
+- Namespaced format (default): `system:api`, `process:onboarding`, `project:migration`
+- Legacy format: `api`, `onboarding`, `migration` (configure with `labelScheme: 'legacy'`)
 
 **Severity Labels:**
 - `critical` - Complete outage
@@ -961,9 +1058,17 @@ jobs:
   // GitHub repository (required unless using demo data)
   owner: 'your-org',
   repo: 'your-repo',
-  
-  // System labels to track (optional, default: [])
-  systemLabels: ['api', 'web', 'database'],
+
+  // NEW in v0.11.0: Entity configuration (REQUIRED)
+  entities: [
+    { name: 'api', type: 'system', displayName: 'API Service' },
+    { name: 'web', type: 'system', displayName: 'Website' },
+    { name: 'database', type: 'system', displayName: 'Database' },
+    { name: 'onboarding', type: 'process', displayName: 'Customer Onboarding' },
+  ],
+
+  // Label parsing scheme (v0.11.0+)
+  labelScheme: 'namespaced',                 // 'namespaced' | 'legacy', default: 'namespaced'
   
   // GitHub token (optional but recommended)
   token: process.env.GITHUB_TOKEN,
@@ -1039,7 +1144,11 @@ jobs:
   owner: 'your-org',
   repo: 'status-tracking',
   token: process.env.GITHUB_TOKEN,
-  systemLabels: ['api', 'web', 'database'],
+  entities: [
+    { name: 'api', type: 'system', displayName: 'API Service' },
+    { name: 'web', type: 'system', displayName: 'Website' },
+    { name: 'database', type: 'system', displayName: 'Database' },
+  ],
   useDemoData: false,  // Only show real data
 }
 ```
@@ -1168,7 +1277,8 @@ graph LR
 | `owner` | string | `organizationName` | GitHub repository owner |
 | `repo` | string | `projectName` | GitHub repository name |
 | `statusLabel` | string | `'status'` | Label to filter status issues |
-| `systemLabels` | string[] | `[]` | Labels for systems to track |
+| `entities` | Entity[] | `[]` | **NEW v0.11.0**: Entities to track (replaces systemLabels) |
+| `labelScheme` | string | `'namespaced'` | **NEW v0.11.0**: Label parsing scheme ('namespaced' or 'legacy') |
 | `token` | string | `process.env.GITHUB_TOKEN` | GitHub API token |
 | `updateInterval` | number | `60` | Update frequency (minutes) |
 | `dataPath` | string | `'status-data'` | Where to store status data |
@@ -1371,35 +1481,52 @@ interface StatusHistoryProps {
 
 ### Tracking Process Issues
 
-Beyond technical systems, you can track business processes:
+Beyond technical systems, you can track business processes with the entity model (v0.11.0+):
 
 ```javascript
-systemLabels: [
-  'onboarding',
-  'support-tickets',
-  'documentation-updates',
-  'content-review',
-  'deployment-approval'
+entities: [
+  // Systems
+  { name: 'api', type: 'system', displayName: 'API Service' },
+  { name: 'website', type: 'system', displayName: 'Main Website' },
+
+  // Processes
+  { name: 'customer-onboarding', type: 'process', displayName: 'Customer Onboarding' },
+  { name: 'support-tickets', type: 'process', displayName: 'Support Queue' },
+  { name: 'documentation-updates', type: 'process', displayName: 'Documentation' },
+  { name: 'content-review', type: 'process', displayName: 'Content Review' },
+
+  // Projects
+  { name: 'deployment-approval', type: 'project', displayName: 'Deployment Pipeline' },
 ]
 ```
 
-Then create issues with these labels to track:
-- Delayed onboarding processes
-- Support ticket backlogs
-- Documentation that needs updating
-- Content awaiting review
-- Deployment approvals pending
+Then create issues with namespaced labels to track:
+- `process:customer-onboarding` - Delayed onboarding processes
+- `process:support-tickets` - Support ticket backlogs
+- `process:documentation-updates` - Documentation that needs updating
+- `process:content-review` - Content awaiting review
+- `project:deployment-approval` - Deployment approvals pending
 
 ### Custom Severity Levels
 
-Use labels creatively for your needs:
+Use labels to combine entity identification with severity tracking:
 
 ```yaml
-labels: 
-  - status
-  - api
-  - degraded  # Custom severity
-  - investigating  # Custom status
+labels:
+  - status              # Required status tracking label
+  - system:api          # Entity identification (namespaced)
+  - degraded            # Custom severity
+  - investigating       # Custom status
+```
+
+Or with legacy label scheme:
+
+```yaml
+labels:
+  - status              # Required status tracking label
+  - api                 # Entity identification (legacy)
+  - degraded            # Custom severity
+  - investigating       # Custom status
 ```
 
 ## Best Practices
@@ -1434,7 +1561,7 @@ See the [GitHub Actions Deployment](#2-github-actions-deployment) section for fu
 
 - Ensure GitHub Actions have run at least once
 - Check that issues have the correct `status` label
-- Verify `systemLabels` match your issue labels
+- Verify entity labels match your `entities` configuration (use namespaced labels like `system:api` or configure `labelScheme: 'legacy'`)
 
 ### Authentication errors
 

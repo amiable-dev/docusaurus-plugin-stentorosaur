@@ -1,0 +1,358 @@
+STENTOROSAUR SYSTEM-CENTRIC ARCHITECTURE ANALYSIS
+Generated: 2025-11-12
+Scope: docusaurus-plugin-stentorosaur v0.5.x
+
+================================================================================
+DELIVERABLES
+================================================================================
+
+Five comprehensive documents analyzing the system-centric architecture:
+
+1. ARCHITECTURE-INDEX.md
+   Purpose: Navigation guide to all documents
+   Type: Quick reference
+   Size: 292 lines
+   Read Time: 5 minutes
+   Best For: Finding what you need
+
+2. ARCHITECTURE-SUMMARY.md
+   Purpose: Executive summary of design principles
+   Type: Overview with recommendations
+   Size: 271 lines
+   Read Time: 5-10 minutes
+   Best For: Quick understanding of core principles
+
+3. ARCHITECTURE-ANALYSIS.md
+   Purpose: Comprehensive technical breakdown
+   Type: Detailed analysis
+   Size: 374 lines
+   Read Time: 15-20 minutes
+   Best For: Understanding design patterns and constraints
+
+4. ARCHITECTURE-DIAGRAM.txt
+   Purpose: Visual representations of architecture
+   Type: ASCII diagrams with explanations
+   Size: 220 lines
+   Read Time: 10-15 minutes
+   Best For: Understanding data flow visually
+
+5. CODE-REFERENCE-GUIDE.md
+   Purpose: Line-by-line code locations
+   Type: Implementation reference
+   Size: ~450 lines (previous analysis)
+   Read Time: 30-45 minutes
+   Best For: Finding specific code and understanding implementation
+
+================================================================================
+DOCUMENT RELATIONSHIPS
+================================================================================
+
+ARCHITECTURE-INDEX.md (START HERE)
+    ↓
+    ├→ ARCHITECTURE-SUMMARY.md (executive overview)
+    │   ├→ ARCHITECTURE-ANALYSIS.md (detailed breakdown)
+    │   └→ ARCHITECTURE-DIAGRAM.txt (visual flows)
+    │
+    └→ CODE-REFERENCE-GUIDE.md (implementation details)
+
+Read in this order for comprehensive understanding:
+1. INDEX (understand structure)
+2. SUMMARY (get overview)
+3. ANALYSIS (dive deep)
+4. DIAGRAMS (visualize flow)
+5. CODE-REFERENCE (find implementations)
+
+================================================================================
+KEY ANALYSIS FINDINGS
+================================================================================
+
+Core Thesis:
+  The plugin is fundamentally system-centric. Systems are first-class entities
+  that serve as the primary organizing principle for all data, configuration,
+  routing, monitoring, and UI components.
+
+System-Centric Components:
+  - Configuration (systemLabels)
+  - GitHub Integration (label → system linking)
+  - Status Calculation (incident → system status)
+  - Monitoring (readings grouped by system)
+  - Routing (/status/history/{system-slug})
+  - Data Files (one per system)
+  - Components (system cards, system charts)
+
+Hard Constraints:
+  1. Name-Based Identification - System names are global identifiers
+  2. Label-Based Linking - Only way to link issues to systems
+  3. Single-Level Hierarchy - No grouping or nesting
+  4. Configuration-Time Definition - All systems defined upfront
+  5. Per-System Performance Files - One file per system
+
+Extension Points:
+  - Swizzle Components (UI customization)
+  - Direct Site Config (alternative system definition)
+  - Chart Annotations (event overlays)
+  - Demo Data (custom demo systems)
+
+Not Extensible Without Major Changes:
+  - Data Model (affectedSystems: string[])
+  - Issue Linking (always label-based)
+  - Routing (always system-specific)
+  - Monitoring (always keyed by system name)
+  - Status Calculation (always from open incidents)
+
+================================================================================
+ANALYSIS METHODOLOGY
+================================================================================
+
+This analysis was created through:
+
+1. Type Definition Analysis
+   - Examined src/types.ts for data structures
+   - Identified StatusItem, StatusIncident, ScheduledMaintenance
+   - Noted affectedSystems and name fields throughout
+
+2. Configuration Analysis
+   - Reviewed src/options.ts and defaults
+   - Traced systemLabels usage
+   - Mapped configuration to behavior
+
+3. GitHub Service Analysis
+   - Examined src/github-service.ts
+   - Traced issue-to-incident conversion
+   - Identified label matching logic (lines 106-108)
+   - Analyzed status generation (lines 136-178)
+
+4. Plugin Orchestration Analysis
+   - Reviewed src/index.ts loadContent, contentLoaded, postBuild
+   - Traced data flow through plugin lifecycle
+   - Identified current.json grouping by svc
+   - Traced route creation logic
+
+5. Component Analysis
+   - Examined all theme components
+   - Traced data dependencies
+   - Identified component interactions
+
+6. Data Flow Analysis
+   - Mapped data through entire system
+   - Identified name matching points
+   - Traced information transformations
+
+7. Code Reference Mapping
+   - Located all key implementation points
+   - Created line-by-line reference guide
+   - Cross-referenced throughout documents
+
+================================================================================
+DOCUMENTS CONTENT SUMMARY
+================================================================================
+
+ARCHITECTURE-INDEX.md
+  - Document guide (what each document covers)
+  - Finding what you need (navigation by topic)
+  - Key concepts explained (terminology)
+  - Architecture principles (7 core principles)
+  - Common questions (FAQs)
+  - Document statistics
+  - Methodology
+
+ARCHITECTURE-SUMMARY.md
+  - Quick summary (core principle)
+  - What's system-centric (6 aspects)
+  - Key hard constraints (5 constraints)
+  - Extension points (what you can/can't change)
+  - To support alternative models (requirements)
+  - Code locations quick reference table
+  - Recommendations for different use cases
+
+ARCHITECTURE-ANALYSIS.md
+  - System-centric design patterns
+    - Core data model
+    - Configuration (systemLabels)
+  - Label-based system mapping
+    - Issue-to-system linking
+    - Status generation logic
+  - Monitoring data organization
+    - Compact monitoring format
+    - System files structure
+  - Routing system-specific pages
+    - Route generation
+  - Component architecture
+    - StatusBoard, StatusPage, StatusHistory
+    - PerformanceMetrics
+  - Hard-coded assumptions
+    - Naming and identification
+    - Status calculation rules
+  - Extension points
+    - Current extension points
+    - What's not easy to change
+  - Constraints for alternatives
+  - Specific code locations table
+  - Demo data pattern
+
+ARCHITECTURE-DIAGRAM.txt
+  - Configuration → GitHub → Status flow diagram
+  - Monitoring, routing, and file organization
+  - Issue → System → UI data flow
+  - System name matching constraint visualization
+  - What would break with alternatives
+  - Key constraint explanation
+  - Architecture principles
+
+CODE-REFERENCE-GUIDE.md
+  - Type definition locations table
+  - Configuration section
+  - Issue-to-system linking with code snippets
+    - Constructor, methods, key code
+  - Data flow explanation
+  - Monitoring data organization
+    - File functions with code samples
+    - File organization structure
+  - Routing implementation
+    - Route creation code
+    - Key points explanation
+  - Component layer
+    - StatusBoard code and explanation
+    - StatusPage data loading
+    - StatusHistory route mapping
+    - PerformanceMetrics display
+  - Demo data section
+  - File dependencies diagram
+  - Critical system name matching points table
+  - Validation points
+
+================================================================================
+STATISTICS
+================================================================================
+
+Analysis Scope:
+  - TypeScript/TSX Files: 10
+  - Total Lines Analyzed: ~2,000
+  - Functions Analyzed: 25+
+  - Types Examined: 5 core + variants
+  - Components Analyzed: 5 major theme components
+
+Documentation:
+  - Total Lines: 1,157 (ARCHITECTURE-*.* files)
+  - Total Words: ~10,500
+  - Code Examples: 30+
+  - Diagrams: 5
+  - Tables: 10+
+  - Lists: 50+
+
+Key Findings:
+  - Hard Constraints: 5
+  - Extension Points: 4
+  - System-Centric Components: 7
+  - Code Reference Locations: 20+
+  - Critical Code Points: 8
+
+================================================================================
+HOW TO USE THIS ANALYSIS
+================================================================================
+
+For Rapid Understanding (15 minutes):
+  1. Read ARCHITECTURE-INDEX.md (5 min)
+  2. Read ARCHITECTURE-SUMMARY.md (10 min)
+
+For Complete Understanding (60 minutes):
+  1. Read ARCHITECTURE-INDEX.md (5 min)
+  2. Read ARCHITECTURE-SUMMARY.md (10 min)
+  3. Read ARCHITECTURE-ANALYSIS.md (20 min)
+  4. Review ARCHITECTURE-DIAGRAM.txt (10 min)
+  5. Browse CODE-REFERENCE-GUIDE.md (15 min)
+
+For Implementation/Debugging (30-45 minutes):
+  1. Use CODE-REFERENCE-GUIDE.md to find code
+  2. Reference line numbers for quick navigation
+  3. Check ARCHITECTURE-ANALYSIS.md for context
+  4. Review ARCHITECTURE-DIAGRAM.txt for data flow
+
+For Refactoring/Extension:
+  1. Read ARCHITECTURE-SUMMARY.md "Constraints" section
+  2. Read ARCHITECTURE-ANALYSIS.md "Extension Points" section
+  3. Review "To Support Alternative Models" section
+  4. Use CODE-REFERENCE-GUIDE.md to identify change points
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+For Users Who Want To:
+
+MONITOR TECHNICAL SYSTEMS:
+  ✓ This plugin is ideal
+  ✓ Configure systemLabels with your systems
+  ✓ Create GitHub issues with system labels
+  ✓ Set up monitoring with matching system names
+
+TRACK BUSINESS PROCESSES:
+  ? Consider if processes can be modeled as "systems"
+  ? May need extension or workaround
+  ? Consider alternative approaches
+
+SUPPORT DYNAMIC ENTITY CREATION:
+  ✗ Requires significant refactoring
+  ✗ Redesign data model and GitHub integration
+  ✗ Consider forking or finding alternative
+
+IMPLEMENT HIERARCHICAL GROUPING:
+  ✗ Not supported by current architecture
+  ✗ Would need major changes to routing and components
+  ✗ Consider workarounds (nested naming)
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Read ARCHITECTURE-INDEX.md
+   → Understand document structure and navigation
+
+2. Read ARCHITECTURE-SUMMARY.md
+   → Grasp core principles and constraints
+
+3. Choose path based on your needs:
+   
+   For Understanding:
+   → Read ARCHITECTURE-ANALYSIS.md and ARCHITECTURE-DIAGRAM.txt
+   
+   For Implementation:
+   → Use CODE-REFERENCE-GUIDE.md with source code open
+   
+   For Decision Making:
+   → Focus on "Extension Points" and "Constraints" sections
+
+4. Reference documents as needed during development
+
+================================================================================
+DOCUMENT FILES
+================================================================================
+
+Location:
+  /Users/christopherjoseph/projects/amiable/Stentorosaurus/docusaurus-plugin-stentorosaur/
+
+Files:
+  - ARCHITECTURE-INDEX.md (292 lines)
+  - ARCHITECTURE-SUMMARY.md (271 lines)
+  - ARCHITECTURE-ANALYSIS.md (374 lines)
+  - ARCHITECTURE-DIAGRAM.txt (220 lines)
+  - CODE-REFERENCE-GUIDE.md (existing)
+  - ANALYSIS-MANIFEST.txt (this file)
+
+Total: 6 files, ~1,400 lines of documentation
+
+================================================================================
+VERSION INFORMATION
+================================================================================
+
+Analysis Date: 2025-11-12
+Plugin Version: docusaurus-plugin-stentorosaur v0.5.x
+Analysis Scope: System-centric architecture patterns and constraints
+Focus: Understanding design model, hard constraints, and extension points
+
+This analysis is based on code review at the time of generation.
+Future versions may have different architectures or design patterns.
+
+================================================================================
+END OF MANIFEST
+================================================================================

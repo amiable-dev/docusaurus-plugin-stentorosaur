@@ -11,7 +11,12 @@ import type {PluginOptions, SiteConfig} from './types';
 
 export const DEFAULT_OPTIONS: Partial<PluginOptions> = {
   statusLabel: 'status',
-  systemLabels: [],
+  entities: [],
+  labelScheme: {
+    separator: ':',
+    defaultType: 'system' as const,
+    allowUntyped: true,
+  },
   updateInterval: 60,
   dataPath: 'status-data',
   title: 'System Status',
@@ -25,6 +30,60 @@ export const DEFAULT_OPTIONS: Partial<PluginOptions> = {
   systemSLOs: {},
   sites: [],
 };
+
+// Entity link validation schema
+const entityLinkSchema = Joi.object({
+  url: Joi.string().required(),
+  label: Joi.string().required(),
+  icon: Joi.string(),
+});
+
+// Monitoring configuration validation schema
+const monitoringConfigSchema = Joi.object({
+  enabled: Joi.boolean().required(),
+  url: Joi.string(),
+  method: Joi.string().valid('GET', 'POST', 'HEAD'),
+  timeout: Joi.number().positive(),
+  expectedCodes: Joi.array().items(Joi.number().integer().min(100).max(599)),
+  maxResponseTime: Joi.number().positive(),
+  headers: Joi.object().pattern(Joi.string(), Joi.string()),
+  body: Joi.string(),
+});
+
+// Status rule validation schema
+const statusRuleSchema = Joi.object({
+  condition: Joi.string().required(),
+  status: Joi.string().valid('up', 'down', 'degraded', 'maintenance').required(),
+  priority: Joi.number().integer().required(),
+  message: Joi.string(),
+});
+
+// Status logic validation schema
+const statusLogicSchema = Joi.object({
+  source: Joi.string().valid('monitoring', 'issues', 'composite').required(),
+  rules: Joi.array().items(statusRuleSchema),
+});
+
+// Entity validation schema
+const entitySchema = Joi.object({
+  name: Joi.string().pattern(/^[a-z0-9-]+$/).required(),
+  displayName: Joi.string(),
+  type: Joi.string().valid('system', 'process', 'project', 'event', 'sla', 'custom').required(),
+  description: Joi.string(),
+  icon: Joi.string(),
+  tags: Joi.array().items(Joi.string()),
+  links: Joi.array().items(entityLinkSchema),
+  monitoring: monitoringConfigSchema,
+  statusLogic: statusLogicSchema,
+  config: Joi.object().pattern(Joi.string(), Joi.any()),
+});
+
+// Label scheme validation schema
+const labelSchemeSchema = Joi.object({
+  separator: Joi.string().default(':'),
+  defaultType: Joi.string().valid('system', 'process', 'project', 'event', 'sla', 'custom').default('system'),
+  allowUntyped: Joi.boolean().default(true),
+});
 
 // Site configuration validation schema
 const siteConfigSchema = Joi.object<SiteConfig>({
@@ -54,7 +113,8 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
   owner: Joi.string(),
   repo: Joi.string(),
   statusLabel: Joi.string().default(DEFAULT_OPTIONS.statusLabel),
-  systemLabels: Joi.array().items(Joi.string()).default(DEFAULT_OPTIONS.systemLabels),
+  entities: Joi.array().items(entitySchema).default(DEFAULT_OPTIONS.entities),
+  labelScheme: labelSchemeSchema.default(DEFAULT_OPTIONS.labelScheme),
   token: Joi.string(),
   updateInterval: Joi.number().min(1).default(DEFAULT_OPTIONS.updateInterval),
   dataPath: Joi.string().default(DEFAULT_OPTIONS.dataPath),

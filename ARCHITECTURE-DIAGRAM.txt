@@ -1,0 +1,220 @@
+================================================================================
+STENTOROSAUR SYSTEM-CENTRIC ARCHITECTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CONFIGURATION LAYER                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│   systemLabels: ['api', 'website', 'database', 'ci-cd']                     │
+│   (Defines ALL systems that can exist)                                       │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    GITHUB ISSUE LINKING LAYER                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  GitHub Issue with labels: ['status', 'api', 'major']                       │
+│                                                  │                           │
+│          Filter by matching systemLabels        │                           │
+│                            │                    │                           │
+│                            └────────────────────┘                           │
+│                                    │                                         │
+│                            affectedSystems: ['api']                         │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       STATUS CALCULATION LAYER                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  For EACH system in systemLabels:                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ api        status: up (default)                                    │    │
+│  │            incidents affecting it: [#123 (critical)]               │    │
+│  │            → WORST STATUS WINS → status: down                      │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                                                               │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ website    status: up (default)                                    │    │
+│  │            incidents affecting it: [#456 (minor)]                  │    │
+│  │            → status: degraded                                      │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                                                               │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ database   status: up (default, no incidents)                      │    │
+│  │            → status: up                                            │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                                                               │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ ci-cd      status: up (default, no incidents)                      │    │
+│  │            → status: up                                            │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                                                               │
+│  RESULT: StatusItem[] = [                                                   │
+│    { name: 'api', status: 'down', ... },                                    │
+│    { name: 'website', status: 'degraded', ... },                            │
+│    { name: 'database', status: 'up', ... },                                 │
+│    { name: 'ci-cd', status: 'up', ... },                                    │
+│  ]                                                                           │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                ┌───────────────────┼───────────────────┐
+                ▼                   ▼                   ▼
+    ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+    │  MONITORING DATA  │  │    UI ROUTING     │  │  DATA FILES      │
+    │  ORGANIZATION     │  │                  │  │                  │
+    └──────────────────┘  └──────────────────┘  └──────────────────┘
+            │                      │                      │
+            ▼                      ▼                      ▼
+    current.json:          /status/history/api     /status-data/
+    ┌──────────────┐       /status/history/website  systems/
+    │ { svc: "api" }│      /status/history/database  api.json
+    │ { svc: "api" }│      /status/history/ci-cd     website.json
+    │ { svc: "api" }│                                database.json
+    │ { svc: "website"}│                             ci-cd.json
+    │ ...           │
+    └──────────────┘
+
+
+================================================================================
+DATA FLOW: Issue → System Status → UI
+================================================================================
+
+1. ISSUE CREATION
+   GitHub Issue: "API timeout errors"
+   Labels: ['status', 'api', 'critical']
+                        │
+                        └─ Matches systemLabels? YES → affectedSystems: ['api']
+
+2. STATUS CALCULATION
+   StatusIncident: {
+     affectedSystems: ['api'],
+     severity: 'critical'
+   }
+   
+   generateStatusItems():
+   - Find 'api' system
+   - Has critical incident → status: down
+
+3. MONITORING (SEPARATE)
+   endpoint: https://api.example.com/health
+   svc: "api"  ← MUST MATCH system name!
+   readings: [{t: 1700..., svc: "api", state: "up", lat: 89}, ...]
+
+4. ROUTING
+   items: [{ name: 'api', ... }]
+   ↓
+   addRoute({ path: '/status/history/api', ... })
+   ↓
+   StatusHistory component
+   ↓
+   Fetch /status-data/systems/api.json
+   ↓
+   Display charts for 'api' system
+
+5. DISPLAY
+   StatusBoard:
+   ┌─────────────────────┐
+   │ api                 │
+   │ ● Down              │
+   │ (click for charts)  │
+   └─────────────────────┘
+        │
+        ▼
+   PerformanceMetrics:
+   ┌─────────────────────────────────────┐
+   │ Performance Metrics - api            │
+   │                                     │
+   │ [Response Time Chart for api]        │
+   │ [Uptime Chart for api]               │
+   │ [SLI Chart for api]                  │
+   └─────────────────────────────────────┘
+
+
+================================================================================
+KEY CONSTRAINT: SYSTEM NAME MUST MATCH EVERYWHERE
+================================================================================
+
+GitHub Label:    'api'        ← systemLabel
+     ↓
+Issue label:     'api'        ← Must match
+     ↓
+System name:     'api'        ← StatusItem.name
+     ↓
+File name:       'api.json'   ← Systems file
+     ↓
+URL slug:        'api'        ← Route parameter
+     ↓
+Monitor svc:     'api'        ← current.json field
+
+If ANY of these don't match, system data fragments:
+  - Issue won't link to system
+  - Monitoring data won't aggregate
+  - Routes won't find files
+  - Charts will be empty
+
+
+================================================================================
+ASSUMPTIONS THAT ENABLE SYSTEM-CENTRIC DESIGN
+================================================================================
+
+1. UPFRONT DEFINITION
+   ✓ All systems known in advance (systemLabels)
+   ✓ No dynamic system creation
+
+2. UNIQUE IDENTIFICATION
+   ✓ System names are globally unique
+   ✓ Can be used directly as identifiers
+
+3. LABEL-BASED LINKING
+   ✓ GitHub issues linked via exact label match
+   ✓ No hierarchical labels (e.g., 'api/auth' not split)
+
+4. FLAT HIERARCHY
+   ✓ Systems are atomic units
+   ✓ No grouping systems into categories
+   ✓ No subsystems
+
+5. MONITORING SYMMETRY
+   ✓ Monitor names must match system names
+   ✓ One monitor endpoint per system
+
+6. URL SLUG GENERATION
+   ✓ System name → slug conversion is deterministic
+   ✓ No slug collisions possible
+
+7. CLOSED INCIDENTS IGNORED
+   ✓ Only open incidents affect status
+   ✓ Status is current state (not historical)
+
+
+================================================================================
+WHAT WOULD BREAK IF YOU TRIED TO ADD...
+================================================================================
+
+BUSINESS PROCESSES (instead of technical systems):
+  - No way to group systems into a process
+  - Incidents would be "affects: ['api', 'website', 'database']"
+    but really it's "affects: 'onboarding-flow'" (which needs api, website, db)
+  - Routes would be /status/history/onboarding-flow (doesn't match any StatusItem)
+
+FEATURE TOGGLES:
+  - Feature names don't correspond to systems
+  - Issues tagged with 'feature-x' don't map to any StatusItem.name
+  - Charts would need to aggregate data across multiple systems
+
+DEPLOYMENTS:
+  - Deployment affects multiple systems
+  - No good way to track "deployment v1.2.3 → api + website"
+  - Would need to create fake "system" for deployment (breaks monitoring)
+
+HIERARCHIES (api-v1, api-v2):
+  - systemLabels: ['api-v1', 'api-v2'] works
+  - But no way to group them into 'api' category
+  - /status/history/api would fail (no matching StatusItem)
+

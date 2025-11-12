@@ -34,7 +34,12 @@ describe('GitHubStatusService', () => {
       'test-owner',
       'test-repo',
       'status',
-      ['api', 'web', 'database']
+      [
+        { name: 'api', type: 'system' },
+        { name: 'web', type: 'system' },
+        { name: 'database', type: 'system' },
+      ],
+      { separator: ':', defaultType: 'system', allowUntyped: true }
     );
   });
 

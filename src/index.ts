@@ -163,7 +163,8 @@ export default async function pluginStatus(
 
   const {
     statusLabel = 'status',
-    systemLabels = [],
+    entities = [],
+    labelScheme,
     token,
     dataPath = 'status-data',
     title = 'System Status',
@@ -337,7 +338,8 @@ export default async function pluginStatus(
                   owner,
                   repo,
                   statusLabel,
-                  systemLabels,
+                  entities,
+                  labelScheme,
                   maintenanceLabels
                 );
                 const result = await service.fetchStatusData();
@@ -396,7 +398,8 @@ export default async function pluginStatus(
               owner,
               repo,
               statusLabel,
-              systemLabels,
+              entities,
+              labelScheme,
               maintenanceLabels
             );
 

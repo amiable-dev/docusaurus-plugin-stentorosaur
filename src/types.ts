@@ -7,6 +7,18 @@
 
 export type StatusItemStatus = 'up' | 'down' | 'degraded' | 'maintenance';
 
+/**
+ * Entity type enumeration
+ * Replaces the implicit "system" concept with explicit types
+ */
+export type EntityType =
+  | 'system'      // Technical infrastructure
+  | 'process'     // Business process
+  | 'project'     // Time-bound initiative
+  | 'event'       // Scheduled event/campaign
+  | 'sla'         // Service level agreement
+  | 'custom';     // User-defined
+
 export interface StatusCheckHistory {
   timestamp: string;
   status: StatusItemStatus;
@@ -74,6 +86,106 @@ export interface ScheduledMaintenance {
   comments: MaintenanceComment[];
   url: string;
   createdAt: string;
+}
+
+/**
+ * Entity link - documentation, dashboards, etc.
+ */
+export interface EntityLink {
+  url: string;
+  label: string;
+  icon?: string;
+}
+
+/**
+ * Monitoring configuration for entities that have uptime checks
+ */
+export interface MonitoringConfig {
+  enabled: boolean;
+  url?: string;
+  method?: 'GET' | 'POST' | 'HEAD';
+  timeout?: number;
+  expectedCodes?: number[];
+  maxResponseTime?: number;
+  headers?: Record<string, string>;
+  body?: string;
+}
+
+/**
+ * Status determination logic
+ */
+export interface StatusLogic {
+  /** Source of status information */
+  source: 'monitoring' | 'issues' | 'composite';
+
+  /** Rules for determining status from issues */
+  rules?: StatusRule[];
+}
+
+/**
+ * Status rule for issue-based status determination
+ */
+export interface StatusRule {
+  /** Condition to match (e.g., "label:blocker", "severity:critical") */
+  condition: string;
+
+  /** Status to set when condition matches */
+  status: StatusItemStatus;
+
+  /** Priority (higher priority wins when multiple rules match) */
+  priority: number;
+
+  /** Optional message template */
+  message?: string;
+}
+
+/**
+ * Label parsing configuration
+ */
+export interface LabelScheme {
+  /** Separator between type and name (default: ':') */
+  separator: string;
+
+  /** Default entity type for unlabeled items (default: 'system') */
+  defaultType: EntityType;
+
+  /** Allow labels without type prefix (default: true) */
+  allowUntyped: boolean;
+}
+
+/**
+ * Entity configuration - flexible abstraction for trackable items
+ */
+export interface Entity {
+  /** Unique identifier (kebab-case: 'api', 'customer-onboarding') */
+  name: string;
+
+  /** Human-readable display name (defaults to name if not provided) */
+  displayName?: string;
+
+  /** Entity type determines status calculation logic */
+  type: EntityType;
+
+  /** Description shown on status page */
+  description?: string;
+
+  /** Icon (emoji or icon name) for display */
+  icon?: string;
+
+  /** Tags for categorization and filtering */
+  tags?: string[];
+
+  /** External links (documentation, dashboards, etc.) */
+  links?: EntityLink[];
+
+  /** Monitoring configuration (optional, only for monitored entities) */
+  monitoring?: MonitoringConfig;
+
+  /** Status determination logic */
+  statusLogic?: StatusLogic;
+
+  /** Entity-specific configuration data */
+  config?: Record<string, unknown>;
 }
 
 /**
@@ -147,12 +259,18 @@ export interface PluginOptions {
    * Label to filter status issues (defaults to 'status')
    */
   statusLabel?: string;
-  
+
   /**
-   * Labels that identify different systems/processes to track
+   * Entity definitions (REQUIRED as of v0.11.0)
+   * Replaces deprecated systemLabels
    */
-  systemLabels?: string[];
-  
+  entities: Entity[];
+
+  /**
+   * Label parsing scheme for GitHub issue labels
+   */
+  labelScheme?: LabelScheme;
+
   /**
    * GitHub personal access token for API requests
    * Should be stored in environment variable

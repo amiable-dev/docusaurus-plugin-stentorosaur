@@ -7,15 +7,36 @@
 
 import {Joi} from '@docusaurus/utils-validation';
 import {DEFAULT_OPTIONS, validateOptions} from '../src/options';
-import type {PluginOptions, SiteConfig} from '../src/types';
+import type {PluginOptions, SiteConfig, Entity} from '../src/types';
 import type {OptionValidationContext} from '@docusaurus/types';
+
+// Simple entity schema for testing
+const entitySchema = Joi.object<Entity>({
+  name: Joi.string().pattern(/^[a-z0-9-]+$/).required(),
+  displayName: Joi.string(),
+  type: Joi.string().valid('system', 'process', 'project', 'event', 'sla', 'custom').required(),
+  description: Joi.string(),
+  icon: Joi.string(),
+  tags: Joi.array().items(Joi.string()),
+  links: Joi.array(),
+  monitoring: Joi.object(),
+  statusLogic: Joi.object(),
+  config: Joi.object(),
+});
+
+const labelSchemeSchema = Joi.object({
+  separator: Joi.string().default(':'),
+  defaultType: Joi.string().valid('system', 'process', 'project', 'event', 'sla', 'custom').default('system'),
+  allowUntyped: Joi.boolean().default(true),
+});
 
 // Create the same schema as in options.ts for testing
 const pluginOptionsSchema = Joi.object<PluginOptions>({
   owner: Joi.string(),
   repo: Joi.string(),
   statusLabel: Joi.string().default(DEFAULT_OPTIONS.statusLabel),
-  systemLabels: Joi.array().items(Joi.string()).default(DEFAULT_OPTIONS.systemLabels),
+  entities: Joi.array().items(entitySchema).default(DEFAULT_OPTIONS.entities),
+  labelScheme: labelSchemeSchema.default(DEFAULT_OPTIONS.labelScheme),
   token: Joi.string(),
   updateInterval: Joi.number().min(1).default(DEFAULT_OPTIONS.updateInterval),
   dataPath: Joi.string().default(DEFAULT_OPTIONS.dataPath),
@@ -54,15 +75,37 @@ describe('plugin options validation', () => {
     expect(value.showIncidents).toBe(DEFAULT_OPTIONS.showIncidents);
   });
 
-  it('should accept custom system labels', () => {
+  it('should accept custom entities', () => {
     const options: Partial<PluginOptions> = {
       owner: 'test-owner',
       repo: 'test-repo',
-      systemLabels: ['api', 'web', 'database'],
+      entities: [
+        { name: 'api', type: 'system' },
+        { name: 'web', type: 'system' },
+        { name: 'database', type: 'system' },
+      ],
     };
 
     const {value} = pluginOptionsSchema.validate(options);
-    expect(value.systemLabels).toEqual(['api', 'web', 'database']);
+    expect(value.entities).toHaveLength(3);
+    expect(value.entities[0].name).toBe('api');
+  });
+
+  it('should accept custom label scheme', () => {
+    const options: Partial<PluginOptions> = {
+      owner: 'test-owner',
+      repo: 'test-repo',
+      labelScheme: {
+        separator: '/',
+        defaultType: 'process',
+        allowUntyped: false,
+      },
+    };
+
+    const {value} = pluginOptionsSchema.validate(options);
+    expect(value.labelScheme?.separator).toBe('/');
+    expect(value.labelScheme?.defaultType).toBe('process');
+    expect(value.labelScheme?.allowUntyped).toBe(false);
   });
 
   it('should accept valid GitHub token', () => {
@@ -157,11 +200,24 @@ describe('plugin options validation', () => {
     expect(result.error).toBeDefined();
   });
 
-  it('should throw error for invalid systemLabels type', () => {
+  it('should throw error for invalid entities type', () => {
     const options: any = {
       owner: 'test-owner',
       repo: 'test-repo',
-      systemLabels: 'not-an-array', // Should be array
+      entities: 'not-an-array', // Should be array
+    };
+
+    const result = pluginOptionsSchema.validate(options);
+    expect(result.error).toBeDefined();
+  });
+
+  it('should throw error for invalid entity structure', () => {
+    const options: any = {
+      owner: 'test-owner',
+      repo: 'test-repo',
+      entities: [
+        { name: 'api' }, // Missing required 'type' field
+      ],
     };
 
     const result = pluginOptionsSchema.validate(options);
@@ -184,7 +240,15 @@ describe('plugin options validation', () => {
       owner: 'test-owner',
       repo: 'test-repo',
       statusLabel: 'custom-status',
-      systemLabels: ['api', 'web'],
+      entities: [
+        { name: 'api', type: 'system' },
+        { name: 'web', type: 'system' },
+      ],
+      labelScheme: {
+        separator: ':',
+        defaultType: 'system',
+        allowUntyped: true,
+      },
       token: 'ghp_test',
       updateInterval: 45,
       dataPath: 'custom-data',
@@ -201,7 +265,8 @@ describe('plugin options validation', () => {
     expect(value.owner).toBe('test-owner');
     expect(value.repo).toBe('test-repo');
     expect(value.statusLabel).toBe('custom-status');
-    expect(value.systemLabels).toEqual(['api', 'web']);
+    expect(value.entities).toHaveLength(2);
+    expect(value.entities[0].name).toBe('api');
     expect(value.updateInterval).toBe(45);
     expect(value.title).toBe('My Status');
   });
@@ -227,9 +292,14 @@ describe('plugin options validation', () => {
       const mockValidate = jest.fn((schema, options) => ({
         ...options,
         statusLabel: 'status',
-        systemLabels: [],
+        entities: [],
+        labelScheme: {
+          separator: ':',
+          defaultType: 'system',
+          allowUntyped: true,
+        },
       }));
-      
+
       const mockContext: OptionValidationContext<PluginOptions, PluginOptions> = {
         validate: mockValidate,
         options: {

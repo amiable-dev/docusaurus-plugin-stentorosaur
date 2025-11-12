@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2025-11-12
+
+### BREAKING CHANGES
+
+- **Removed `systemLabels` configuration** - Use `entities` instead
+- Migration script provided: `scripts/migrate-config.js`
+
+### Added
+
+- Entity model with support for multiple types (system, process, project, event, sla, custom)
+- Label parsing with namespaced labels (`system:api`, `process:onboarding`)
+- `LabelParser` utility for extracting entities from issue labels
+- `entities` configuration option (required)
+- `labelScheme` configuration for custom label parsing
+
+### Changed
+
+- `GitHubStatusService` now uses entities instead of system labels
+- Plugin options validation updated to require entities
+
+### Migration Guide
+
+1. Run migration script: `node scripts/migrate-config.js path/to/docusaurus.config.ts`
+2. Review and enhance generated entities configuration
+3. Optionally add displayName, description, icon, or other Entity fields
+4. Update GitHub issue labels to use namespaced format (optional)
+5. No data migration needed - existing status files are compatible
+
+See `ENTITY-MODEL-IMPLEMENTATION.md` for full technical details.
+
 ## [0.10.5] - 2025-11-12
 
 ### Added

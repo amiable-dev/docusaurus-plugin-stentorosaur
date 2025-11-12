@@ -6,14 +6,15 @@
  */
 
 import {Octokit} from '@octokit/rest';
-import type { StatusIncident, StatusItem, StatusItemStatus, ScheduledMaintenance, MaintenanceComment } from './types';
+import type { StatusIncident, StatusItem, StatusItemStatus, ScheduledMaintenance, MaintenanceComment, Entity } from './types';
 import { calculateResolutionTime } from './time-utils';
-import { 
-  extractFrontmatter, 
-  getMaintenanceStatus, 
-  parseMaintenanceComments, 
-  isScheduledMaintenance 
+import {
+  extractFrontmatter,
+  getMaintenanceStatus,
+  parseMaintenanceComments,
+  isScheduledMaintenance
 } from './maintenance-utils';
+import { LabelParser } from './label-utils';
 
 export interface GitHubIssue {
   number: number;
@@ -41,15 +42,17 @@ export class GitHubStatusService {
   private owner: string;
   private repo: string;
   private statusLabel: string;
-  private systemLabels: string[];
+  private entities: Entity[];
   private maintenanceLabels: string[];
+  private labelParser: LabelParser;
 
   constructor(
     token: string | undefined,
     owner: string,
     repo: string,
     statusLabel: string,
-    systemLabels: string[],
+    entities: Entity[],
+    labelScheme: { separator?: string; defaultType?: any; allowUntyped?: boolean } | undefined,
     maintenanceLabels: string[] = ['scheduled-maintenance']
   ) {
     this.octokit = new Octokit({
@@ -58,8 +61,9 @@ export class GitHubStatusService {
     this.owner = owner;
     this.repo = repo;
     this.statusLabel = statusLabel;
-    this.systemLabels = systemLabels;
+    this.entities = entities;
     this.maintenanceLabels = maintenanceLabels;
+    this.labelParser = new LabelParser(labelScheme);
   }
 
   /**
@@ -91,7 +95,7 @@ export class GitHubStatusService {
    */
   convertIssueToIncident(issue: GitHubIssue): StatusIncident {
     const labels = issue.labels.map((l) => l.name);
-    
+
     // Determine severity from labels
     let severity: StatusIncident['severity'] = 'minor';
     if (labels.includes('critical')) {
@@ -102,10 +106,14 @@ export class GitHubStatusService {
       severity = 'maintenance';
     }
 
-    // Extract affected systems from labels
-    const affectedSystems = labels.filter((label) =>
-      this.systemLabels.includes(label)
-    );
+    // Extract affected entities from labels using labelParser
+    const extractedEntities = this.labelParser.extractEntitiesFromLabels(labels, this.entities);
+
+    // Map to entity names (using displayName if available, otherwise name)
+    const affectedSystems = extractedEntities.map(({ name }) => {
+      const entity = this.entities.find(e => e.name === name);
+      return entity?.displayName || name;
+    });
 
     // Calculate resolution time for closed incidents
     const resolutionTimeMinutes = calculateResolutionTime(
@@ -136,10 +144,12 @@ export class GitHubStatusService {
   generateStatusItems(incidents: StatusIncident[]): StatusItem[] {
     const systemsMap = new Map<string, StatusItem>();
 
-    // Initialize all systems as 'up'
-    for (const system of this.systemLabels) {
-      systemsMap.set(system, {
-        name: system,
+    // Initialize all entities as 'up' using displayName (or name as fallback)
+    for (const entity of this.entities) {
+      const displayName = entity.displayName || entity.name;
+      systemsMap.set(displayName, {
+        name: displayName,
+        description: entity.description,
         status: 'up',
         incidentCount: 0,
       });
@@ -268,9 +278,18 @@ export class GitHubStatusService {
     // Determine status
     const status = getMaintenanceStatus(frontmatter.start, frontmatter.end, issue.state);
 
-    // Extract affected systems
-    const affectedSystems = frontmatter.systems || 
-      labels.filter((label) => this.systemLabels.includes(label));
+    // Extract affected systems from frontmatter or labels
+    let affectedSystems: string[] = [];
+    if (frontmatter.systems) {
+      affectedSystems = frontmatter.systems;
+    } else {
+      // Extract from labels using labelParser
+      const extractedEntities = this.labelParser.extractEntitiesFromLabels(labels, this.entities);
+      affectedSystems = extractedEntities.map(({ name }) => {
+        const entity = this.entities.find(e => e.name === name);
+        return entity?.displayName || name;
+      });
+    }
 
     // Extract description (everything after frontmatter)
     const description = content.trim();
