@@ -2,7 +2,7 @@
 
 You now have full control over what's displayed on your status page!
 
-## CLI Tools (v0.4.12+)
+## CLI Tools
 
 ### stentorosaur-update-status
 
@@ -28,7 +28,7 @@ npx stentorosaur-update-status [options]
 **Examples:**
 
 ```bash
-# Generate all data files (v0.4.12+)
+# Generate all data files
 npx stentorosaur-update-status --write-incidents --write-maintenance
 
 # With verbose logging
@@ -78,7 +78,7 @@ When `--write-maintenance` is used:
 - `GITHUB_TOKEN` - Required for fetching issues from GitHub API
 - `GITHUB_REPOSITORY` - Auto-detected in GitHub Actions, or use `--owner` and `--repo` options (coming soon)
 
-## Quick Reference (v0.5.0)
+## Quick Reference
 
 ```typescript
 {
@@ -130,7 +130,7 @@ useDemoData: false
 // (omit the option)
 ```
 
-### Performance Metrics Control (v0.3.1+)
+### Performance Metrics Control
 
 ```typescript
 {
@@ -248,7 +248,7 @@ plugins: [
       // Display options
       showResponseTimes: true,          // Show response time metrics
       showUptime: true,                 // Show uptime percentages
-      showPerformanceMetrics: true,     // Enable interactive charts (v0.3.1+)
+      showPerformanceMetrics: true,     // Enable interactive charts
       
       // Update frequency
       updateInterval: 60,               // Update every 60 minutes
@@ -703,7 +703,7 @@ Then visit http://localhost:3000/status
 
 ---
 
-## Status Page Layout (v0.5.0+)
+## Status Page Layout
 
 ### Choosing Your Status Page Style
 
@@ -777,11 +777,11 @@ A structured layout inspired by Upptime with configurable sections:
 
 ---
 
-## Scheduled Maintenance (v0.5.0+)
+## Scheduled Maintenance
 
 Scheduled maintenance displays in **both** status page views (`statusView: 'default'` and `statusView: 'upptime'`):
-- **Default view** (v0.6.2+): Shows "Scheduled Maintenance" and "Past Maintenance" sections
-- **Upptime view** (v0.5.0+): Configurable via `uptimeConfig.sections`
+- **Default view**: Shows "Scheduled Maintenance" and "Past Maintenance" sections
+- **Upptime view**: Configurable via `uptimeConfig.sections`
 
 ### Enabling Maintenance Tracking
 
@@ -925,7 +925,7 @@ plugins: [
 
 ---
 
-## Interactive Performance Metrics (v0.3.1+)
+## Interactive Performance Metrics
 
 ### Click-to-Toggle Performance Metrics
 
@@ -981,7 +981,7 @@ When `showPerformanceMetrics: true` (default), the status page becomes interacti
 }
 ```
 
-### SLI/SLO Tracking (v0.3.1+)
+### SLI/SLO Tracking
 
 The new SLI (Service Level Indicator) and SLO (Service Level Objective) charts help track service reliability:
 
@@ -1016,7 +1016,7 @@ The default SLO target is 99.9%, but you can customize it per system:
 />
 ```
 
-### Embedding Charts in Your Content (v0.3.1+)
+### Embedding Charts in Your Content
 
 The new `ChartPanel` component lets you embed performance charts anywhere in your Docusaurus site:
 
@@ -1063,7 +1063,7 @@ import ChartPanel from '@theme/ChartPanel';
 - `'sli'` - SLI/SLO compliance line chart
 - `'errorBudget'` - Error budget consumption bar chart
 
-### Swizzling New Components (v0.3.1+)
+### Swizzling Components
 
 All new components are fully swizzleable for customization:
 
@@ -1086,13 +1086,13 @@ npm run swizzle docusaurus-plugin-stentorosaur ChartPanel -- --eject
 5. ResponseTimeChart
 6. UptimeChart
 7. StatusHistory
-8. PerformanceMetrics (new in v0.3.1)
-9. SLIChart (new in v0.3.1)
-10. ChartPanel (new in v0.3.1)
+8. PerformanceMetrics
+9. SLIChart
+10. ChartPanel
 
 ---
 
-## Chart Visualization Options (v0.3.0+)
+## Chart Visualization Options
 
 The plugin now includes interactive charts for visualizing response times and uptime data!
 
@@ -1229,7 +1229,7 @@ All charts automatically adapt to your Docusaurus theme:
 - Match your site's design system
 - Fully responsive on mobile devices
 
-### Dataset Download (v0.6.0+)
+### Dataset Download
 
 All charts now support downloading the underlying dataset in multiple formats:
 

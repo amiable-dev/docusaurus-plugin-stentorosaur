@@ -44,10 +44,10 @@ module.exports = {
         ],
         token: process.env.GITHUB_TOKEN,
         
-        // Optional: Choose status page layout (v0.5.0+)
+        // Optional: Choose status page layout
         statusView: 'upptime',  // 'default' | 'upptime'
-        
-        // Optional: Enable scheduled maintenance tracking (v0.5.0+)
+
+        // Optional: Enable scheduled maintenance tracking
         scheduledMaintenance: {
           enabled: true,
           label: 'maintenance',
@@ -113,7 +113,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 - ✅ Triggers immediate deployment for critical incidents
 - ✅ Uses CLI: `npx stentorosaur-update-status --write-incidents --write-maintenance`
 
-**CLI Options (v0.4.12+):**
+**CLI Options:**
 
 ```bash
 # Full command with all options
@@ -152,7 +152,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 - ✅ Picks up maintenance window changes
 - ✅ Ensures regular updates even without critical issues
 
-**Smart Deployment Logic (v0.4.13+):**
+**Smart Deployment Logic:**
 
 ```
 Critical Incident:
@@ -259,7 +259,7 @@ Navigate to: `http://localhost:3000/status`
 
 ## Next Steps
 
-### Choose Your Status Page Layout (v0.5.0+)
+### Choose Your Status Page Layout
 
 Pick the layout that works best for you:
 
@@ -290,7 +290,7 @@ Pick the layout that works best for you:
 }
 ```
 
-### Track Scheduled Maintenance (v0.5.0+)
+### Track Scheduled Maintenance
 
 Create maintenance issues with special formatting:
 
@@ -317,11 +317,11 @@ Edit the plugin configuration to customize:
   description: 'Real-time status of all our services',
   showResponseTimes: true,
   showUptime: true,
-  showPerformanceMetrics: true,  // v0.3.1+: Enable interactive charts
+  showPerformanceMetrics: true,  // Enable interactive charts
 }
 ```
 
-### Explore Interactive Features (v0.3.1+)
+### Explore Interactive Features
 
 **Click System Cards**: When `showPerformanceMetrics` is enabled (default), click any system card to reveal detailed performance charts:
 
@@ -336,7 +336,7 @@ Edit the plugin configuration to customize:
 
 **Keyboard Navigation**: Use Tab, Enter, and Space keys for full accessibility.
 
-### Embed Charts in Your Docs (v0.3.1+)
+### Embed Charts in Your Docs
 
 Use the new `ChartPanel` component to embed performance charts anywhere:
 
@@ -380,7 +380,7 @@ For private repositories, create a GitHub Personal Access Token:
 
 ### Monitor More Entities
 
-Add more entities to track (v0.11.0+):
+Add more entities to track:
 
 ```javascript
 entities: [
@@ -394,7 +394,7 @@ entities: [
 ]
 ```
 
-**Note:** The Entity model (v0.11.0+) supports multiple types beyond just systems: `system`, `process`, `project`, `event`, `sla`, `custom`.
+**Note:** The Entity model supports multiple types beyond just systems: `system`, `process`, `project`, `event`, `sla`, `custom`.
 
 ### Embed Status Components
 
@@ -407,7 +407,7 @@ import ChartPanel from '@theme/ChartPanel';
 <!-- Status overview -->
 <StatusBoard items={yourStatusItems} />
 
-<!-- Performance charts (v0.3.1+) -->
+<!-- Performance charts -->
 <ChartPanel systemName="api" defaultPeriod="7d" />
 ```
 

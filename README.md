@@ -8,23 +8,23 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
 ## Features
 
 - 🎯 **Status Dashboard**: Beautiful, real-time status display for your systems and processes
-- 🏗️ **Multiple Status Views** (v0.5.0+): Choose between default or Upptime-style structured layouts
-- 🔧 **Scheduled Maintenance** (v0.5.0+): Track and display upcoming and past maintenance windows
+- 🏗️ **Multiple Status Views**: Choose between default or Upptime-style structured layouts
+- 🔧 **Scheduled Maintenance**: Track and display upcoming and past maintenance windows
 - 📊 **Incident Timeline**: Historical view of all incidents with severity tracking
-- 📈 **Interactive Charts** (v0.3.0+): Visualize response times and uptime with Chart.js
+- 📈 **Interactive Charts**: Visualize response times and uptime with Chart.js
   - Line charts for response time trends
   - Bar charts and heatmaps for uptime visualization
   - Multiple time period views (24h, 7d, 30d, 90d)
   - Automatic dark/light theme support
-  - Mini heatmaps on system cards (v0.10.1+): Redesigned 90-day uptime visualization with vertical rectangles
-  - Extensible annotation system (v0.10.0+): Display maintenance windows and incidents as chart annotations
-  - Markdown rendering support (v0.10.3+): Full GitHub-flavored markdown in incident and maintenance descriptions
-- 💾 **Dataset Download** (v0.6.0+): Export chart data for offline analysis
+  - Mini heatmaps on system cards: 90-day uptime visualization with vertical rectangles
+  - Extensible annotation system: Display maintenance windows and incidents as chart annotations
+  - Markdown rendering support: Full GitHub-flavored markdown in incident and maintenance descriptions
+- 💾 **Dataset Download**: Export chart data for offline analysis
   - Download data from any chart as CSV or JSON
   - All chart components include export buttons
   - Client-side data generation with no server load
   - Perfect for Excel, reports, BI tools, and compliance archiving
-- 🎭 **Performance Metrics** (v0.3.1+): Advanced monitoring visualizations
+- 🎭 **Performance Metrics**: Advanced monitoring visualizations
   - Click system cards to show/hide detailed performance metrics
   - Side-by-side responsive chart layouts
   - Fullscreen zoom for detailed analysis
@@ -55,7 +55,7 @@ npm install @amiable-dev/docusaurus-plugin-stentorosaur
 yarn add @amiable-dev/docusaurus-plugin-stentorosaur
 ```
 
-> **📚 New in v0.7.0**: We recommend using an orphaned `status-data` branch for storing monitoring data (following the Upptime pattern). This keeps your main branch lean and improves performance. See [Orphaned Branch Setup Guide](./ORPHANED_BRANCH_SETUP.md) for migration instructions.
+> **📚 Recommended**: Use an orphaned `status-data` branch for storing monitoring data (following the Upptime pattern). This keeps your main branch lean and improves performance. See [Orphaned Branch Setup Guide](./ORPHANED_BRANCH_SETUP.md) for setup instructions.
 
 ## GitHub Token Setup
 
@@ -255,8 +255,8 @@ module.exports = {
         owner: 'your-org',
         repo: 'your-repo',
 
-        // NEW in v0.11.0: Entity Configuration (REQUIRED)
-        // Define entities to track - replaces systemLabels
+        // Entity Configuration (REQUIRED)
+        // Define entities to track
         entities: [
           // Systems (technical infrastructure)
           {
@@ -299,13 +299,13 @@ module.exports = {
         showResponseTimes: true,
         showUptime: true,
         
-        // NEW in v0.3.1: Performance metrics visualization
+        // Performance metrics visualization
         showPerformanceMetrics: true,  // Enable/disable performance charts (default: true)
-        
-        // NEW in v0.5.0: Status page layout style
+
+        // Status page layout style
         statusView: 'upptime',  // 'default' | 'upptime' (default: 'default')
-        
-        // NEW in v0.5.0: Configure Upptime-style sections
+
+        // Configure Upptime-style sections
         uptimeConfig: {
           sections: [
             { id: 'active-incidents', enabled: true },
@@ -320,7 +320,7 @@ module.exports = {
           },
         },
         
-        // NEW in v0.5.0: Scheduled maintenance tracking
+        // Scheduled maintenance tracking
         scheduledMaintenance: {
           enabled: true,
           labels: ['maintenance'],    // GitHub labels for maintenance issues
@@ -344,9 +344,9 @@ module.exports = {
 };
 ```
 
-### Entity Configuration (v0.11.0+)
+### Entity Configuration
 
-Starting in v0.11.0, the plugin uses an **entity model** instead of simple `systemLabels`. This allows you to track different types of entities with rich metadata.
+The plugin uses an **entity model** that allows you to track different types of entities with rich metadata.
 
 #### Entity Types
 
@@ -401,22 +401,6 @@ Configure the label scheme in plugin options:
 }
 ```
 
-#### Migration from systemLabels
-
-If you're upgrading from v0.10.x or earlier, use the migration script:
-
-```bash
-node node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/scripts/migrate-config.js docusaurus.config.ts
-```
-
-The script will:
-
-1. Convert `systemLabels` array to `entities` array
-2. Create entities with type='system'
-3. Preserve your existing configuration
-4. Show a diff of changes before applying
-
-See `ENTITY-MODEL-IMPLEMENTATION.md` for full technical details.
 
 ### GitHub Actions Setup
 
@@ -431,7 +415,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 
 #### 2. Configure Monitoring
 
-**IMPORTANT (v0.4.10+)**: The workflow now uses **sequential monitoring** to eliminate race conditions and guarantee zero data loss.
+**IMPORTANT**: The workflow uses **sequential monitoring** to eliminate race conditions and guarantee zero data loss.
 
 Create `.monitorrc.json` in your repository root:
 
@@ -492,9 +476,9 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMP
 **Available templates:**
 
 - `status-issue.yml` - Report system or process status issues
-- `scheduled-maintenance.yml` - Schedule maintenance windows (v0.5.0+)
+- `scheduled-maintenance.yml` - Schedule maintenance windows
 
-### Creating Maintenance Tickets (v0.5.0+)
+### Creating Maintenance Tickets
 
 To schedule and display maintenance windows on your status page, create GitHub issues with the `maintenance` label and YAML frontmatter:
 
@@ -607,7 +591,7 @@ Once configured, the plugin automatically creates a `/status` route on your Docu
 
 Visit `https://your-site.com/status` to see the status dashboard.
 
-### Interactive Performance Metrics (v0.3.1+)
+### Interactive Performance Metrics
 
 When `showPerformanceMetrics: true` (default), each system card on the status page is clickable:
 
@@ -682,7 +666,7 @@ import IncidentHistory from '@theme/IncidentHistory';
 />
 ```
 
-### Embedding Performance Charts (v0.3.1+)
+### Embedding Performance Charts
 
 Use the `ChartPanel` component to embed performance metrics anywhere in your Docusaurus site:
 
@@ -841,11 +825,11 @@ The CLI tool:
 - Can be used in local development or CI/CD pipelines
 - Provides helpful error messages with examples
 
-## Monitoring Architecture (v0.4.0+)
+## Monitoring Architecture
 
-### New Append-Only Data Storage
+### Append-Only Data Storage
 
-As of v0.4.0, the plugin uses an **append-only monitoring architecture** that eliminates Git history pollution and improves performance:
+The plugin uses an **append-only monitoring architecture** that eliminates Git history pollution and improves performance:
 
 **Key Features:**
 
@@ -879,9 +863,9 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 
 See [MONITORING_SYSTEM.md](./MONITORING_SYSTEM.md) for complete documentation.
 
-### Three-File Data Architecture (v0.4.11+)
+### Three-File Data Architecture
 
-The plugin now uses a **three-file data architecture** that separates monitoring data from incident data for improved performance and smart deployments:
+The plugin uses a **three-file data architecture** that separates monitoring data from incident data for improved performance and smart deployments:
 
 ```text
 status-data/
@@ -963,9 +947,9 @@ status-data/
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Smart Deployment Logic (v0.4.13+):**
+**Smart Deployment Logic:**
 
-The `deploy.yml` workflow has been enhanced with intelligent triggers:
+The `deploy.yml` workflow has intelligent triggers:
 
 - **Ignores monitoring data commits**: `paths-ignore` for `status-data/current.json` and archives
 - **Immediate critical deploys**: `repository_dispatch` event when critical incidents occur
@@ -977,7 +961,7 @@ This means:
 - 🕐 **Non-critical incidents** deploy within 1 hour via scheduled workflow
 - 🚫 **Monitoring commits** (every 5 min) don't trigger any deployments
 
-**CLI Options for Status Update (v0.4.12+):**
+**CLI Options for Status Update:**
 
 ```bash
 # Generate all data files
@@ -1092,7 +1076,7 @@ jobs:
   owner: 'your-org',
   repo: 'your-repo',
 
-  // NEW in v0.11.0: Entity configuration (REQUIRED)
+  // Entity configuration (REQUIRED)
   entities: [
     { name: 'api', type: 'system', displayName: 'API Service' },
     { name: 'web', type: 'system', displayName: 'Website' },
@@ -1100,7 +1084,7 @@ jobs:
     { name: 'onboarding', type: 'process', displayName: 'Customer Onboarding' },
   ],
 
-  // Label parsing scheme (v0.11.0+)
+  // Label parsing scheme
   labelScheme: 'namespaced',                 // 'namespaced' | 'legacy', default: 'namespaced'
   
   // GitHub token (optional but recommended)
@@ -1116,13 +1100,13 @@ jobs:
   // Content visibility
   showServices: true,                        // default: true
   showIncidents: true,                       // default: true
-  showPerformanceMetrics: true,              // default: true (v0.3.1+)
+  showPerformanceMetrics: true,              // default: true
   
   // Display features
   showResponseTimes: true,                   // default: false
   showUptime: true,                          // default: false
   
-  // SLO/SLI Configuration (v0.3.2+)
+  // SLO/SLI Configuration
   defaultSLO: 99.9,                          // default: 99.9 (percentage)
   systemSLOs: {                              // per-system SLO targets
     'Main Website': 99.99,
@@ -1130,7 +1114,7 @@ jobs:
     'Documentation': 99.5,
   },
   
-  // Status Page Layout (v0.5.0+)
+  // Status Page Layout
   statusView: 'upptime',                     // 'default' | 'upptime', default: 'default'
   uptimeConfig: {                            // Upptime-style configuration
     sections: [                              // Configure section visibility
@@ -1147,7 +1131,7 @@ jobs:
     },
   },
   
-  // Scheduled Maintenance (v0.5.0+)
+  // Scheduled Maintenance
   scheduledMaintenance: {
     enabled: true,                           // default: true
     label: 'maintenance',                    // Single GitHub label (deprecated: use 'labels' instead)
@@ -1200,7 +1184,7 @@ jobs:
 }
 ```
 
-**Upptime-Style Layout** (v0.5.0+):
+**Upptime-Style Layout**:
 
 ```typescript
 {
@@ -1325,55 +1309,10 @@ graph LR
 | `description` | string | `'Current status...'` | Status page description |
 | `showResponseTimes` | boolean | `true` | Display response times |
 | `showUptime` | boolean | `true` | Display uptime percentages |
-| `showPerformanceMetrics` | boolean | `true` | Enable interactive performance charts (v0.3.1+) |
+| `showPerformanceMetrics` | boolean | `true` | Enable interactive performance charts |
 | `useDemoData` | boolean | `!token` | Use demo data when no token provided |
 | `showServices` | boolean | `true` | Show/hide services status board |
 | `showIncidents` | boolean | `true` | Show/hide incident history |
-
-## UI Enhancements (v0.10.0+)
-
-### Extensible Chart Annotation System (v0.10.0)
-
-The plugin now features an extensible annotation system that displays events directly on uptime charts:
-
-- **Maintenance Windows**: Box annotations showing the full duration of maintenance periods
-  - Color-coded by status: blue (upcoming), purple (in-progress), gray (completed)
-  - Icons indicate status: 🔔 upcoming, 🔧 in-progress, ✅ completed
-- **Incidents**: Line annotations marking when incidents occurred
-  - Different icons based on severity (⚠️ for critical incidents)
-- **Extensible Design**: Architecture supports future event types (deployments, releases, etc.)
-
-The `ChartAnnotation` interface allows for easy addition of new annotation types without breaking changes.
-
-### Mini Heatmap Redesign (v0.10.1)
-
-Inspired by modern status pages like status.claude.com, mini heatmaps now feature:
-
-- **Vertical Rectangles**: Changed from square dots to 3px × 30px rectangles for better visibility
-- **Uptime Percentage Display**: Shows percentage and time period below each heatmap (e.g., "99.71% uptime • 90 days ago")
-- **Color-Coded Stats**: Green (≥99%), yellow (≥95%), red (<95%)
-- **Mobile Responsive**: Scales to 2px × 20px on smaller screens
-- **Horizontal Scrolling**: Maintains smooth scrolling for long time periods
-
-### Markdown Rendering Support (v0.10.3)
-
-GitHub Issues markdown content now renders with full formatting:
-
-- **Incident Descriptions**: Click "View details" to expand formatted incident details
-- **Maintenance Descriptions**: Full markdown support in maintenance window descriptions
-- **Comment Rendering**: Maintenance updates and comments display with proper formatting
-- **GitHub-Flavored Markdown**: Supports headings, lists, code blocks, blockquotes, tables, images, links
-- **XSS Protection**: All content sanitized with DOMPurify for security
-- **Comprehensive Styling**: Professional typography matching Docusaurus theme
-
-### Version Display (v0.10.4)
-
-The status page footer now displays the plugin version (e.g., "Docusaurus Stentorosaur Plugin v0.10.4"):
-
-- Auto-generated from package.json during build
-- Links to the plugin's GitHub repository
-- Helps users identify which version they're running
-- Useful for debugging and support
 
 ## Components API
 
@@ -1386,7 +1325,7 @@ interface StatusBoardProps {
   items: StatusItem[];
   title?: string;
   description?: string;
-  onSystemClick?: (index: number) => void;  // v0.3.1+
+  onSystemClick?: (index: number) => void;
 }
 ```
 
@@ -1399,7 +1338,7 @@ interface StatusItemProps {
   item: StatusItem;
   showResponseTime?: boolean;
   showUptime?: boolean;
-  onClick?: () => void;  // v0.3.1+
+  onClick?: () => void;
 }
 ```
 
@@ -1414,7 +1353,7 @@ interface IncidentHistoryProps {
 }
 ```
 
-### PerformanceMetrics (v0.3.1+)
+### PerformanceMetrics
 
 Displays performance charts for a specific system with fullscreen zoom capability.
 
@@ -1433,7 +1372,7 @@ interface PerformanceMetricsProps {
 - Responsive 2x2 grid layout (desktop) / vertical stack (mobile)
 - Includes: Response Time, Uptime, SLI/SLO, Error Budget charts
 
-### SLIChart (v0.3.1+)
+### SLIChart
 
 Displays SLI/SLO compliance or error budget visualization.
 
@@ -1458,7 +1397,7 @@ interface SLIChartProps {
 - 100% = all error budget consumed for that day
 - Helps track service reliability over time
 
-### ChartPanel (v0.3.1+)
+### ChartPanel
 
 Embeddable container for one or more performance charts.
 
@@ -1485,7 +1424,7 @@ import ChartPanel from '@theme/ChartPanel';
 />
 ```
 
-### ResponseTimeChart (v0.3.0+)
+### ResponseTimeChart
 
 Line chart showing response time trends.
 
@@ -1497,22 +1436,22 @@ interface ResponseTimeChartProps {
 }
 ```
 
-### UptimeChart (v0.3.0+)
+### UptimeChart
 
 Bar/heatmap chart showing uptime patterns.
 
 ```tsx
 interface UptimeChartProps {
   systemName: string;
-  period?: '24h' | '7d' | '30d' | '90d';  // v0.3.1: added 24h
+  period?: '24h' | '7d' | '30d' | '90d';
   chartType?: 'bar' | 'heatmap';
   height?: number;
 }
 ```
 
-### StatusHistory (v0.3.0+)
+### StatusHistory
 
-Detailed historical view for a single system with back navigation (v0.3.1+).
+Detailed historical view for a single system with back navigation.
 
 ```tsx
 interface StatusHistoryProps {
@@ -1524,7 +1463,7 @@ interface StatusHistoryProps {
 
 ### Tracking Process Issues
 
-Beyond technical systems, you can track business processes with the entity model (v0.11.0+):
+Beyond technical systems, you can track business processes with the entity model:
 
 ```javascript
 entities: [
