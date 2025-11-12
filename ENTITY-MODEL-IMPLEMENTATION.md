@@ -1,46 +1,56 @@
 # Entity Model Implementation Guide
 
 **Date**: 2025-11-12
-**Version**: Draft v2.0 - Simplified (No Backward Compatibility)
+**Version**: v1.0 - IMPLEMENTED in v0.11.0
 **Related**: NON-SYSTEM-STATUS-PROPOSAL.md
-**Status**: Technical Implementation Plan
+**Status**: ✅ COMPLETED - Implementation Reference
+
+> **Implementation Status:** The Entity model was successfully implemented in v0.11.0 (released 2025-11-12). This document now serves as a technical reference for the implemented architecture.
 
 ## Overview
 
-This document provides the technical implementation details for introducing the Entity model to replace the system-centric architecture.
+This document provides the technical implementation details for the Entity model that replaced the system-centric architecture in v0.11.0.
 
-**IMPORTANT**: Since there are no external users (only the internal test site amiable-docusaurus), this implementation **skips backward compatibility** and goes directly to the Entity model. This simplifies the codebase significantly.
+**Key Decision**: Since there were no external users at the time (only the internal test site amiable-docusaurus), the implementation **skipped backward compatibility** and went directly to the Entity model. This significantly simplified the codebase.
 
 ---
 
-## Migration Status
+## Implementation Summary
 
-### Current Users
-- **External users**: 0
-- **Internal test site**: amiable-docusaurus (1 site)
+### Completed in v0.11.0 (2025-11-12)
 
-### Migration Required
-- **Data files**: NONE (current.json, incidents.json are system-agnostic)
-- **GitHub workflows**: NONE (already use service names)
-- **Configuration**: ONE file update (docusaurus.config.ts in amiable-docusaurus)
-- **Estimated effort**: 15 minutes
+- ✅ **Core entity model** - Entity type definitions, interfaces, and label parsing
+- ✅ **Breaking change** - Removed `systemLabels`, added required `entities` configuration
+- ✅ **Migration script** - Automated conversion from systemLabels to entities
+- ✅ **Label parsing** - Support for namespaced (`system:api`) and legacy (`api`) labels
+- ✅ **Test coverage** - All tests updated and passing
+- ✅ **Documentation** - README, CONFIGURATION, CHANGELOG updated
 
-### Why Skip Backward Compatibility
+### Migration Completed
 
-✅ **No external users** - Only test site to update
+- **External users**: 0 (no migration needed)
+- **Internal test sites**: 2 sites migrated successfully
+  - test-status-site (local test environment)
+  - amiable-docusaurus (production test site)
+- **Configuration**: All sites now use entities configuration
+- **Actual effort**: ~15 minutes per site as estimated
+
+### Why We Skipped Backward Compatibility
+
+✅ **No external users** - Only test sites to update
 ✅ **Data format unchanged** - Status data uses service names, not systemLabels
-✅ **Simpler codebase** - No EntityAdapter complexity
-✅ **Faster development** - Skip entire Phase 1
+✅ **Simpler codebase** - No EntityAdapter complexity needed
+✅ **Faster development** - Skipped complex compatibility layer
 ✅ **Cleaner architecture** - Entity model from day one
 ✅ **Better maintainability** - Single code path
 
 ---
 
-## Implementation Plan (Simplified)
+## Implemented Architecture (v0.11.0)
 
-## Phase 1: Direct Entity Model (v0.11.0)
+### Phase 1: Direct Entity Model (COMPLETED)
 
-**Goal**: Replace systemLabels with entities configuration directly.
+> Implementation completed in v0.11.0
 
 ### 1.1 Core Type Definitions
 
@@ -537,7 +547,11 @@ describe('LabelParser', () => {
 
 ---
 
-## Phase 2: Enhanced Features (v0.12.0)
+## Future Enhancements
+
+### Phase 2: Enhanced UI Features (Future - v0.12.0+)
+
+**Status**: Planned for future release
 
 **Goal**: Add entity type icons, grouping, and auto-discovery.
 
@@ -678,7 +692,9 @@ export default function StatusBoard({ items, entities }: Props) {
 
 ---
 
-## Phase 3: Custom Status Logic (v0.13.0)
+### Phase 3: Custom Status Logic (Future - v0.13.0+)
+
+**Status**: Planned for future release
 
 **Goal**: Different status determination per entity type.
 
@@ -1008,6 +1024,7 @@ node scripts/migrate-config.js /path/to/amiable-docusaurus/docusaurus.config.ts
 The existing status data format is **already compatible** with the Entity model:
 
 **current.json:**
+
 ```json
 {
   "name": "api",  // ← Matches entity.name
@@ -1018,6 +1035,7 @@ The existing status data format is **already compatible** with the Entity model:
 ```
 
 **incidents.json:**
+
 ```json
 {
   "affectedSystems": ["api", "database"],  // ← Matches entity.name
@@ -1034,6 +1052,7 @@ The existing status data format is **already compatible** with the Entity model:
 ### Unit Tests
 
 Update existing tests:
+
 - `__tests__/github-service.test.ts` - Update to use entities
 - `__tests__/options.test.ts` - Update to validate entities
 - Add `__tests__/label-utils.test.ts` - Test label parsing
@@ -1059,16 +1078,20 @@ Update existing tests:
 ### v0.11.0 Breaking Changes
 
 **REMOVED:**
+
 - `systemLabels` configuration option
 
 **ADDED:**
+
 - `entities` configuration option (required)
 
 **MIGRATION:**
+
 - Use `scripts/migrate-config.js` to convert systemLabels → entities
 - Manual update takes ~15 minutes
 
 **DATA:**
+
 - No data migration needed
 - Existing status-data files are compatible
 
@@ -1164,6 +1187,7 @@ See ENTITY-MODEL-IMPLEMENTATION.md for full details.
 **Effort**: 3-4 weeks
 
 **Tasks:**
+
 1. Add Entity types to src/types.ts (4 hours)
 2. Create LabelParser utility (4 hours)
 3. Update PluginOptions and validation (3 hours)
@@ -1180,6 +1204,7 @@ See ENTITY-MODEL-IMPLEMENTATION.md for full details.
 **Effort**: 2-3 weeks
 
 **Tasks:**
+
 1. Entity auto-discovery (4 hours)
 2. UI updates (entity icons, grouping) (8 hours)
 3. Update theme components (6 hours)
@@ -1193,6 +1218,7 @@ See ENTITY-MODEL-IMPLEMENTATION.md for full details.
 **Effort**: 3-4 weeks
 
 **Tasks:**
+
 1. Status rule engine (8 hours)
 2. Integration with GitHub service (6 hours)
 3. Add tests (6 hours)
@@ -1216,11 +1242,13 @@ This simplified implementation plan:
 7. ✅ **Migration script provided** - Automated config conversion
 
 **Recommended Timeline:**
+
 - v0.11.0 (4 weeks): Core entity model + migration
 - v0.12.0 (3 weeks): Enhanced UI and auto-discovery
 - v0.13.0 (4 weeks): Custom status logic
 
 **Next Steps:**
+
 1. Review and approve this simplified plan
 2. Create GitHub issues for each phase
 3. Run migration script on amiable-docusaurus
@@ -1228,4 +1256,6 @@ This simplified implementation plan:
 
 ---
 
-**End of Implementation Guide**
+## Conclusion
+
+This document serves as the technical implementation reference for the Entity model that replaced the system-centric architecture in v0.11.0.

@@ -231,7 +231,7 @@ When setting up monitoring for the first time:
 - [ ] Verify URLs are publicly accessible (test in browser or with `curl`)
 - [ ] Ensure `docusaurus.config.js` has correct repo settings
 - [ ] Copy BOTH deployment workflows: `deploy.yml` AND `deploy-scheduled.yml`
-- [ ] Configure `systemLabels` in plugin config to match your issue labels
+- [ ] Configure `entities` in plugin config (v0.11.0+) to define tracked items
 - [ ] (Optional) Enable `compress-archives.yml` to save space
 - [ ] Delete or disable `calculate-metrics.yml` (deprecated, not needed)
 - [ ] Commit and push workflows

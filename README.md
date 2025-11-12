@@ -377,20 +377,23 @@ interface Entity {
 Entities can be identified from GitHub issue labels using two schemes:
 
 **Namespaced Labels** (default):
-```
+
+```text
 system:api
 process:onboarding
 project:migration-aurora
 ```
 
 **Legacy Labels** (backward compatible):
-```
+
+```text
 api
 onboarding
 migration-aurora
 ```
 
 Configure the label scheme in plugin options:
+
 ```javascript
 {
   entities: [...],
@@ -407,6 +410,7 @@ node node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/scripts/migrate-co
 ```
 
 The script will:
+
 1. Convert `systemLabels` array to `entities` array
 2. Create entities with type='system'
 3. Preserve your existing configuration
@@ -486,6 +490,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMP
 ```
 
 **Available templates:**
+
 - `status-issue.yml` - Report system or process status issues
 - `scheduled-maintenance.yml` - Schedule maintenance windows (v0.5.0+)
 
@@ -568,6 +573,7 @@ This ensures your historical performance data remains accurate and incidents are
 **Labels:** `maintenance`, `api`, `website`
 
 **Body:**
+
 ```markdown
 ---
 start: 2025-11-15T02:00:00Z
@@ -606,35 +612,42 @@ Visit `https://your-site.com/status` to see the status dashboard.
 When `showPerformanceMetrics: true` (default), each system card on the status page is clickable:
 
 **Click Behavior:**
+
 1. **Click a system card** → Performance metrics slide down below the card
 2. **Click a different system** → Previous metrics hide, new system's metrics show
 3. **Click the active system again** → Metrics hide (toggle off)
 
 **Performance Metrics Display:**
+
 - **Response Time Chart**: Line chart showing response time trends
 - **Uptime Chart**: Bar/heatmap visualization of availability
 - **SLI/SLO Chart**: Service Level Indicator tracking against 99.9% target
 - **Error Budget Chart**: Remaining error budget consumption
 
 **Period Selection:**
+
 - Toggle between 24h, 7d, 30d, or 90d views
 - Period selection synchronizes across ALL charts simultaneously
 
 **Fullscreen Zoom:**
+
 - Click any chart to view it fullscreen
 - Enhanced detail view for analysis
 - Click anywhere to close and return to normal view
 
 **Responsive Layout:**
+
 - Desktop: Charts display in 2x2 grid (side-by-side)
 - Tablet/Mobile: Charts stack vertically for optimal viewing
 
 **Keyboard Navigation:**
+
 - Tab to focus system cards
 - Enter or Space to toggle metrics
 - Full ARIA accessibility support
 
 **Back Navigation:**
+
 - In detailed history view, click "← Back to Status" to return to main page
 
 ### Embedding Status Components
@@ -695,6 +708,7 @@ import ChartPanel from '@theme/ChartPanel';
 #### Individual Chart Types
 
 **Response Time Chart:**
+
 ```mdx
 <ChartPanel 
   systemName="api"
@@ -704,6 +718,7 @@ import ChartPanel from '@theme/ChartPanel';
 ```
 
 **Uptime Heatmap:**
+
 ```mdx
 <ChartPanel 
   systemName="database"
@@ -713,6 +728,7 @@ import ChartPanel from '@theme/ChartPanel';
 ```
 
 **SLI/SLO Compliance:**
+
 ```mdx
 <ChartPanel 
   systemName="api"
@@ -723,6 +739,7 @@ import ChartPanel from '@theme/ChartPanel';
 ```
 
 **Error Budget Tracking:**
+
 ```mdx
 <ChartPanel 
   systemName="api"
@@ -745,10 +762,12 @@ interface ChartPanelProps {
 ```
 
 **Layout Options:**
+
 - `horizontal`: Charts display side-by-side (2x2 grid on desktop, responsive stacking on mobile)
 - `vertical`: Charts always stack vertically (useful for narrow layouts)
 
 **Chart Types:**
+
 - `response`: Response time line chart
 - `uptime`: Uptime bar/heatmap chart
 - `sli`: SLI/SLO compliance line chart with target line
@@ -759,14 +778,17 @@ interface ChartPanelProps {
 The plugin uses GitHub issue labels to track status:
 
 **Required Labels:**
+
 - `status` - Identifies status-related issues
 
 **Entity Labels:**
+
 - Use labels matching your `entities` config to tag which entity is affected
 - Namespaced format (default): `system:api`, `process:onboarding`, `project:migration`
 - Legacy format: `api`, `onboarding`, `migration` (configure with `labelScheme: 'legacy'`)
 
 **Severity Labels:**
+
 - `critical` - Complete outage
 - `major` - Significant degradation
 - `minor` - Partial issues  
@@ -826,6 +848,7 @@ The CLI tool:
 As of v0.4.0, the plugin uses an **append-only monitoring architecture** that eliminates Git history pollution and improves performance:
 
 **Key Features:**
+
 - 📝 **Append-only JSONL files** - One line per check, no file rewrites
 - ⚡ **Hot file (current.json)** - 14-day rolling window (~200-400 KB)
 - 🗜️ **Automatic compression** - Daily gzip of old archives (80-90% reduction)
@@ -833,7 +856,8 @@ As of v0.4.0, the plugin uses an **append-only monitoring architecture** that el
 - 🧹 **Clean Git history** - Minimal commits, no data pollution
 
 **Data Structure:**
-```
+
+```text
 status-data/                               # Committed to Git
 ├── current.json                           # Hot file (rolling 14-day window)
 └── archives/
@@ -844,6 +868,7 @@ status-data/                               # Committed to Git
 ```
 
 **Setup:**
+
 ```bash
 # Copy monitoring workflows
 cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/monitor-systems.yml .github/workflows/
@@ -858,7 +883,7 @@ See [MONITORING_SYSTEM.md](./MONITORING_SYSTEM.md) for complete documentation.
 
 The plugin now uses a **three-file data architecture** that separates monitoring data from incident data for improved performance and smart deployments:
 
-```
+```text
 status-data/
 ├── current.json          # Time-series monitoring readings (every 5min, 14-day window)
 ├── incidents.json        # Active and resolved incidents from GitHub Issues
@@ -882,7 +907,7 @@ status-data/
 
 **Data Flow:**
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │  MONITORING FLOW (Every 5 minutes)                              │
 ├─────────────────────────────────────────────────────────────────┤
@@ -947,6 +972,7 @@ The `deploy.yml` workflow has been enhanced with intelligent triggers:
 - **Scheduled non-critical**: `deploy-scheduled.yml` runs hourly to pick up routine updates
 
 This means:
+
 - ⚡ **Critical incidents** deploy within ~2 minutes via `repository_dispatch`
 - 🕐 **Non-critical incidents** deploy within 1 hour via scheduled workflow
 - 🚫 **Monitoring commits** (every 5 min) don't trigger any deployments
@@ -975,6 +1001,7 @@ The plugin supports two different approaches for managing status data, depending
 Status data is fetched fresh during each build and is **not committed** to your repository.
 
 **Setup:**
+
 ```gitignore
 # .gitignore
 build/
@@ -982,12 +1009,14 @@ build/
 ```
 
 **Workflow:**
+
 1. Docusaurus build runs
 2. Plugin fetches status data from GitHub API
 3. Status page is generated with fresh data
 4. Deploy the built site
 
 **Best for:**
+
 - Sites with frequent builds
 - CI/CD pipelines that build on every push
 - When you want to keep your repo clean
@@ -997,6 +1026,7 @@ build/
 Status data is generated by a scheduled workflow and **committed to git**, similar to how [Upptime](https://upptime.js.org) works.
 
 **Setup:**
+
 ```gitignore
 # .gitignore
 build/
@@ -1005,18 +1035,21 @@ build/
 ```
 
 **Workflow:**
+
 1. Scheduled GitHub Action runs hourly
 2. `npx stentorosaur-update-status` generates status data
 3. Workflow commits changes with emoji messages (🟩🟨🟥)
 4. Commit triggers deployment
 
 **Best for:**
+
 - GitHub Pages deployments
 - Sites that want git history of status changes
 - Automated hourly status updates
 - When builds are triggered by commits only
 
 **Example workflow:**
+
 ```yaml
 # .github/workflows/status-update.yml
 name: Status Update
@@ -1131,6 +1164,7 @@ jobs:
 ### Common Configuration Patterns
 
 **Development/Demo**:
+
 ```typescript
 {
   title: 'Demo Status',
@@ -1139,6 +1173,7 @@ jobs:
 ```
 
 **Production**:
+
 ```typescript
 {
   owner: 'your-org',
@@ -1154,6 +1189,7 @@ jobs:
 ```
 
 **Services Only**:
+
 ```typescript
 {
   owner: 'your-org',
@@ -1165,6 +1201,7 @@ jobs:
 ```
 
 **Upptime-Style Layout** (v0.5.0+):
+
 ```typescript
 {
   owner: 'your-org',
@@ -1194,7 +1231,7 @@ See [CONFIGURATION.md](./CONFIGURATION.md) for detailed examples.
 
 Stentorosaur uses an **Upptime-inspired architecture** where status data is committed to your repository and read during build time. This approach works seamlessly with protected branches and PR-based workflows.
 
-```
+```text
 GitHub Issues (Status Tracking)
     ↓
 GitHub Actions (Status Update Workflow - Hourly)
@@ -1224,7 +1261,7 @@ Static Site - Status Page (/status)
 
 1. **Trigger**: Push to main, scheduled (daily), or manual
 2. **Checkout**: Gets repository including committed status data
-3. **Plugin Load**: 
+3. **Plugin Load**:
    - Checks for `build/status-data/status.json`
    - If exists and fresh (< 24h), uses committed data
    - Otherwise fetches fresh from GitHub API (fallback)
@@ -1244,11 +1281,13 @@ Static Site - Status Page (/status)
 You have two deployment strategies:
 
 **Option A: Deploy on Every Status Change** (Default)
+
 - Status commits trigger immediate deployment
 - Live site updates within minutes of status changes
 - Uses the updated `status-update.yml` (no `[skip ci]`)
 
 **Option B: Scheduled Deployments** (Recommended for High-Traffic Sites)
+
 - Status commits are made but don't trigger deployment
 - Separate scheduled workflow deploys daily (or your chosen interval)
 - Add `deploy-scheduled.yml` template
@@ -1270,7 +1309,7 @@ graph LR
     H -->|No| J[Status: up]
 ```
 
-## Configuration Options
+## Configuration Reference
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -1388,6 +1427,7 @@ interface PerformanceMetricsProps {
 ```
 
 **Features:**
+
 - Synchronized period selector for all charts
 - Fullscreen zoom on click
 - Responsive 2x2 grid layout (desktop) / vertical stack (mobile)
@@ -1407,11 +1447,13 @@ interface SLIChartProps {
 ```
 
 **SLI Mode:**
+
 - Line chart showing daily SLI percentage
 - Target line at SLO threshold (default 99.9%)
 - Color-coded: green (above SLO), red (below SLO)
 
 **Error Budget Mode:**
+
 - Bar chart showing daily error budget consumption
 - 100% = all error budget consumed for that day
 - Helps track service reliability over time
@@ -1431,6 +1473,7 @@ interface ChartPanelProps {
 ```
 
 **Usage:**
+
 ```mdx
 import ChartPanel from '@theme/ChartPanel';
 
@@ -1501,6 +1544,7 @@ entities: [
 ```
 
 Then create issues with namespaced labels to track:
+
 - `process:customer-onboarding` - Delayed onboarding processes
 - `process:support-tickets` - Support ticket backlogs
 - `process:documentation-updates` - Documentation that needs updating

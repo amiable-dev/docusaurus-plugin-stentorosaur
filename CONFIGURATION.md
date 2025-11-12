@@ -227,7 +227,11 @@ plugins: [
       // GitHub source
       owner: 'facebook',
       repo: 'docusaurus',
-      systemLabels: ['website', 'docs', 'api'],
+      entities: [
+        { name: 'website', type: 'system' },
+        { name: 'docs', type: 'system' },
+        { name: 'api', type: 'system' },
+      ],
       token: process.env.GITHUB_TOKEN,
       
       // Page content
@@ -645,7 +649,11 @@ All site configuration fields support environment variable substitution using `$
   repo: 'your-repo',
   token: process.env.GITHUB_TOKEN,
   useDemoData: false,  // Never show demo data
-  systemLabels: ['api', 'web', 'database'],
+  entities: [
+    { name: 'api', type: 'system' },
+    { name: 'web', type: 'system' },
+    { name: 'database', type: 'system' },
+  ],
 }
 ```
 
@@ -881,8 +889,12 @@ plugins: [
       owner: 'your-org',
       repo: 'status-tracking',
       token: process.env.GITHUB_TOKEN,
-      systemLabels: ['api', 'website', 'database'],
-      
+      entities: [
+        { name: 'api', type: 'system' },
+        { name: 'website', type: 'system' },
+        { name: 'database', type: 'system' },
+      ],
+
       // Upptime-style layout
       statusView: 'upptime',
       

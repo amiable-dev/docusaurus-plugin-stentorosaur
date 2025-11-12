@@ -37,7 +37,11 @@ module.exports = {
       {
         owner: 'your-github-org',
         repo: 'your-repo',
-        systemLabels: ['api', 'website', 'database'],
+        entities: [
+          { name: 'api', type: 'system' },
+          { name: 'website', type: 'system' },
+          { name: 'database', type: 'system' },
+        ],
         token: process.env.GITHUB_TOKEN,
         
         // Optional: Choose status page layout (v0.5.0+)
@@ -374,21 +378,23 @@ For private repositories, create a GitHub Personal Access Token:
 2. Generate new token with `repo` scope
 3. Add to your environment: `GITHUB_TOKEN=your_token_here`
 
-### Monitor More Systems
+### Monitor More Entities
 
-Add more systems to track:
+Add more entities to track (v0.11.0+):
 
 ```javascript
-systemLabels: [
-  'api',
-  'website',
-  'database',
-  'auth',
-  'ci-cd',
-  'support',
-  'onboarding',
+entities: [
+  { name: 'api', type: 'system' },
+  { name: 'website', type: 'system' },
+  { name: 'database', type: 'system' },
+  { name: 'auth', type: 'system' },
+  { name: 'ci-cd', type: 'system' },
+  { name: 'support', type: 'process' },
+  { name: 'onboarding', type: 'process' },
 ]
 ```
+
+**Note:** The Entity model (v0.11.0+) supports multiple types beyond just systems: `system`, `process`, `project`, `event`, `sla`, `custom`.
 
 ### Embed Status Components
 
@@ -411,7 +417,7 @@ import ChartPanel from '@theme/ChartPanel';
 
 1. Check that GitHub Actions have run
 2. Verify issues have the `status` label
-3. Ensure `systemLabels` match your issue labels
+3. Ensure entity names match your issue labels (namespaced like `system:api` or legacy like `api`)
 
 ### Build errors?
 

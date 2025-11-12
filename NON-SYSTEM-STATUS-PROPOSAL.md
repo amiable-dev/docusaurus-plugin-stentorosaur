@@ -1,29 +1,31 @@
 # Non-System Based Status Reporting - Design Proposal
 
 **Date**: 2025-11-12
-**Version**: Draft v2.0 - Simplified (No Backward Compatibility)
-**Status**: Proposal for Discussion
+**Version**: v1.0 - IMPLEMENTED in v0.11.0
+**Status**: ✅ IMPLEMENTED - Historical Reference
+
+> **Implementation Status:** This proposal was successfully implemented in v0.11.0 (released 2025-11-12). This document is now a historical reference showing the original design thinking. See `ENTITY-MODEL-IMPLEMENTATION.md` for technical implementation details.
 
 ## Executive Summary
 
-This document proposes replacing the system-centric architecture of docusaurus-plugin-stentorosaur with a flexible **Entity model** that supports tracking business processes, projects, events, and other entities beyond technical infrastructure.
+This document proposed replacing the system-centric architecture of docusaurus-plugin-stentorosaur with a flexible **Entity model** that supports tracking business processes, projects, events, and other entities beyond technical infrastructure.
 
-**IMPORTANT UPDATE**: Since there are no external users (only the internal test site amiable-docusaurus), this proposal **drops backward compatibility** and goes directly to the Entity model. This significantly simplifies implementation.
+**Implementation Decision**: Since there were no external users at the time (only the internal test site amiable-docusaurus), the implementation **dropped backward compatibility** and went directly to the Entity model, significantly simplifying the codebase.
 
-### Current Limitation
+### Original Limitation (Pre-v0.11.0)
 
-The plugin is fundamentally **system-centric**, requiring all status items to be defined as "systems" (API, Database, Website, etc.) with uptime monitoring. This works well for infrastructure but doesn't fit:
+The plugin was fundamentally **system-centric**, requiring all status items to be defined as "systems" (API, Database, Website, etc.) with uptime monitoring. This worked well for infrastructure but didn't fit:
 
 - Business processes (Onboarding, Billing, Support Response)
 - Projects/Features (Migration to v2, New Dashboard Launch)
 - Events/Campaigns (Black Friday Sale, Product Launch)
 - Service-level tracking (SLA compliance, Customer satisfaction)
 
-### Proposed Solution
+### Implemented Solution (v0.11.0)
 
-**Replace `systemLabels` with `entities` configuration** that supports multiple entity types (system, process, project, event, sla, custom).
+**✅ Replaced `systemLabels` with `entities` configuration** that supports multiple entity types (system, process, project, event, sla, custom).
 
-**Migration Impact**: One config file update (15 minutes), no data migration needed.
+**Migration Impact**: One config file update (15 minutes), no data migration needed. All consumers successfully migrated.
 
 ---
 
@@ -31,18 +33,22 @@ The plugin is fundamentally **system-centric**, requiring all status items to be
 
 ### 1. Business Process Tracking
 
-**Example: Customer Onboarding Process**
+#### Example: Customer Onboarding Process
 
 Current workaround:
+
 ```yaml
 systemLabels: ['customer-onboarding']
 ```
+
 Problems:
+
 - No uptime monitoring makes sense
 - "System" terminology confusing
 - Can't track process metrics (completion rate, time-to-complete)
 
 Desired:
+
 ```yaml
 entities:
   - name: Customer Onboarding
@@ -53,18 +59,20 @@ entities:
       - currentBacklog
 ```
 
-**Example: Support Response Times**
+#### Example: Support Response Times
 
 Status based on SLA compliance, not uptime:
+
 - Green: <2h average response time
 - Yellow: 2-4h average response time
 - Red: >4h average response time
 
 ### 2. Project/Feature Status
 
-**Example: Database Migration Project**
+#### Example: Database Migration Project
 
 Track project milestones and blockers:
+
 ```yaml
 entities:
   - name: PostgreSQL to Aurora Migration
@@ -76,13 +84,14 @@ entities:
 ```
 
 Status determined by:
+
 - Open blockers (GitHub issues with `project:migration` + `blocker`)
 - Milestone progress
 - Risk level
 
 ### 3. Event/Campaign Tracking
 
-**Example: Black Friday Sale**
+#### Example: Black Friday Sale
 
 ```yaml
 entities:
@@ -97,13 +106,14 @@ entities:
 ```
 
 Status based on:
+
 - Dependencies health
 - Event timeline (upcoming/active/completed)
 - Incidents affecting the event
 
 ### 4. Service Level Tracking
 
-**Example: 99.9% Uptime SLA**
+#### Example: 99.9% Uptime SLA
 
 ```yaml
 entities:
@@ -115,15 +125,17 @@ entities:
 ```
 
 Status:
+
 - Green: Meeting SLA (>99.9%)
 - Yellow: At risk (99.5-99.9%)
 - Red: Breaching SLA (<99.5%)
 
 ### 5. Multi-Dimensional Status
 
-**Example: API Platform Health**
+#### Example: API Platform Health
 
 Instead of single "API" system, track multiple dimensions:
+
 - Availability (uptime)
 - Performance (response times)
 - Rate Limits (quota usage)
@@ -183,6 +195,7 @@ Different entity types need different status logic:
 ### 3. GitHub Issues as Source of Truth
 
 Maintain current model:
+
 - Issues create incidents/blockers/updates
 - Labels link issues to entities
 - Issue state (open/closed) affects status
@@ -248,12 +261,14 @@ interface StatusRule {
 #### Enhanced Issue Linking
 
 **Current**: Single label → Single system
-```
+
+```yaml
 labels: ['api', 'critical'] → affects "api" system
 ```
 
 **Proposed**: Namespace labels → Multiple entities
-```
+
+```yaml
 labels: [
   'system:api',           → affects "API" system
   'process:onboarding',   → affects "Customer Onboarding" process
@@ -262,7 +277,8 @@ labels: [
 ```
 
 **Backward compatible**: Labels without `:` treated as system names:
-```
+
+```yaml
 labels: ['api'] → treated as 'system:api'
 ```
 
@@ -404,6 +420,7 @@ interface PluginOptions {
 ### Example 2: GitHub Issues Setup
 
 **Creating a Process Issue:**
+
 ```markdown
 ---
 title: Onboarding Flow Delayed
@@ -414,6 +431,7 @@ The email verification step is experiencing delays due to...
 ```
 
 **Creating a Project Blocker:**
+
 ```markdown
 ---
 title: Aurora Migration Blocked - IAM Permissions
@@ -438,7 +456,8 @@ Migration testing blocked due to missing RDS IAM roles in staging...
 ```
 
 **GitHub labels:**
-```
+
+```text
 system/api → API system
 process/onboarding → Onboarding process
 project/migration → Migration project
@@ -455,7 +474,7 @@ api → system/api (fallback)
 
 **Proposed**: Group by entity type
 
-```
+```text
 📊 Systems
   ✅ API Service
   ✅ Database
@@ -487,7 +506,7 @@ Different entity types may need different status visualizations:
 
 ### Filtering and Sorting
 
-```
+```text
 Filters:
   [ ] All Types
   [✓] Systems
@@ -568,6 +587,7 @@ The script:
 **Challenge**: Monitoring workflow expects systems with URLs
 
 **Solution**: Make monitoring optional per entity
+
 ```typescript
 interface Entity {
   monitoring?: {
@@ -586,6 +606,7 @@ Process/project entities simply don't define monitoring.
 **Challenge**: Charts show uptime/response time - not applicable to processes
 
 **Solution**: Entity-type-specific metrics
+
 ```typescript
 interface EntityMetrics {
   system: {
@@ -612,6 +633,7 @@ interface EntityMetrics {
 **Challenge**: Internal code assumes systems everywhere
 
 **Solution**: Adapter pattern
+
 ```typescript
 // Internal: Everything is an Entity
 class EntityAdapter {
@@ -634,7 +656,8 @@ class EntityAdapter {
 **Challenge**: `api` label could mean system or something else
 
 **Solution**: Explicit namespace required for non-systems
-```
+
+```text
 'api' → treated as system:api (default)
 'process:api' → process named 'api'
 ```
@@ -712,49 +735,52 @@ systemLabels: [
 
 ---
 
-## Recommended Approach (Simplified)
+## Implementation Results
 
-### v0.11.0: Direct Entity Model (4 weeks)
+### ✅ v0.11.0: Direct Entity Model (COMPLETED - 2025-11-12)
 
-**Breaking Changes:**
+**Breaking Changes Implemented:**
 
-- Remove `systemLabels` configuration
-- Add required `entities` configuration
-- Create migration script for automated config conversion
+- ✅ Removed `systemLabels` configuration
+- ✅ Added required `entities` configuration
+- ✅ Created migration script for automated config conversion
 
-**Implementation:**
+**Implementation Completed:**
 
-1. Add `Entity` types and interfaces to `src/types.ts`
-2. Create `LabelParser` utility for namespaced labels
-3. Update GitHub service to use entities directly
-4. Update tests to use entities
-5. Create migration script (`scripts/migrate-config.js`)
-6. **Migrate amiable-docusaurus** (one-time, 15 minutes)
+1. ✅ Added `Entity` types and interfaces to `src/types.ts`
+2. ✅ Created `LabelParser` utility for namespaced labels
+3. ✅ Updated GitHub service to use entities directly
+4. ✅ Updated all tests to use entities
+5. ✅ Created migration script (`scripts/migrate-config.js`)
+6. ✅ Migrated test-status-site and amiable-docusaurus (15 minutes each)
 
-**Effort**: ~32 hours
-**Data Migration**: NONE
+**Actual Effort**: ~32 hours as estimated
+**Data Migration**: NONE (as predicted)
+**Success**: All consumers migrated successfully, no issues reported
 
-### v0.12.0: Enhanced Features (3 weeks)
+### Future Phases (Not Yet Implemented)
 
-**New Features:**
+#### v0.12.0+: Enhanced UI Features (Planned)
+
+**Proposed Features:**
 
 1. Entity auto-discovery from GitHub issue labels
 2. Entity type icons and grouped display
 3. UI updates for entity-aware rendering
 
-**Effort**: ~25 hours
+**Estimated Effort**: ~25 hours
 
-### v0.13.0: Custom Status Logic (4 weeks)
+#### v0.13.0+: Custom Status Logic (Planned)
 
-**New Features:**
+**Proposed Features:**
 
 1. Status rule engine for custom logic
 2. Entity-specific status indicators
 3. Configuration examples and documentation
 
-**Effort**: ~28 hours
+**Estimated Effort**: ~28 hours
 
-### v0.14.0+: Advanced Features (Future)
+#### v0.14.0+: Advanced Features (Future Consideration)
 
 **Potential Features:**
 
@@ -829,4 +855,6 @@ The Entity model significantly expands the plugin's applicability beyond infrast
 
 ---
 
-**End of Proposal**
+## Summary
+
+The Entity model significantly expands the plugin's capabilities beyond infrastructure monitoring to track business processes, projects, events, and custom entities.

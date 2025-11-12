@@ -42,7 +42,7 @@ if (shouldUseDemoData) {
   incidents = showIncidents ? demoData.incidents : [];
 } else {
   try {
-    const service = new GitHubStatusService(token, owner, repo, statusLabel, systemLabels);
+    const service = new GitHubStatusService(token, owner, repo, statusLabel, entities, labelScheme);
     const result = await service.fetchStatusData();
     // ... fallback to demo if no data found
   }
@@ -50,25 +50,31 @@ if (shouldUseDemoData) {
 ```
 **Pattern**: Always provide usable demo data when GitHub token missing or API fails. This enables development/testing without credentials.
 
-### Issue Label Mapping
+### Issue Label Mapping (v0.11.0+)
 GitHub Issues are converted to status using specific labels:
 
 **Required**: `status` label identifies status-tracking issues
 **Severity**: `critical`, `major`, `minor`, `maintenance` → determines StatusIncident.severity
-**Systems**: Labels matching `systemLabels` config → affects which systems show "down"/"degraded"
+**Entities**: Labels matching entity names (namespaced like `system:api` or legacy like `api`) → affects which entities show "down"/"degraded"
 
 ```typescript
 // src/github-service.ts convertIssueToIncident()
 let severity: StatusIncident['severity'] = 'minor';
 if (labels.includes('critical')) severity = 'critical';
 // ... determines status badge color and priority
+
+// v0.11.0+: LabelParser extracts entities from labels
+const labelParser = new LabelParser(entities, labelScheme);
+const affectedEntities = labelParser.parseIssueLabels(labels);
+// Returns: ['api', 'database'] if labels include 'system:api', 'system:database'
 ```
 
-### Status Calculation Logic
+### Status Calculation Logic (v0.11.0+)
 ```typescript
 // src/github-service.ts generateStatusItems()
-// 1. Initialize all systemLabels as 'up'
+// 1. Initialize all entities as 'up'
 // 2. For each OPEN incident:
+//    - Extract affected entities via LabelParser
 //    - If severity='critical' → status='down'
 //    - If severity='major'/'minor' → status='degraded'
 //    - If severity='maintenance' → status='maintenance'
