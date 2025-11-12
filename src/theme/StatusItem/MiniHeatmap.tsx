@@ -71,8 +71,25 @@ export default function MiniHeatmap({
 
   const dailyData = calculateDailyUptime();
 
+  // Calculate overall uptime percentage for the period
+  const overallUptime = useMemo(() => {
+    const daysWithData = dailyData.filter(d => d.uptime !== null);
+    if (daysWithData.length === 0) return null;
+
+    const total = daysWithData.reduce((sum, d) => sum + (d.uptime || 0), 0);
+    return total / daysWithData.length;
+  }, [dailyData]);
+
+  // Get uptime status for coloring
+  const getUptimeStatus = (uptime: number | null): 'success' | 'warning' | 'danger' => {
+    if (uptime === null) return 'danger';
+    if (uptime >= 99) return 'success';
+    if (uptime >= 95) return 'warning';
+    return 'danger';
+  };
+
   // Filter incidents for this system
-  const relevantIncidents = systemName 
+  const relevantIncidents = systemName
     ? incidents.filter(incident => incident.affectedSystems && incident.affectedSystems.includes(systemName))
     : incidents;
 
@@ -179,6 +196,20 @@ export default function MiniHeatmap({
           );
         })}
       </div>
+
+      {overallUptime !== null && (
+        <div className={styles.uptimeStats}>
+          <span
+            className={styles.uptimePercent}
+            data-status={getUptimeStatus(overallUptime)}
+          >
+            {overallUptime.toFixed(2)}% uptime
+          </span>
+          <span className={styles.periodText}>
+            {days} days ago
+          </span>
+        </div>
+      )}
     </div>
   );
 }

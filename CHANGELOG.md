@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2025-11-12
+
+### Changed
+
+- **Mini heatmap visual redesign inspired by status.claude.com**
+  - Changed cells from square dots to vertical rectangles (3px width x 30px height)
+  - Improved visibility and consistency with modern status pages
+  - Added uptime percentage and period text below heatmap (e.g., "99.71% uptime • 90 days ago")
+  - Uptime percentage colored based on status (green ≥99%, yellow ≥95%, red <95%)
+  - Mobile responsive: rectangles scale to 2px x 20px on smaller screens
+  - Maintained horizontal scrolling for long time periods
+
 ## [0.10.0] - 2025-11-12
 
 ### Added

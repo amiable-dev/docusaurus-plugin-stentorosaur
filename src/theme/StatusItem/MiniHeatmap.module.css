@@ -17,21 +17,21 @@
 }
 
 .cells {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(4px, 1fr));
+  display: flex;
   gap: 2px;
   max-width: 100%;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  overflow-x: auto;
 }
 
 .cell {
-  aspect-ratio: 1;
-  border-radius: 2px;
-  min-width: 3px;
-  min-height: 3px;
+  width: 3px;
+  height: 30px;
+  border-radius: 1px;
   cursor: pointer;
   transition: transform 0.2s ease, opacity 0.2s ease;
   position: relative;
+  flex-shrink: 0;
 }
 
 .cell.hasIncident {
@@ -74,6 +74,8 @@
 
 .legendLabel {
   font-style: italic;
+  font-size: 0.75rem;
+  color: var(--ifm-color-emphasis-600);
 }
 
 .noData {
@@ -83,13 +85,45 @@
   padding: 0.5rem 0;
 }
 
+.uptimeStats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-700);
+  margin-top: 0.25rem;
+}
+
+.uptimePercent {
+  font-weight: 600;
+  color: var(--ifm-color-success);
+}
+
+.uptimePercent[data-status="warning"] {
+  color: var(--ifm-color-warning);
+}
+
+.uptimePercent[data-status="danger"] {
+  color: var(--ifm-color-danger);
+}
+
+.periodText {
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.75rem;
+}
+
 @media (max-width: 768px) {
   .cells {
     gap: 1px;
   }
-  
+
   .cell {
-    min-width: 2px;
-    min-height: 2px;
+    width: 2px;
+    height: 20px;
+  }
+
+  .uptimeStats {
+    font-size: 0.7rem;
   }
 }
