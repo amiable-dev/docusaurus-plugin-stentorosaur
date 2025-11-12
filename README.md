@@ -223,7 +223,7 @@ jobs:
 - ✅ **Node caching** - Enables npm caching with `cache: npm` (or `cache: yarn` for Yarn users)
 
 > 📖 **Using Yarn?** Replace `cache: npm` with `cache: yarn` and `npm ci` with `yarn install --frozen-lockfile`
-
+>
 > 💡 **Tip:** If your production site shows demo data, you forgot to add the `env:` block to your build step!
 
 ### 3. Other CI/CD Platforms
@@ -400,7 +400,6 @@ Configure the label scheme in plugin options:
   labelScheme: 'namespaced',  // 'namespaced' | 'legacy' (default: 'namespaced')
 }
 ```
-
 
 ### GitHub Actions Setup
 
