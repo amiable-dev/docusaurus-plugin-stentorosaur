@@ -258,6 +258,7 @@ async function updateStatus() {
         closedAt: incident.closedAt,
         url: incident.url,
         body: incident.body,
+        affectedSystems: incident.affectedSystems || [], // Critical for chart filtering
       }));
       
       await fs.writeJson(incidentsPath, incidents, {spaces: 2});

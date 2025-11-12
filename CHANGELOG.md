@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.7] - 2025-11-10
+
+### Fixed
+
+- **Critical: Missing affectedSystems field in incidents.json**
+  - The `update-status.cjs` script was manually mapping incident fields but omitting `affectedSystems`
+  - This caused chart filtering logic to silently fail: `incident.affectedSystems && incident.affectedSystems.includes(name)` always returned false
+  - **Impact**: Incidents were loaded but NEVER displayed on uptime charts, heatmaps, or mini heatmaps
+  - Fixed by adding `affectedSystems: incident.affectedSystems || []` to the transformation (scripts/update-status.cjs:261)
+  - Charts will now correctly overlay incident markers when incidents match the system name
+  - **Root cause**: Manual field mapping in `update-status.cjs` instead of using complete object from `fetchStatusData()`
+  - Related components affected: UptimeChart (bar and heatmap modes), MiniHeatmap, ChartPanel
+
 ## [0.9.6] - 2025-11-10
 
 ### Fixed
