@@ -74,12 +74,13 @@ jobs:
             exit 0
           fi
 
-          # Stage all changes
-          git add current.json incidents.json maintenance.json archives/ 2>/dev/null || true
+          # Stage only monitoring data (current.json and archives)
+          # DO NOT stage incidents.json or maintenance.json - those are managed by status-update.yml
+          git add current.json archives/ 2>/dev/null || true
 
           # Commit with timestamp
           TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          git commit -m "📊 Status update: $TIMESTAMP" || echo "Nothing to commit"
+          git commit -m "📊 Update monitoring data: $TIMESTAMP" || echo "Nothing to commit"
 
           # Push with retry logic
           MAX_RETRIES=3

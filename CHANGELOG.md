@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.8] - 2025-11-12
+
+### Fixed
+
+- **Critical: monitor-systems.yml was overwriting incidents.json/maintenance.json**
+  - The monitor workflow was staging and committing `incidents.json` and `maintenance.json` even though it doesn't modify them
+  - This created a race condition where monitor workflow commits would overwrite newer incident data from status-update workflow
+  - **Impact**: affectedSystems field was being lost because older versions of incidents.json would overwrite newer ones
+  - Fixed by removing `incidents.json` and `maintenance.json` from `git add` command (templates/workflows/monitor-systems.yml:79)
+  - Monitor workflow now ONLY commits monitoring data (current.json and archives/)
+  - Status update workflow maintains exclusive ownership of incidents.json and maintenance.json
+  - **Root cause**: Both workflows checking out status-data branch and committing simultaneously
+  - Changed commit message from "Status update" to "Update monitoring data" for clarity
+
 ## [0.9.7] - 2025-11-10
 
 ### Fixed
