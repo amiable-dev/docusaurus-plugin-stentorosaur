@@ -24,10 +24,18 @@ export class LabelParser {
 
   /**
    * Parse GitHub label to extract entity type and name
+   *
+   * Supports two formats:
+   * 1. Namespaced (explicit type): 'system:api', 'process:onboarding'
+   * 2. Simple (uses defaultType): 'api', 'onboarding'
+   *
    * Examples:
-   *   'api' → { type: 'system', name: 'api' }
+   *   'api' → { type: 'system', name: 'api' } (defaultType='system')
    *   'system:api' → { type: 'system', name: 'api' }
    *   'process:onboarding' → { type: 'process', name: 'onboarding' }
+   *   'onboarding' → { type: 'system', name: 'onboarding' } (fallback to defaultType)
+   *
+   * Simple labels reduce overhead and allow naming collision validation in config.
    */
   parseLabel(label: string): { type: EntityType; name: string } | null {
     const { separator, defaultType, allowUntyped } = this.scheme;

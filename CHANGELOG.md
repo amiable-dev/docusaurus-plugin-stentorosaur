@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2025-11-12
+
+### Added
+
+- **Human-friendly date parsing** for maintenance windows using `chrono-node`
+  - Support for natural language: `@tomorrow 2am UTC`, `tomorrow at 2pm`, `next Monday 9am`
+  - Support for relative times: `+2h`, `in 3 hours`, `+30m`
+  - Traditional ISO 8601 still works: `2025-11-15T02:00:00Z`
+  - Automatic conversion to ISO 8601 format internally
+
+### Fixed
+
+- **GitHub H3 heading bug** in maintenance frontmatter parsing
+  - GitHub issue forms add `### Maintenance Details` heading before user content
+  - Parser now skips headings that appear before frontmatter delimiter
+  - Fixes maintenance issues created via GitHub UI not being parsed correctly
+
+### Changed
+
+- **Simplified entity label support** in LabelParser
+  - Both namespaced (`system:api`) and simple (`api`) labels now supported
+  - Simple labels use `defaultType` (usually `'system'`)
+  - Reduces label overhead while maintaining validation
+
+### Documentation
+
+- Updated maintenance template with human-friendly date examples
+- Removed `systems:` array from frontmatter (use labels for affected entities)
+- Added guidance on using simple entity labels vs namespaced labels
+
 ## [0.11.1] - 2025-11-12
 
 ### Fixed

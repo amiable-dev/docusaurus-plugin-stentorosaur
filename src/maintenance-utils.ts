@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import * as chrono from 'chrono-node';
 import type { ScheduledMaintenance, MaintenanceComment } from './types';
 
 interface MaintenanceFrontmatter {
@@ -15,19 +16,95 @@ interface MaintenanceFrontmatter {
 }
 
 /**
+ * Parse human-friendly date strings to ISO 8601
+ * Supports:
+ * - ISO 8601: "2025-11-15T02:00:00Z"
+ * - Friendly: "@tomorrow 2am UTC", "@today 14:30", "tomorrow at 2pm"
+ * - Relative: "+2h", "+30m", "in 3 hours"
+ *
+ * @param dateStr - Date string to parse
+ * @param referenceDate - Reference date for relative parsing (default: now)
+ * @returns ISO 8601 string or null if unparseable
+ */
+export function parseHumanDate(dateStr: string, referenceDate?: Date): string | null {
+  if (!dateStr || typeof dateStr !== 'string') {
+    return null;
+  }
+
+  const trimmed = dateStr.trim();
+
+  // Already ISO 8601? Return as-is
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}([+-]\d{2}:\d{2}|Z)$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Handle @shorthand notation (@tomorrow, @today)
+  let processedStr = trimmed;
+  if (processedStr.startsWith('@')) {
+    processedStr = processedStr.substring(1); // Remove @ prefix
+  }
+
+  // Parse with chrono-node
+  const refDate = referenceDate || new Date();
+  const parsed = chrono.parseDate(processedStr, refDate);
+
+  if (parsed) {
+    return parsed.toISOString();
+  }
+
+  // Fallback: try as-is (might be valid date string)
+  try {
+    const fallback = new Date(trimmed);
+    if (!isNaN(fallback.getTime())) {
+      return fallback.toISOString();
+    }
+  } catch {
+    // Ignore
+  }
+
+  return null;
+}
+
+/**
  * Extract YAML frontmatter from issue body
+ * Skips GitHub issue form headings (###) that appear before frontmatter
  */
 export function extractFrontmatter(body: string): {
   frontmatter: MaintenanceFrontmatter;
   content: string;
 } {
+  // Skip GitHub issue form headings (e.g., "### Maintenance Details")
+  // GitHub adds these headings BEFORE user content, breaking frontmatter parsing
+  // Only skip headings that appear before the frontmatter delimiter (---)
+  const lines = body.split('\n');
+  let contentStart = 0;
+
+  // Find the first frontmatter delimiter
+  const firstDelimiterIndex = lines.findIndex(line => line.trim() === '---');
+
+  // Only skip headings if there's a frontmatter delimiter
+  if (firstDelimiterIndex !== -1) {
+    // Skip leading headings and blank lines that appear before the frontmatter delimiter
+    while (contentStart < firstDelimiterIndex) {
+      const line = lines[contentStart].trim();
+      if (line.startsWith('#') || line === '') {
+        contentStart++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Reconstruct body without heading pollution
+  const cleanedBody = lines.slice(contentStart).join('\n');
+
   const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
-  const match = body.match(frontmatterRegex);
+  const match = cleanedBody.match(frontmatterRegex);
 
   if (!match) {
     return {
       frontmatter: {},
-      content: body,
+      content: cleanedBody,
     };
   }
 
@@ -35,8 +112,8 @@ export function extractFrontmatter(body: string): {
   const frontmatter: MaintenanceFrontmatter = {};
 
   // Simple YAML parsing for the fields we care about
-  const lines = frontmatterText.split('\n');
-  for (const line of lines) {
+  const frontmatterLines = frontmatterText.split('\n');
+  for (const line of frontmatterLines) {
     const colonIndex = line.indexOf(':');
     if (colonIndex === -1) continue;
 
@@ -46,15 +123,19 @@ export function extractFrontmatter(body: string): {
     if (key === 'type') {
       frontmatter.type = value;
     } else if (key === 'start') {
-      frontmatter.start = value;
+      // Parse human-friendly dates to ISO 8601
+      const parsed = parseHumanDate(value);
+      frontmatter.start = parsed || value; // Fallback to raw value if unparseable
     } else if (key === 'end') {
-      frontmatter.end = value;
+      // Parse human-friendly dates to ISO 8601
+      const parsed = parseHumanDate(value);
+      frontmatter.end = parsed || value; // Fallback to raw value if unparseable
     } else if (key === 'systems') {
       // Handle array format (e.g., "systems:" followed by "  - system1")
-      const systemsStart = lines.indexOf(line);
+      const systemsStart = frontmatterLines.indexOf(line);
       const systems: string[] = [];
-      for (let i = systemsStart + 1; i < lines.length; i++) {
-        const systemLine = lines[i];
+      for (let i = systemsStart + 1; i < frontmatterLines.length; i++) {
+        const systemLine = frontmatterLines[i];
         if (systemLine.trim().startsWith('-')) {
           systems.push(systemLine.trim().substring(1).trim());
         } else if (!systemLine.trim().startsWith(' ')) {
