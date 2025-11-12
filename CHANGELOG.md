@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.9] - 2025-11-12
+
+### Fixed
+
+- **Critical: --output-dir not respected for incidents.json/maintenance.json**
+  - The `update-status.cjs` script was hardcoding `committedStatusDir` to `status-data/` in current directory
+  - This ignored the `--output-dir` parameter, causing files to be written to wrong location in CI workflows
+  - **Impact**: Workflows using `--output-dir ../status-data` would write files to `main/status-data/` instead of `status-data/` checkout
+  - Result: "No changes to commit" even after regenerating data
+  - Fixed by using `--output-dir` value for `committedStatusDir` when specified (scripts/update-status.cjs:252-254)
+  - **Root cause**: `--output-dir` was only used for build directory, not committed data directory
+  - Now `--output-dir` controls BOTH incident/maintenance writes AND build directory writes
+
 ## [0.9.8] - 2025-11-12
 
 ### Fixed

@@ -240,8 +240,18 @@ async function updateStatus() {
     await fs.writeJson(docusaurusPath, statusData, {spaces: 2});
     verbose('Wrote status data to:', docusaurusPath);
 
+    // Determine output directory for build files
+    const dataPath = pluginConfig.dataPath || 'status-data';
+    const defaultBuildDir = path.join(process.cwd(), 'build', dataPath);
+    const buildStatusDir = options.outputDir
+      ? path.resolve(process.cwd(), options.outputDir)
+      : defaultBuildDir;
+
     // Write incidents.json and maintenance.json to committed status-data/ directory if requested
-    const committedStatusDir = path.join(process.cwd(), 'status-data');
+    // Use --output-dir if specified, otherwise default to status-data/ in current directory
+    const committedStatusDir = options.outputDir
+      ? path.resolve(process.cwd(), options.outputDir)
+      : path.join(process.cwd(), 'status-data');
     
     if (options.writeIncidents) {
       await fs.ensureDir(committedStatusDir);
@@ -282,13 +292,6 @@ async function updateStatus() {
       log(`✓ Wrote ${maintenance.length} maintenance window(s) to status-data/maintenance.json`);
       verbose('Maintenance path:', maintenancePath);
     }
-
-    // Determine output directory for build files
-    const dataPath = pluginConfig.dataPath || 'status-data';
-    const defaultBuildDir = path.join(process.cwd(), 'build', dataPath);
-    const buildStatusDir = options.outputDir 
-      ? path.resolve(process.cwd(), options.outputDir)
-      : defaultBuildDir;
 
     // Write to build directory if:
     // 1. --output-dir is explicitly specified, OR
