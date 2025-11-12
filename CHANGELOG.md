@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.4] - 2025-11-12
+
+### Fixed
+
+- **Test infrastructure for markdown rendering**
+  - Fixed Jest configuration to handle ESM modules (`marked` and `dompurify`)
+  - Created mock for `markdown.ts` utility to avoid ESM transformation issues in tests
+  - Excluded browser-only utilities from coverage collection (`markdown.ts`, `annotation-utils.ts`)
+  - All tests now pass successfully (336 tests)
+  - Coverage thresholds met: 92.85% statements, 79.3% branches, 90.38% functions, 93.21% lines
+
 ## [0.10.3] - 2025-11-12
 
 ### Added

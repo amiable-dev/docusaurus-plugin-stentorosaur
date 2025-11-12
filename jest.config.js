@@ -16,6 +16,8 @@ module.exports = {
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/theme/**/*.tsx', // Component tests would need jsdom environment
+    '!src/utils/markdown.ts', // Browser-only utility (DOMPurify requires DOM)
+    '!src/annotation-utils.ts', // Only used in theme components (UptimeChart)
   ],
   coverageThreshold: {
     global: {
@@ -39,5 +41,9 @@ module.exports = {
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
     // Mock @theme modules
     '^@theme/Layout$': '<rootDir>/__mocks__/Layout.js',
+    // Mock markdown utility (uses ESM modules marked/dompurify)
+    '^@site/src/utils/markdown$': '<rootDir>/__mocks__/markdown.ts',
+    '^\\.\\./\\.\\./utils/markdown$': '<rootDir>/__mocks__/markdown.ts',
+    '^\\.\\./\\.\\./\\.\\./utils/markdown$': '<rootDir>/__mocks__/markdown.ts',
   },
 };
