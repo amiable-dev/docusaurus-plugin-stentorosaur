@@ -1,0 +1,43 @@
+{
+  "enabled": true,
+  "channels": {
+    "slack": {
+      "enabled": false,
+      "webhookUrl": "env:SLACK_WEBHOOK_URL"
+    },
+    "telegram": {
+      "enabled": false,
+      "botToken": "env:TELEGRAM_BOT_TOKEN",
+      "chatId": "env:TELEGRAM_CHAT_ID"
+    },
+    "email": {
+      "enabled": false,
+      "provider": "smtp",
+      "from": "env:EMAIL_FROM",
+      "to": ["env:EMAIL_TO"],
+      "smtp": {
+        "host": "env:SMTP_HOST",
+        "port": 587,
+        "secure": false,
+        "auth": {
+          "user": "env:SMTP_USER",
+          "pass": "env:SMTP_PASS"
+        }
+      }
+    },
+    "discord": {
+      "enabled": false,
+      "webhookUrl": "env:DISCORD_WEBHOOK_URL"
+    }
+  },
+  "events": {
+    "incidentOpened": true,
+    "incidentClosed": true,
+    "incidentUpdated": false,
+    "maintenanceScheduled": true,
+    "maintenanceStarted": true,
+    "maintenanceCompleted": false,
+    "systemDegraded": true,
+    "systemRestored": true
+  }
+}

@@ -221,3 +221,38 @@ jobs:
                 }
               }
             }
+
+      - name: Send notifications
+        if: always()
+        continue-on-error: true
+        working-directory: main
+        run: |
+          # Check if notification config exists
+          if [ ! -f .notifyrc.json ]; then
+            echo "⏭️  No .notifyrc.json found, skipping notifications"
+            exit 0
+          fi
+
+          # Check if events file exists (created by monitor script)
+          if [ ! -f ../status-data/events.json ]; then
+            echo "⏭️  No events to notify about"
+            exit 0
+          fi
+
+          # Send notifications for monitoring events
+          npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-notify \
+            --config .notifyrc.json \
+            --events ../status-data/events.json \
+            --verbose || echo "⚠️  Notifications failed (non-blocking)"
+        env:
+          # Pass secrets as environment variables (resolved via env:VAR_NAME in config)
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}

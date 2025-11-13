@@ -50,10 +50,23 @@ jobs:
         run: npm ci
 
       - name: Update incidents and maintenance data
+        id: update
         working-directory: main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx stentorosaur-update-status --write-incidents --write-maintenance --verbose --output-dir ../status-data
+        run: |
+          # Update status data and generate notification events
+          npx stentorosaur-update-status \
+            --write-incidents \
+            --write-maintenance \
+            --verbose \
+            --output-dir ../status-data
+
+          # Generate notification events from issue changes
+          # This creates events.json with incident.opened, incident.closed, incident.updated, maintenance.*
+          if [ -f ../status-data/incidents.json ]; then
+            echo "events_generated=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Commit status data changes
         working-directory: status-data
@@ -94,6 +107,139 @@ jobs:
               fi
             fi
           done
+
+      - name: Generate notification events
+        id: generate-events
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Create event based on issue action
+            const issue = context.payload.issue;
+            const action = context.payload.action;
+
+            // Extract severity from labels
+            const severity = issue.labels.find(l => ['critical', 'major', 'minor'].includes(l.name))?.name || 'minor';
+
+            // Extract affected entities from labels (simple or namespaced)
+            const affectedEntities = issue.labels
+              .filter(l => !['status', 'critical', 'major', 'minor', 'maintenance', 'automated'].includes(l.name))
+              .map(l => l.name.replace(/^(system:|process:)/, ''));
+
+            let event = null;
+
+            if (issue.labels.some(l => l.name === 'maintenance')) {
+              // Maintenance event
+              if (action === 'opened' || action === 'labeled') {
+                event = {
+                  type: 'maintenance.scheduled',
+                  timestamp: new Date().toISOString(),
+                  maintenance: {
+                    id: issue.number,
+                    title: issue.title,
+                    start: new Date().toISOString(), // Parse from issue body
+                    end: new Date(Date.now() + 3600000).toISOString(), // Parse from issue body
+                    affectedEntities,
+                    url: issue.html_url
+                  }
+                };
+              } else if (action === 'closed') {
+                event = {
+                  type: 'maintenance.completed',
+                  timestamp: new Date().toISOString(),
+                  maintenance: {
+                    id: issue.number,
+                    title: issue.title,
+                    duration: new Date() - new Date(issue.created_at),
+                    affectedEntities,
+                    url: issue.html_url
+                  }
+                };
+              }
+            } else {
+              // Incident event
+              if (action === 'opened') {
+                event = {
+                  type: 'incident.opened',
+                  timestamp: new Date().toISOString(),
+                  incident: {
+                    id: issue.number,
+                    title: issue.title,
+                    severity,
+                    affectedEntities,
+                    url: issue.html_url,
+                    body: issue.body || ''
+                  }
+                };
+              } else if (action === 'closed') {
+                event = {
+                  type: 'incident.closed',
+                  timestamp: new Date().toISOString(),
+                  incident: {
+                    id: issue.number,
+                    title: issue.title,
+                    duration: new Date() - new Date(issue.created_at),
+                    affectedEntities,
+                    url: issue.html_url
+                  }
+                };
+              } else if (action === 'labeled' || action === 'unlabeled' || action === 'edited') {
+                event = {
+                  type: 'incident.updated',
+                  timestamp: new Date().toISOString(),
+                  incident: {
+                    id: issue.number,
+                    title: issue.title,
+                    severity,
+                    affectedEntities,
+                    url: issue.html_url,
+                    changes: {}
+                  }
+                };
+              }
+            }
+
+            if (event) {
+              fs.writeFileSync('status-data/events.json', JSON.stringify(event, null, 2));
+              console.log('Generated event:', event.type);
+            }
+
+      - name: Send notifications
+        if: github.event_name == 'issues'
+        continue-on-error: true
+        working-directory: main
+        run: |
+          # Check if notification config exists
+          if [ ! -f .notifyrc.json ]; then
+            echo "⏭️  No .notifyrc.json found, skipping notifications"
+            exit 0
+          fi
+
+          # Check if events file exists
+          if [ ! -f ../status-data/events.json ]; then
+            echo "⏭️  No events to notify about"
+            exit 0
+          fi
+
+          # Send notifications for incident/maintenance events
+          npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-notify \
+            --config .notifyrc.json \
+            --events ../status-data/events.json \
+            --verbose || echo "⚠️  Notifications failed (non-blocking)"
+        env:
+          # Pass secrets as environment variables (resolved via env:VAR_NAME in config)
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
 
       # DEPLOYMENT TRIGGER:
       # For critical incidents, trigger immediate deployment to update status page

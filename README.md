@@ -41,6 +41,12 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
 - 🎨 **Customizable**: Fully themeable and configurable to match your site
 - 📱 **Responsive**: Works perfectly on all devices
 - 🔧 **Flexible**: Track both technical systems AND business/process issues
+- 🔔 **Real-time Notifications**: Send alerts to Slack, Telegram, Email, or Discord
+  - Multi-channel support: Send to multiple channels simultaneously
+  - Event filtering: Control which events trigger notifications
+  - Smart retry logic: Automatic exponential backoff for failed deliveries
+  - Secure secrets: Environment variable resolution for sensitive data
+  - Non-blocking: Notification failures don't stop workflows
 
 ## Requirements
 
@@ -1524,6 +1530,20 @@ labels:
   - investigating       # Custom status
 ```
 
+## Notifications
+
+Send real-time alerts to Slack, Telegram, Email, or Discord when incidents occur or systems go down.
+
+**Quick Setup:**
+
+1. Create `.notifyrc.json` in repository root with channel configuration
+2. Add GitHub Secrets for webhook URLs/credentials (Settings → Secrets → Actions)
+3. Workflows automatically send notifications on incidents/outages
+
+**Supported Channels:** Slack, Telegram, Email (SMTP), Discord
+
+**📖 Complete Guide**: See [NOTIFICATIONS.md](./NOTIFICATIONS.md) for setup instructions, configuration examples, and troubleshooting.
+
 ## Best Practices
 
 1. **Use Descriptive Titles**: Make issue titles clear and actionable
@@ -1531,7 +1551,9 @@ labels:
 3. **Close When Resolved**: Always close issues when problems are fixed
 4. **Label Consistently**: Use the same labels across all status issues
 5. **Monitor Regularly**: Review your monitoring workflow frequency
-6. **Set Up Alerts**: Configure GitHub notifications for status issues
+6. **Set Up Notifications**: Configure real-time alerts to Slack, Telegram, Email, or Discord
+7. **Test Notifications**: Use `--dry-run` to preview alerts before enabling
+8. **Filter Events**: Disable `incidentUpdated` to reduce noise
 
 ## Troubleshooting
 

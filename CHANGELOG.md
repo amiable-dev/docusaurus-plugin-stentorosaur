@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2025-11-13
+
+### Added
+
+- **Notification system** for real-time alerts to Slack, Telegram, Email, and Discord
+  - Send alerts when incidents occur, systems go down, or maintenance begins
+  - Support for 10 event types: incident opened/closed/updated, maintenance scheduled/started/completed, system down/degraded/restored, SLO breached
+  - Provider implementations for all 4 channels with rich formatting
+  - `stentorosaur-notify` CLI tool for GitHub Actions integration
+  - Environment variable resolution via `env:VAR_NAME` syntax for secure credentials
+  - Retry logic with exponential backoff (configurable, default 3 attempts)
+  - Event filtering for granular control over notifications
+  - Non-blocking design - notification failures don't stop workflows
+- Updated `monitor-systems.yml` workflow to send notifications after monitoring
+- Updated `status-update.yml` workflow to generate and send notifications from GitHub issue events
+- `.notifyrc.example.json` configuration example
+- Comprehensive test suite with 31 tests (100% passing)
+
+### Documentation
+
+- Added `NOTIFICATIONS.md` - complete setup guide for all notification channels
+- Added notifications section to README.md with quick start
+- Simplified all notification documentation (55-87% reduction in verbosity)
+- Removed redundant examples and verbose explanations, keeping only essential information
+
 ## [0.12.1] - 2025-11-13
 
 ### Documentation

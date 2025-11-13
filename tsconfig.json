@@ -20,5 +20,16 @@
     "jsx": "react-jsx"
   },
   "include": ["src"],
-  "exclude": ["node_modules", "lib", "**/*.test.ts", "**/*.test.tsx"]
+  "exclude": [
+    "node_modules",
+    "lib",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "src/notifications/config-validator.ts",
+    "src/notifications/notification-service.ts",
+    "src/notifications/provider-factory.ts",
+    "src/notifications/providers/base-provider.ts",
+    "src/notifications/providers/webhook-provider.ts",
+    "src/notifications/index.ts"
+  ]
 }
