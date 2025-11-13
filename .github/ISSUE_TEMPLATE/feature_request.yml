@@ -1,0 +1,138 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! We appreciate your input on making Stentorosaur better.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing issues and discussions to avoid duplicates
+          required: true
+        - label: I have checked the roadmap to see if this is already planned
+          required: true
+        - label: I have read the documentation to ensure this doesn't already exist
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What use case does it address?
+      placeholder: |
+        I'm frustrated when...
+        My team needs to...
+        Currently there's no way to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this feature work? Be as specific as possible.
+      placeholder: |
+        The plugin should...
+        Users would configure it like...
+        It would display...
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example Configuration/Usage
+      description: Show how you envision using this feature
+      placeholder: |
+        ```javascript
+        {
+          newFeature: {
+            enabled: true,
+            option: 'value'
+          }
+        }
+        ```
+      render: javascript
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches or solutions did you think about?
+      placeholder: |
+        - Alternative A: ...
+        - Alternative B: ...
+        - Workaround I'm currently using: ...
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What aspect of the plugin does this relate to?
+      options:
+        - Monitoring (health checks, uptime tracking)
+        - Incidents (GitHub Issues integration)
+        - Notifications (Slack, Telegram, Email, Discord)
+        - Charts & Visualization
+        - Configuration & Setup
+        - Performance & Optimization
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority (Your Perspective)
+      description: How important is this feature to you?
+      options:
+        - Critical - Blocking our use of the plugin
+        - High - Would significantly improve our workflow
+        - Medium - Nice to have, would use if available
+        - Low - Minor enhancement
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willing-to-contribute
+    attributes:
+      label: Contribution
+      description: Would you be willing to contribute this feature?
+      options:
+        - Yes, I can implement this feature
+        - Yes, I can help test this feature
+        - Yes, I can help with documentation
+        - No, but I can provide feedback
+        - Not at this time
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups / Screenshots
+      description: If this is a UI feature, provide mockups or examples
+      placeholder: Drag and drop images here
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context, links, or resources
+      placeholder: |
+        - Similar feature in tool X: ...
+        - Reference implementation: ...
+        - Related discussions: ...
+
+  - type: textarea
+    id: breaking-changes
+    attributes:
+      label: Breaking Changes
+      description: Would this feature require breaking changes to existing configurations?
+      placeholder: This would require users to...

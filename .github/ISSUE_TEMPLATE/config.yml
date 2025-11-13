@@ -1,0 +1,21 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Ask a Question
+    url: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/discussions/new?category=q-a
+    about: Get help with setup, configuration, or usage questions
+
+  - name: 💡 Share an Idea
+    url: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/discussions/new?category=ideas
+    about: Discuss feature ideas and get community feedback before opening a formal feature request
+
+  - name: 🎉 Show and Tell
+    url: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/discussions/new?category=show-and-tell
+    about: Share your Stentorosaur setup or use case with the community
+
+  - name: 📚 Documentation
+    url: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur#readme
+    about: Read the documentation for setup, configuration, and usage guides
+
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/security/policy
+    about: Report security vulnerabilities privately (do not use public issues)

@@ -1,586 +1,385 @@
-# Contributing to Docusaurus Status Plugin
+# Contributing to Stentorosaur
 
-Thank you for your interest in contributing to the Docusaurus Status Plugin! This guide will help you get started with development and testing.
+First off, thank you for considering contributing to Stentorosaur! It's people like you that make open source such a great community.
 
-## Development Setup
+## Quick Links
+
+- [Code of Conduct](#code-of-conduct)
+- [Getting Started](#getting-started)
+- [How Can I Contribute?](#how-can-i-contribute)
+- [Development Workflow](#development-workflow)
+- [Coding Guidelines](#coding-guidelines)
+- [Commit Guidelines](#commit-guidelines)
+- [Pull Request Process](#pull-request-process)
+
+## Code of Conduct
+
+This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to [conduct@amiable.dev](mailto:conduct@amiable.dev).
+
+## Acknowledgment: Built on Upptime
+
+Stentorosaur is built on the foundation of [Upptime](https://github.com/upptime/upptime) by [Anand Chowdhary](https://github.com/AnandChowdhary). We've ported and extended their brilliant work for Docusaurus integration. If you're interested in standalone status pages, consider contributing to Upptime directly.
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.x or 20.x
-- npm or yarn
-- Git
+- **Node.js** 20.0 or higher
+- **npm** or **yarn**
+- **Git**
+- Basic knowledge of TypeScript, React, and Docusaurus
 
-### Getting Started
-
-1. **Fork and clone the repository**
+### Development Setup
 
 ```bash
-git clone https://github.com/your-username/docusaurus-plugin-stentorosaur.git
+# Clone your fork
+git clone https://github.com/YOUR-USERNAME/docusaurus-plugin-stentorosaur.git
 cd docusaurus-plugin-stentorosaur
-```
 
-2. **Install dependencies**
-
-```bash
+# Install dependencies
 npm install
-```
 
-3. **Build the project**
-
-```bash
+# Build the plugin
 npm run build
+
+# Run tests
+npm test
+
+# Test in the example site
+cd ../test-status-site
+npm install
+npm start
 ```
 
-This runs two steps:
-- `tsc --build` - Compiles TypeScript to JavaScript in `lib/`
-- `node copyUntypedFiles.js` - Copies CSS files to `lib/`
-
-**Important**: Never edit files in `lib/` directly - they're generated. Always edit `src/` and rebuild.
-
-4. **Run tests**
-
-```bash
-npm test                 # Run all tests
-npm run test:watch      # Run tests in watch mode
-npm run test:coverage   # Run tests with coverage report
-```
-
-## Project Structure
+### Repository Structure
 
 ```
 docusaurus-plugin-stentorosaur/
-├── src/                           # Source code
-│   ├── index.ts                   # Plugin lifecycle and orchestration
-│   ├── github-service.ts          # GitHub API integration
-│   ├── maintenance-utils.ts       # Maintenance utilities (v0.6.0+)
-│   ├── demo-data.ts              # Demo/fallback data
-│   ├── types.ts                  # TypeScript interfaces
-│   ├── options.ts                # Configuration schema
-│   └── theme/                    # React components
-│       ├── StatusPage/           # Default status page layout
-│       ├── UptimeStatusPage/     # Upptime-style structured layout (v0.5.0+)
-│       ├── StatusBoard/          # System status board
-│       ├── StatusItem/           # Individual system status card
-│       ├── IncidentHistory/      # Incident timeline
-│       └── Maintenance/          # Scheduled maintenance (v0.5.0+)
-│           ├── MaintenanceItem/
-│           └── MaintenanceList/
-├── scripts/                      # CLI tools
-│   ├── update-status.cjs         # Status update CLI
-│   └── monitor.js                # Monitoring script (v0.4.0+)
-├── templates/                    # User-facing templates
-│   ├── workflows/                # GitHub Actions workflows
-│   └── ISSUE_TEMPLATE/           # GitHub issue templates
-├── __tests__/                    # Test suites
-│   ├── demo-data.test.ts         # Demo data validation
-│   ├── options.test.ts           # Configuration schema tests
-│   ├── github-service.test.ts    # GitHub API integration tests
-│   ├── historical-data.test.ts   # Historical data utilities
-│   ├── maintenance-utils.test.ts # Maintenance utilities (v0.6.0+)
-│   ├── monitor.test.ts           # Monitor script tests (v0.6.0+)
-│   ├── plugin.test.ts            # Plugin lifecycle tests
-│   ├── update-status.test.ts     # CLI tool tests
-│   ├── useChartExport.test.ts    # Chart export hook tests
-│   ├── MaintenanceItem.test.tsx  # MaintenanceItem component (v0.5.0+)
-│   ├── MaintenanceList.test.tsx  # MaintenanceList component (v0.5.0+)
-│   └── UptimeStatusPage.test.tsx # UptimeStatusPage component (v0.5.0+)
-└── lib/                          # Generated build output (git ignored)
+├── src/                    # TypeScript source code
+│   ├── theme/             # React components
+│   ├── notifications/     # Notification providers
+│   └── index.ts          # Plugin entry point
+├── __tests__/             # Jest tests
+├── scripts/               # CLI tools
+├── templates/             # Workflow templates
+└── lib/                   # Compiled output (generated)
 ```
 
-## Testing
+See [CLAUDE.md](CLAUDE.md) for detailed developer documentation.
 
-### Test Coverage Requirements
+## How Can I Contribute?
 
-The project maintains high test coverage standards enforced in CI:
+### Reporting Bugs
 
-- **Minimum**: 70% for all metrics (branches, functions, lines, statements)
-- **Current**: 92.76% overall coverage (314 tests passing)
-- **v0.5.0**: Added 39 new tests for maintenance and Upptime features
-- **v0.6.0**: Added 25+ new tests for maintenance-aware monitoring and config options
+Before creating bug reports, please check the [existing issues](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues) to avoid duplicates.
 
-### Running Tests
+**When filing a bug report, include:**
+
+- **Clear title and description**
+- **Steps to reproduce** the issue
+- **Expected vs actual behavior**
+- **Environment details:**
+  - Plugin version
+  - Docusaurus version
+  - Node.js version
+  - Operating system
+- **Screenshots** if applicable
+- **Error messages** or logs
+
+Use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.yml).
+
+### Suggesting Enhancements
+
+Enhancement suggestions are tracked as GitHub issues. Use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.yml).
+
+**Include:**
+
+- **Clear use case** - Why is this enhancement needed?
+- **Proposed solution** - How should it work?
+- **Alternatives considered** - What other approaches did you think about?
+- **Additional context** - Screenshots, examples, etc.
+
+### Your First Contribution
+
+Look for issues labeled:
+- [`good first issue`](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/good%20first%20issue) - Good for newcomers
+- [`help wanted`](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/help%20wanted) - Extra attention needed
+- [`documentation`](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/documentation) - Improve docs
+
+### Pull Requests
+
+We actively welcome your pull requests!
+
+**Before submitting:**
+1. Search existing PRs to avoid duplicates
+2. For large changes, open an issue first to discuss
+3. Fork the repo and create your branch from `main`
+4. Follow the [Development Workflow](#development-workflow)
+
+## Development Workflow
+
+### 1. Create a Branch
+
+```bash
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/issue-number-description
+```
+
+Use prefixes:
+- `feature/` - New features
+- `fix/` - Bug fixes
+- `docs/` - Documentation changes
+- `test/` - Test improvements
+- `refactor/` - Code refactoring
+
+### 2. Make Changes
+
+- Write clear, documented code
+- Add tests for new functionality
+- Update documentation as needed
+- Follow [Coding Guidelines](#coding-guidelines)
+
+### 3. Test Your Changes
 
 ```bash
 # Run all tests
 npm test
 
-# Run specific test file
-npm test -- __tests__/plugin.test.ts
-
-# Run tests in watch mode during development
+# Run tests in watch mode
 npm run test:watch
 
-# Generate coverage report
-npm run test:coverage
-```
+# Run tests with coverage
+npm test -- --coverage
 
-### Testing the Monitoring Script (v0.4.0+)
-
-```bash
-# Test single endpoint
-node scripts/monitor.js --system test --url https://www.google.com --verbose
-
-# Test with config file
-node scripts/monitor.js --config .monitorrc.json
-
-# Verify data files
-cat status-data/current.json | jq '.'
-cat status-data/archives/2025/11/history-2025-11-03.jsonl
-```
-
-### Test Structure
-
-Tests are organized into focused suites:
-
-1. **Demo Data Tests** (`demo-data.test.ts`)
-   - Validates demo data structure
-   - Ensures realistic test scenarios
-
-2. **Plugin Options Tests** (`options.test.ts`)
-   - Validates configuration schemas
-   - Tests option combinations and edge cases
-
-3. **GitHub Service Tests** (`github-service.test.ts`)
-   - Mocks GitHub API interactions
-   - Tests data fetching and transformation
-
-4. **Plugin Integration Tests** (`plugin.test.ts`)
-   - Tests full plugin lifecycle
-   - Validates Docusaurus integration points
-   - Tests maintenance config options (v0.6.0+)
-
-5. **CLI Script Tests** (`update-status.test.ts`)
-   - Tests standalone CLI tool
-   - Validates command-line arguments and behavior
-   - Tests maintenance data fetching (v0.6.0+)
-
-6. **Maintenance Utilities Tests** (`maintenance-utils.test.ts`, v0.6.0+)
-   - Tests frontmatter parsing
-   - Tests status determination logic
-   - Tests timezone utilities (formatDateInTimezone, formatShortDate)
-
-7. **Monitor Script Tests** (`monitor.test.ts`, v0.6.0+)
-   - Tests monitoring script structure
-   - Validates maintenance window awareness
-   - Tests system skipping during maintenance
-
-8. **Component Tests** (v0.5.0+)
-   - `MaintenanceItem.test.tsx` - Maintenance window display component
-   - `MaintenanceList.test.tsx` - Maintenance list with filtering
-   - `UptimeStatusPage.test.tsx` - Upptime-style status page layout
-
-### Writing Tests
-
-When adding new features:
-
-1. Add tests before implementing the feature (TDD approach recommended)
-2. Mock external services (GitHub API, file system when appropriate)
-3. Test both success and error scenarios
-4. Maintain or improve code coverage
-5. Use descriptive test names that explain the scenario
-
-Example test structure:
-
-```typescript
-describe('Feature Name', () => {
-  describe('specific scenario', () => {
-    it('should behave in expected way', () => {
-      // Arrange
-      const input = setupTestData();
-      
-      // Act
-      const result = functionUnderTest(input);
-      
-      // Assert
-      expect(result).toEqual(expectedOutput);
-    });
-  });
-});
-```
-
-## Continuous Integration
-
-GitHub Actions CI runs on every push and pull request:
-
-- ✅ Tests against Node.js 18.x and 20.x
-- ✅ Enforces code coverage thresholds (70% minimum)
-- ✅ Validates TypeScript compilation
-- ✅ Runs on Ubuntu latest
-
-See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for CI configuration.
-
-CI must pass before pull requests can be merged.
-
-## Development Workflow
-
-### Making Changes
-
-1. **Create a feature branch**
-
-```bash
-git checkout -b feature/your-feature-name
-```
-
-2. **Make your changes**
-
-Edit files in `src/` (never edit `lib/` directly)
-
-3. **Add/update tests**
-
-Ensure your changes are covered by tests in `__tests__/`
-
-4. **Run tests locally**
-
-```bash
-npm test
-```
-
-5. **Build the project**
-
-```bash
+# Build the plugin
 npm run build
+
+# Test in example site
+cd ../test-status-site
+npm start
 ```
 
-6. **Verify everything works**
+### 4. Commit Changes
+
+Follow [Commit Guidelines](#commit-guidelines):
 
 ```bash
-# Run all tests with coverage
-npm run test:coverage
-
-# Check TypeScript compilation
-npx tsc --noEmit
+git add .
+git commit -m "feat: Add notification retry logic"
 ```
 
-7. **Commit your changes**
-
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```bash
-git commit -m "feat: add new feature"
-git commit -m "fix: resolve bug in status calculation"
-git commit -m "docs: update configuration examples"
-```
-
-8. **Push and create a pull request**
+### 5. Push and Create PR
 
 ```bash
 git push origin feature/your-feature-name
 ```
 
-### Testing Your Changes Locally
+Then create a pull request on GitHub using the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
 
-To test the plugin in a real Docusaurus project:
+## Coding Guidelines
 
-1. **Build the plugin**
+### TypeScript
 
-```bash
-npm run build
-```
-
-2. **Link the package locally**
-
-```bash
-npm link
-```
-
-3. **In your Docusaurus test project**
-
-```bash
-cd /path/to/your/docusaurus/project
-npm link @amiable-dev/docusaurus-plugin-stentorosaur
-```
-
-4. **Configure and test**
-
-Add the plugin to your `docusaurus.config.js` and run:
-
-```bash
-npm start  # Development server
-npm run build  # Production build
-```
-
-## Code Style
-
-- **TypeScript**: Use TypeScript for all new code
-- **Strict mode**: Code must compile with `strict: true`
-- **Formatting**: Follow existing code style
-- **Comments**: Add JSDoc comments for public APIs
-- **Naming**: Use descriptive variable and function names
-
-## Plugin Architecture
-
-### Docusaurus Plugin Lifecycle
-
-The plugin follows standard Docusaurus plugin architecture with three critical phases:
-
-1. **`loadContent()`** - Fetches GitHub Issues via Octokit, transforms to StatusData, writes to `status.json`
-2. **`contentLoaded()`** - Creates `/status` route, passes data as props to React components
-3. **`postBuild()`** - Copies status data to build output for client-side access
-
-### Key Files
-
-- **`src/index.ts`** - Plugin orchestration and lifecycle hooks
-- **`src/github-service.ts`** - GitHub API integration (Octokit wrapper)
-- **`src/types.ts`** - TypeScript interfaces for StatusItem, StatusIncident, StatusData
-- **`src/theme/*`** - Swizzleable React components (StatusPage, StatusBoard, StatusItem, IncidentHistory)
-
-### Adding New Configuration Options
-
-1. Add to `PluginOptions` interface in `src/types.ts`
-2. Add default value in `src/options.ts` DEFAULT_OPTIONS
-3. Add Joi validation in `src/options.ts` pluginOptionsSchema
-4. Use in `src/index.ts` plugin lifecycle
-5. Add tests in `__tests__/options.test.ts`
-6. Document in README.md and CONFIGURATION.md
-
-**Example (v0.5.0 statusView option):**
+- **Strict mode enabled** - No implicit `any`
+- **Prefer interfaces over types** for object shapes
+- **Use discriminated unions** for type-safe event handling
+- **Document complex logic** with JSDoc comments
+- **Avoid non-null assertions** (`!`) unless absolutely necessary
 
 ```typescript
-// 1. Add to PluginOptions interface (types.ts)
-interface PluginOptions {
-  statusView?: 'default' | 'upptime';
-  uptimeConfig?: UptimeStatusPageConfig;
+// Good
+interface StatusItem {
+  name: string;
+  status: 'up' | 'down' | 'degraded';
+  lastCheck: string;
 }
 
-// 2. Add validation (options.ts)
-const pluginOptionsSchema = Joi.object<PluginOptions>({
-  statusView: Joi.string().valid('default', 'upptime').default('default'),
-  uptimeConfig: Joi.object({...}),
-});
-
-// 3. Use in plugin (index.ts)
-const statusPageComponent = options.statusView === 'upptime' 
-  ? '@theme/UptimeStatusPage' 
-  : '@theme/StatusPage';
+// Avoid
+type StatusItem = {
+  name: any; // ❌ Use specific types
+  status: string; // ❌ Use literal types
+};
 ```
 
-### Creating New Theme Components
+### React Components
 
-1. Create in `src/theme/ComponentName/index.tsx` + `styles.module.css`
-2. Export component with proper TypeScript types
-3. Add to `getSwizzleComponentList()` in `src/index.ts` for user customization
-4. CSS files MUST use `.module.css` extension (CSS Modules)
-5. Remember: Build copies CSS via `copyUntypedFiles.js`
-6. Add comprehensive tests in `__tests__/ComponentName.test.tsx`
+- **Functional components only** - No class components
+- **Use hooks** - `useState`, `useEffect`, etc.
+- **CSS Modules** for styling (`styles.module.css`)
+- **Accessibility** - Include ARIA labels, keyboard navigation
+- **Props interfaces** - Always define prop types
 
-**Current Swizzleable Components (v0.5.0):**
-- StatusPage (default layout)
-- UptimeStatusPage (Upptime-style layout) ✨ new
-- StatusBoard
-- StatusItem
-- IncidentHistory
-- ResponseTimeChart
-- UptimeChart
-- StatusHistory
-- PerformanceMetrics
-- SLIChart
-- ChartPanel
-- MaintenanceItem ✨ new
-- MaintenanceList ✨ new
+```tsx
+// Good
+interface StatusCardProps {
+  name: string;
+  status: 'up' | 'down';
+  onRefresh?: () => void;
+}
+
+export function StatusCard({ name, status, onRefresh }: StatusCardProps) {
+  return (
+    <div className={styles.card} role="status" aria-label={`${name} status`}>
+      {/* ... */}
+    </div>
+  );
+}
+```
+
+### Testing
+
+- **Jest + ts-jest** for testing
+- **Mock external APIs** - Never make real API calls
+- **Aim for 80%+ coverage**
+- **Test edge cases** and error conditions
+- **Clear test names** - Describe what's being tested
+
+```typescript
+// Good
+describe('GitHubStatusService', () => {
+  describe('fetchStatusIssues()', () => {
+    it('should return empty array when no issues exist', async () => {
+      // Test implementation
+    });
+
+    it('should handle API errors gracefully', async () => {
+      // Test implementation
+    });
+  });
+});
+```
+
+### File Organization
+
+- **One component per file** - `StatusCard.tsx`, not `Components.tsx`
+- **Co-locate styles** - `StatusCard.tsx` + `styles.module.css` in same folder
+- **Group related code** - Keep notifications code in `src/notifications/`
+- **Tests mirror source** - `src/foo.ts` → `__tests__/foo.test.ts`
+
+## Commit Guidelines
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+### Types
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation only
+- `style`: Code style (formatting, missing semicolons, etc.)
+- `refactor`: Code refactoring
+- `test`: Adding/updating tests
+- `chore`: Build process, tooling, dependencies
+
+### Examples
+
+```bash
+feat(notifications): Add Telegram provider
+fix(charts): Handle DST transitions correctly
+docs(readme): Update installation instructions
+test(github-service): Add tests for maintenance parsing
+chore(deps): Upgrade Chart.js to v4.5.0
+```
+
+### Scope
+
+Use component/module names:
+- `notifications`
+- `charts`
+- `github-service`
+- `monitoring`
+- `workflows`
+
+### Subject
+
+- Use imperative mood ("Add feature" not "Added feature")
+- Don't capitalize first letter
+- No period at the end
+- Keep under 72 characters
+
+### Body (optional)
+
+- Explain *why* not *what*
+- Wrap at 72 characters
+- Reference issues: `Fixes #123`, `Closes #456`
+
+### Breaking Changes
+
+Indicate breaking changes in footer:
+
+```
+feat(config): Change entities config format
+
+BREAKING CHANGE: The `systemLabels` config option has been removed.
+Use `entities` instead. Migration script: `scripts/migrate-config.js`
+```
 
 ## Pull Request Process
 
-1. **Ensure CI passes**: All tests must pass and coverage requirements met
-2. **Update documentation**: Update README.md, CONFIGURATION.md, or other docs as needed
-3. **Add changelog entry**: Add your changes to CHANGELOG.md under `[Unreleased]`
-4. **Request review**: Tag maintainers for review
-5. **Address feedback**: Make requested changes and push updates
-6. **Squash commits**: Maintainers will squash commits when merging
+### PR Checklist
 
-## Release Process
+Before submitting, ensure:
 
-Releases are handled by maintainers using an automated GitHub Actions workflow.
+- [ ] Tests added/updated and passing (`npm test`)
+- [ ] Build succeeds (`npm run build`)
+- [ ] TypeScript types correct (no `any`, proper exports)
+- [ ] Documentation updated (README, CHANGELOG, JSDoc)
+- [ ] Commit messages follow conventions
+- [ ] No merge conflicts with `main`
+- [ ] PR description explains changes clearly
 
-### Semantic Versioning
+### PR Template
 
-We follow [Semantic Versioning 2.0.0](https://semver.org/):
+Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md) which includes:
 
-- **MAJOR** (x.0.0): Breaking changes to public API
-- **MINOR** (0.x.0): New features, backward compatible
-- **PATCH** (0.0.x): Bug fixes, backward compatible
+- **Type of change** (bug fix, feature, docs, etc.)
+- **Related issue(s)**
+- **Description** of changes
+- **Testing** performed
+- **Screenshots** (if UI changes)
+- **Checklist** of requirements
 
-### Publishing Workflow
+### Review Process
 
-1. Update `version` in `package.json`
-2. Update `CHANGELOG.md` following [Keep a Changelog](https://keepachangelog.com/) format
-3. Commit: `git commit -m "chore: Release vX.Y.Z"`
-4. Tag: `git tag vX.Y.Z && git push && git push --tags`
-5. GitHub Actions automatically publishes to npm
+1. **Automated checks** - CI must pass (tests, build, linting)
+2. **Code review** - Maintainers review code, architecture, tests
+3. **Feedback** - Address review comments, iterate as needed
+4. **Approval** - At least one maintainer approval required
+5. **Merge** - Maintainers merge approved PRs
 
-**Note**: Never run `npm publish` locally - always use the automated workflow.
+### After Merge
 
-## Important Implementation Details
+- Your contribution will be mentioned in the next release notes
+- Significant contributors may be invited to the maintainers team
+- Thank you! 🎉
 
-### Historical Data Structure
+## Recognition
 
-When working with `current.json` or historical data, note the structure changed in v0.4.0+:
+Contributors are:
+- Listed in [README.md](README.md#contributors)
+- Mentioned in [CHANGELOG.md](CHANGELOG.md) release notes
+- Given co-author credit in commits
+- Thanked in release announcements
 
-```typescript
-// current.json structure (v0.4.0+)
-{
-  "version": "1.0",
-  "generated": 1762259569968,
-  "readings": [
-    {"t": 1761060300000, "svc": "Main Website", "state": "up", "code": 200, "lat": 149},
-    // ... more readings
-  ]
-}
-```
+## Questions?
 
-**Important**: Always access data as `data.readings || data` to support both the new object structure and legacy array format.
-
-```typescript
-// Correct way to parse current.json
-const response = await fetch('/status-data/current.json');
-const data = await response.json();
-const readings = data.readings || data; // Handle both formats
-```
-
-### Case-Insensitive Service Matching
-
-When matching service names between configuration and historical data, **always use lowercase keys**:
-
-```typescript
-// Correct: Build service map with lowercase keys
-const serviceMap = new Map<string, Reading[]>();
-for (const reading of readings) {
-  const key = reading.svc.toLowerCase(); // ✅ Lowercase key
-  if (!serviceMap.has(key)) {
-    serviceMap.set(key, []);
-  }
-  serviceMap.get(key)!.push(reading);
-}
-
-// Then lookup with lowercase
-const serviceReadings = serviceMap.get(item.name.toLowerCase());
-```
-
-This prevents mismatches between "Main Website" in config and "main website" in data.
-
-### Maintenance System (v0.5.0+, Enhanced v0.6.0+)
-
-The maintenance system has evolved significantly to provide end-to-end lifecycle management.
-
-#### Maintenance Issue Format
-
-Maintenance issues use **YAML frontmatter** (not markdown fields):
-
-```markdown
----
-start: 2025-11-15T02:00:00Z
-end: 2025-11-15T04:00:00Z
-systems:
-  - API Service
-  - Database
----
-
-Description goes here after the frontmatter.
-```
-
-The `extractFrontmatter()` utility in `src/maintenance-utils.ts` parses the YAML block. Required fields are `start` and `end` - `systems` is optional and falls back to issue labels.
-
-#### Maintenance Status Determination
-
-Status is automatically calculated based on time and issue state:
-
-```typescript
-// src/maintenance-utils.ts getMaintenanceStatus()
-if (issueState === 'closed') return 'completed';
-if (now >= startDate && now <= endDate) return 'in-progress';
-if (now < startDate) return 'upcoming';
-return 'completed';
-```
-
-#### Maintenance-Aware Monitoring (v0.6.0+)
-
-The monitoring system intelligently skips systems during active maintenance windows:
-
-**Implementation:**
-- `scripts/monitor.js` checks `status-data/maintenance.json` before monitoring each system
-- If maintenance status is `'in-progress'` for a system, monitoring is skipped
-- `templates/workflows/monitor-systems.yml` prevents incident creation during maintenance
-- Skipped systems are logged for transparency
-
-**Why this matters:**
-- Prevents false incident alerts during planned maintenance
-- Keeps performance data clean (no abnormal metrics during maintenance)
-- Provides accurate uptime calculations
-
-**Testing maintenance-aware monitoring:**
-```bash
-# Create maintenance.json with in-progress maintenance
-echo '[{"id":1,"status":"in-progress","affectedSystems":["api"],"start":"2025-01-01T00:00:00Z","end":"2025-12-31T23:59:59Z"}]' > status-data/maintenance.json
-
-# Run monitor - should skip 'api' system
-node scripts/monitor.js --config .monitorrc.json --verbose
-# Output: ⏸️  Skipping api - in maintenance window: ...
-```
-
-#### Configuration Options (v0.6.0+)
-
-The `scheduledMaintenance` config object supports:
-
-```typescript
-scheduledMaintenance: {
-  enabled: true,                           // Enable/disable maintenance tracking
-  label: 'maintenance',                    // Single label (deprecated, use 'labels')
-  labels: ['maintenance', 'planned'],      // Multiple labels (preferred)
-  displayDuration: 30,                     // Show completed maintenance for N days
-  timezone: 'America/New_York',            // Display timezone (default: 'UTC')
-}
-```
-
-**Implementation details:**
-- `enabled: false` → maintenance array set to `[]` in plugin
-- `displayDuration` → filters completed maintenance older than N days (see `src/index.ts` lines 449-475)
-- `timezone` → used by `formatDateInTimezone()` and `formatShortDate()` utilities in `src/maintenance-utils.ts`
-- `labels` takes precedence over deprecated `label` option
-
-#### Key Files for Maintenance Development
-
-**Core Implementation:**
-- `src/maintenance-utils.ts` - Utility functions (frontmatter parsing, status determination, timezone formatting)
-- `src/github-service.ts` - `fetchScheduledMaintenance()`, `fetchMaintenanceIssues()`
-- `src/index.ts` - Plugin lifecycle integration (lines 301-321 for loading, 449-475 for filtering)
-- `scripts/monitor.js` - `checkMaintenanceWindow()` function (lines 308-345)
-- `templates/workflows/monitor-systems.yml` - Workflow integration (lines 82-150)
-
-**React Components:**
-- `src/theme/Maintenance/MaintenanceList/` - List component with filtering
-- `src/theme/Maintenance/MaintenanceItem/` - Individual maintenance card
-
-**Tests:**
-- `__tests__/maintenance-utils.test.ts` - Utility function tests (including timezone)
-- `__tests__/update-status.test.ts` - CLI maintenance tests
-- `__tests__/monitor.test.ts` - Monitoring maintenance tests
-- `__tests__/plugin.test.ts` - Config option tests
-- `__tests__/MaintenanceItem.test.tsx` - Component tests
-- `__tests__/MaintenanceList.test.tsx` - Component tests
-
-### Component Props vs Route Data
-
-When creating new components, understand two data flow patterns:
-
-1. **Route-level components** (StatusPage, UptimeStatusPage): Receive data via `route.data` from `contentLoaded()`
-2. **Embedded components** (StatusBoard, MaintenanceList): Accept data via React props
-
-Make components work in both contexts by checking for data sources:
-
-```typescript
-const dataFromRoute = route?.data as StatusData;
-const items = statusItems || dataFromRoute?.items || [];
-```
-
-## Getting Help
-
-- **Issues**: Open an issue for bugs or feature requests
-- **Discussions**: Use GitHub Discussions for questions
-- **Documentation**: Check README.md, CONFIGURATION.md, and inline code comments
-
-## Code of Conduct
-
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+- Read [CLAUDE.md](CLAUDE.md) for developer documentation
+- Check [existing issues](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues)
+- Ask in [GitHub Discussions](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/discussions)
+- Email maintainers: [maintainers@amiable.dev](mailto:maintainers@amiable.dev)
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+
+---
+
+Thank you for contributing to Stentorosaur! 🦖

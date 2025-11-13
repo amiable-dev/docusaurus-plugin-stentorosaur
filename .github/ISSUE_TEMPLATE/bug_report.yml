@@ -1,0 +1,160 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out this form as completely as possible.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: I am using the latest version of the plugin
+          required: true
+        - label: I have read the documentation
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug
+      placeholder: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Configure plugin with...
+        2. Run command...
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: The status page should...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Instead, the status page...
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin Version
+      description: What version of @amiable-dev/docusaurus-plugin-stentorosaur are you using?
+      placeholder: "0.13.1"
+    validations:
+      required: true
+
+  - type: input
+    id: docusaurus-version
+    attributes:
+      label: Docusaurus Version
+      description: What version of Docusaurus are you using?
+      placeholder: "3.9.0"
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js Version
+      description: What version of Node.js are you using?
+      placeholder: "20.10.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you running on?
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser (if applicable)
+      description: If this is a UI issue, what browser are you using?
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - Other
+        - N/A
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Plugin Configuration
+      description: Please share your plugin configuration (redact sensitive tokens)
+      placeholder: |
+        ```javascript
+        {
+          owner: 'your-org',
+          repo: 'status',
+          entities: [
+            { name: 'api', type: 'system' }
+          ]
+        }
+        ```
+      render: javascript
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Messages / Logs
+      description: Include any error messages, stack traces, or console output
+      placeholder: Paste error messages here
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain the problem
+      placeholder: Drag and drop images here
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context about the problem
+      placeholder: This started happening after...
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal Reproduction Repository
+      description: If possible, provide a link to a minimal reproduction repository
+      placeholder: https://github.com/your-username/stentorosaur-bug-reproduction
