@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2025-11-13
+
+### Documentation
+
+- Updated README.md with human-friendly date examples in maintenance section
+- Updated QUICKSTART.md with simplified maintenance window examples
+- Updated CONFIGURATION.md with comprehensive date format reference and entity label guidance
+- All documentation now reflects v0.12.0 features (human-friendly dates, simple entity labels)
+
 ## [0.12.0] - 2025-11-12
 
 ### Added
