@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2025-11-13
+
+### Added
+
+- **Open source collaboration infrastructure** for community contributions
+  - Issue templates: Bug report and feature request forms with structured fields
+  - Pull request template with comprehensive checklists and guidelines
+  - CODE_OF_CONDUCT.md - Contributor Covenant v2.1 for community standards
+  - CONTRIBUTING.md - Complete contribution guide with Upptime attribution, development workflow, and coding guidelines
+  - SECURITY.md - Security policy with vulnerability reporting process and best practices
+  - SUPPORT.md - Support documentation with links to all resources and response time expectations
+  - LABELS.md - Complete label reference with colors, descriptions, and automation examples
+  - DISCUSSIONS_SETUP.md - Recommended GitHub Discussions configuration and moderation guidelines
+
+### Documentation
+
+- Proper Upptime attribution added to all community documentation
+- Acknowledgment of Anand Chowdhary's foundational work
+- Clear distinction between ported features and original extensions
+
 ## [0.13.1] - 2025-11-13
 
 ### Fixed
