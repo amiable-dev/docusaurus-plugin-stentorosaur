@@ -479,17 +479,14 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMP
 
 ### Creating Maintenance Tickets
 
-To schedule and display maintenance windows on your status page, create GitHub issues with the `maintenance` label and YAML frontmatter:
+To schedule and display maintenance windows on your status page, create GitHub issues with the `maintenance` label and YAML frontmatter.
 
 #### Maintenance Issue Format
 
 ```markdown
 ---
-start: 2025-11-10T02:00:00Z
-end: 2025-11-10T04:00:00Z
-systems:
-  - API Service
-  - Main Website
+start: @tomorrow 2am UTC
+end: @tomorrow 4am UTC
 ---
 
 We will be performing a database migration to improve query performance. The API and website will be in read-only mode during this window.
@@ -504,14 +501,34 @@ Database snapshots created. Can restore within 15 minutes if needed.
 
 #### Required Frontmatter Fields
 
-- **`start`** (required): Maintenance start time in ISO 8601 format (UTC recommended)
-- **`end`** (required): Maintenance end time in ISO 8601 format
-- **`systems`** (optional): Array of affected entity names. If omitted, uses issue labels matching your `entities` configuration
+- **`start`** (required): Maintenance start time - supports human-friendly dates!
+- **`end`** (required): Maintenance end time - supports human-friendly dates!
+
+**Supported Date Formats:**
+
+```yaml
+# Human-friendly (recommended)
+start: @tomorrow 2am UTC
+start: tomorrow at 2pm
+start: next Monday 9am
+
+# Relative times
+start: +2h              # 2 hours from now
+start: in 3 hours
+start: +30m             # 30 minutes from now
+
+# Traditional ISO 8601 (still works)
+start: 2025-11-15T02:00:00Z
+start: 2025-12-01T14:30:00-05:00
+```
 
 #### Labels
 
-- Add the **`maintenance`** label (or your custom label from `scheduledMaintenance.label` config)
-- Optionally add system labels like `api`, `website`, etc.
+- **`maintenance`** (required) - Identifies this as a maintenance issue
+- **Entity labels** (required) - Affected systems/processes: `api`, `database`, `onboarding`
+  - Can use namespaced: `system:api`, `process:onboarding`
+  - Or simple: `api`, `onboarding` (uses default type)
+  - Labels are matched against your configured entities
 
 #### Issue Comments
 
@@ -553,18 +570,14 @@ This ensures your historical performance data remains accurate and incidents are
 
 **Title:** Database Migration and Index Optimization
 
-**Labels:** `maintenance`, `api`, `website`
+**Labels:** `maintenance`, `api`, `website`, `documentation`
 
 **Body:**
 
 ```markdown
 ---
-start: 2025-11-15T02:00:00Z
-end: 2025-11-15T04:00:00Z
-systems:
-  - API Service
-  - Main Website
-  - Documentation
+start: @tomorrow 2am UTC
+end: @tomorrow 4am UTC
 ---
 
 Annual database migration to PostgreSQL 16 with index optimization.

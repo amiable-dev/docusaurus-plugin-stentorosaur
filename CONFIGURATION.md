@@ -811,17 +811,16 @@ Create a GitHub issue with the `maintenance` label and YAML frontmatter:
 
 **Labels:**
 - `maintenance` (required - or your custom label from config)
-- System labels optional (e.g., `api`, `database`)
+- **Entity labels** (required) - Affected systems/processes: `api`, `database`, `onboarding`
+  - Can use simple labels: `api`, `database`
+  - Or namespaced: `system:api`, `process:onboarding`
 
 **Issue Body Format:**
 
 ```markdown
 ---
-start: 2025-11-15T02:00:00Z
-end: 2025-11-15T04:00:00Z
-systems:
-  - API Service
-  - Database
+start: @tomorrow 2am UTC
+end: @tomorrow 4am UTC
 ---
 
 Scheduled database upgrade to improve performance.
@@ -835,9 +834,23 @@ Database snapshots available for immediate restore if needed.
 ```
 
 **Required Frontmatter Fields:**
-- `start` - Maintenance start time (ISO 8601 format, UTC recommended)
-- `end` - Maintenance end time (ISO 8601 format)
-- `systems` - Array of affected system names (optional, uses issue labels if omitted)
+- `start` - Maintenance start time (supports human-friendly dates!)
+- `end` - Maintenance end time (supports human-friendly dates!)
+
+**Supported Date Formats:**
+```yaml
+# Human-friendly (recommended)
+start: @tomorrow 2am UTC
+start: tomorrow at 2pm
+start: next Monday 9am
+
+# Relative times
+start: +2h              # 2 hours from now
+start: in 3 hours
+
+# Traditional ISO 8601 (still works)
+start: 2025-11-15T02:00:00Z
+```
 
 **Issue Comments:**
 Add comments to provide updates during maintenance. They will be displayed in the maintenance timeline.

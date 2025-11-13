@@ -233,19 +233,20 @@ Example:
 - Labels: `status`, `api`, `major`
 - Body: Description of the issue
 
-**For maintenance windows**, add YAML frontmatter:
+**For maintenance windows**, add YAML frontmatter with human-friendly dates:
 
 ```markdown
 ---
-start: 2025-11-15T02:00:00Z
-end: 2025-11-15T04:00:00Z
-systems:
-  - api
-  - database
+start: @tomorrow 2am UTC
+end: @tomorrow 4am UTC
 ---
 
 Scheduled database upgrade to improve performance.
 ```
+
+**Labels for maintenance:** `maintenance`, `api`, `database` (affected entities)
+
+💡 **Tip:** You can use simple entity labels (`api`) or namespaced (`system:api`). Both work!
 
 ## Step 5: View Your Status Page
 
