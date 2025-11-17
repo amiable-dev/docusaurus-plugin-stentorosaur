@@ -25,6 +25,8 @@ Create a Personal Access Token at <https://github.com/settings/tokens> with `rep
 > - Without a token, the plugin shows **demo data** (useful for testing)
 > - See the [README](./README.md#github-token-setup) for detailed token setup
 
+
+
 ## Step 2: Configure Docusaurus
 
 Add to your `docusaurus.config.js`:
@@ -43,7 +45,7 @@ module.exports = {
           { name: 'database', type: 'system' },
         ],
         token: process.env.GITHUB_TOKEN,
-        
+
         // Optional: Choose status page layout
         statusView: 'upptime',  // 'default' | 'upptime'
 
@@ -57,6 +59,8 @@ module.exports = {
   ],
 };
 ```
+
+
 
 ## Step 3: Set up GitHub Actions
 
@@ -92,10 +96,13 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 ```
 
 **What it does:**
+
 - ✅ Checks endpoints every 5 minutes
 - ✅ Updates `current.json` with response times and status
 - ✅ Creates GitHub Issues for critical failures
 - ✅ Commits with `[skip ci]` (doesn't trigger deployments)
+
+
 
 ### Workflow 2: Status Update (Required for Incident Tracking)
 
@@ -106,6 +113,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 ```
 
 **What it does:**
+
 - ✅ Runs when issues are created/updated/closed
 - ✅ Runs hourly to catch any changes
 - ✅ Generates `incidents.json` from issues with `status` label
@@ -131,6 +139,8 @@ npx stentorosaur-update-status \
 # --commit             Auto-commit changes with emoji messages
 ```
 
+
+
 ### Workflow 3: Deployment (Required)
 
 Copy both deployment workflows:
@@ -141,12 +151,14 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 ```
 
 **deploy.yml** - Immediate deployments:
+
 - ✅ Triggered by code pushes to main
 - ✅ Triggered by `repository_dispatch` events (critical incidents)
 - ✅ Ignores monitoring data commits (via `paths-ignore`)
 - ✅ Deploys within ~2 minutes for critical incidents
 
 **deploy-scheduled.yml** - Scheduled deployments:
+
 - ✅ Runs every hour (configurable)
 - ✅ Picks up non-critical incident updates
 - ✅ Picks up maintenance window changes
@@ -154,7 +166,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 
 **Smart Deployment Logic:**
 
-```
+```text
 Critical Incident:
   Issue created with 'critical' + 'status' labels
     → status-update.yml runs
@@ -179,11 +191,13 @@ Monitoring Data:
     → Data available for next scheduled deployment
 ```
 
+
+
 ### Complete Workflow Setup Summary
 
 After copying all workflows, you'll have:
 
-```
+```text
 .github/
   workflows/
     monitor-systems.yml      # Every 5 min - Check endpoints, update current.json
@@ -195,14 +209,14 @@ After copying all workflows, you'll have:
 
 **Data Flow:**
 
-```
+```text
 Every 5 min:
   monitor-systems.yml → current.json → [skip ci] → No deploy
-  
+
 Critical failure:
   monitor-systems.yml → Creates Issue → status-update.yml
     → incidents.json → repository_dispatch → deploy.yml → IMMEDIATE DEPLOY
-  
+
 Non-critical issue:
   GitHub Issue created → status-update.yml
     → incidents.json → [skip ci] → deploy-scheduled.yml (hourly) → DEPLOY
@@ -211,6 +225,8 @@ Maintenance:
   GitHub Issue with YAML frontmatter → status-update.yml
     → maintenance.json → [skip ci] → deploy-scheduled.yml (hourly) → DEPLOY
 ```
+
+
 
 ### Issue Template (Optional but Recommended)
 
@@ -246,7 +262,9 @@ Scheduled database upgrade to improve performance.
 
 **Labels for maintenance:** `maintenance`, `api`, `database` (affected entities)
 
-💡 **Tip:** You can use simple entity labels (`api`) or namespaced (`system:api`). Both work!
+Tip: You can use simple entity labels (`api`) or namespaced (`system:api`). Both work!
+
+
 
 ## Step 5: View Your Status Page
 
@@ -265,6 +283,7 @@ Navigate to: `http://localhost:3000/status`
 Pick the layout that works best for you:
 
 **Default Layout** - Compact design with services and incidents:
+
 ```javascript
 {
   statusView: 'default',  // or omit (this is the default)
@@ -272,6 +291,7 @@ Pick the layout that works best for you:
 ```
 
 **Upptime Layout** - Structured sections with maintenance support:
+
 ```javascript
 {
   statusView: 'upptime',
@@ -291,6 +311,8 @@ Pick the layout that works best for you:
 }
 ```
 
+
+
 ### Track Scheduled Maintenance
 
 Create maintenance issues with special formatting:
@@ -305,6 +327,7 @@ Create maintenance issues with special formatting:
 **Affected Systems:** api, database
 
 ## Description
+
 Database upgrade to improve performance.
 ```
 
@@ -337,6 +360,8 @@ Edit the plugin configuration to customize:
 
 **Keyboard Navigation**: Use Tab, Enter, and Space keys for full accessibility.
 
+
+
 ### Embed Charts in Your Docs
 
 Use the new `ChartPanel` component to embed performance charts anywhere:
@@ -350,7 +375,7 @@ import ChartPanel from '@theme/ChartPanel';
 
 # API Monitoring
 
-<ChartPanel 
+<ChartPanel
   systemName="api"
   showCharts={['response', 'uptime', 'sli', 'errorBudget']}
   defaultPeriod="7d"
@@ -395,7 +420,7 @@ entities: [
 ]
 ```
 
-**Note:** The Entity model supports multiple types beyond just systems: `system`, `process`, `project`, `event`, `sla`, `custom`.
+Note: The Entity model supports multiple types beyond just systems: `system`, `process`, `project`, `event`, `sla`, `custom`.
 
 ### Embed Status Components
 
@@ -428,6 +453,6 @@ import ChartPanel from '@theme/ChartPanel';
 
 ## Need Help?
 
-- 📖 Read the [full documentation](README.md)
-- 🐛 [Report an issue](https://github.com/your-org/docusaurus-plugin-stentorosaur/issues)
-- 💬 [Join discussions](https://github.com/your-org/docusaurus-plugin-stentorosaur/discussions)
+- Read the [full documentation](README.md)
+- [Report an issue](https://github.com/your-org/docusaurus-plugin-stentorosaur/issues)
+- [Join discussions](https://github.com/your-org/docusaurus-plugin-stentorosaur/discussions)

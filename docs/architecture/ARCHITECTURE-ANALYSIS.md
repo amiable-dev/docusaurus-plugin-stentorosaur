@@ -1,8 +1,28 @@
 # Stentorosaur Architecture Analysis: System-Centric Design
 
+> **⚠️ OUTDATED DOCUMENTATION WARNING**
+>
+> This architecture analysis reflects v0.5.x implementation and is significantly outdated.
+>
+> **Current Version**: v0.14.0
+>
+> **Major Changes Since This Doc Was Written**:
+> - `systemLabels` configuration replaced by `entities` model (v0.10.0+)
+> - Entity types introduced: system, process, project, event, sla, custom (v0.10.0+)
+> - Label scheme configuration added: namespaced (`system:api`) vs legacy (`api`) (v0.10.0+)
+> - LabelParser abstraction introduced for flexible label parsing (v0.10.0+)
+> - Notification system added (v0.13.0+)
+> - Scheduled maintenance tracking added (v0.9.0+)
+> - Three-file data architecture: current.json, incidents.json, maintenance.json (v0.4.11+)
+>
+> **For Current Implementation**: See [../../CLAUDE.md](../../CLAUDE.md) for up-to-date architecture guidance.
+>
+> **This doc is kept for historical reference only.**
+
 ## Executive Summary
 
 The `docusaurus-plugin-stentorosaur` is built with a **strongly system-centric architecture** where every major component assumes that status data is organized around named systems/services. The design uses systems as the primary organizing principle for:
+
 - Data modeling
 - GitHub issue linking (via labels)
 - Monitoring and metrics collection
@@ -28,6 +48,7 @@ interface StatusIncident {
   affectedSystems: string[];  // References system names
 }
 
+
 interface ScheduledMaintenance {
   affectedSystems: string[];  // References system names
 }
@@ -44,6 +65,7 @@ interface PluginOptions {
 ```
 
 `systemLabels` is the mechanism that defines what systems exist:
+
 - Each label in the array becomes a system
 - Issues tagged with these labels are linked to the corresponding system
 - Systems without incidents are initialized as "up"
@@ -63,12 +85,14 @@ const affectedSystems = labels.filter((label) =>
 ```
 
 **Flow**:
+
 1. Fetch issues with `statusLabel` (e.g., "status")
 2. For each issue, extract labels matching `systemLabels`
 3. These matching labels → `affectedSystems` in StatusIncident
 4. Systems without incident labels remain "up"
 
-**Key Constraint**: 
+**Key Constraint**:
+
 - Labels MUST match exactly (`systemLabels.includes(label)`)
 - One issue can affect multiple systems
 - Issues without system labels are ignored for status calculation
@@ -96,6 +120,7 @@ generateStatusItems(incidents: StatusIncident[]): StatusItem[] {
 ```
 
 **Assumptions**:
+
 - All systems from `systemLabels` are always included (even if no incidents)
 - Closed incidents don't affect status (only open ones)
 - Status hierarchy: critical=down > major/minor=degraded > maintenance
@@ -114,6 +139,7 @@ generateStatusItems(incidents: StatusIncident[]): StatusItem[] {
 ```
 
 **Key field**: `svc` (service name) = system identifier
+
 - Must match system names from `systemLabels` or configured sites
 - Used to group readings by system
 
@@ -224,17 +250,20 @@ interface PerformanceMetricsProps {
 ### 6.1 Naming and Identification
 
 1. **System names are unique identifiers**
+
    - Used as file names: `systems/{name}.json`
    - Used as URL slugs: `/status/history/{slug}`
    - Matched against GitHub issue labels
    - Used to group monitoring readings
 
 2. **All systems have performance data**
+
    - Expectation: one file per system
    - Charts assume system has historical data
    - Missing file → system unclickable
 
 3. **Systems are managed via labels**
+
    - No alternative definition method (except direct `sites` config)
    - `systemLabels: []` = no systems
    - Cannot define systems without labels
@@ -258,12 +287,14 @@ else → up
 ### 7.1 Current Extension Points
 
 1. **SiteConfig (src/types.ts)**: Alternative to labels
+
    ```typescript
    sites?: SiteConfig[];  // Direct endpoint config
    ```
    But still generates systems named after `SiteConfig.name`
 
 2. **Swizzleable Components**: Can customize UI
+
    - StatusBoard
    - StatusItem
    - PerformanceMetrics
@@ -272,6 +303,7 @@ else → up
    But structure remains system-centric
 
 3. **ChartAnnotations**: Can overlay non-system events
+
    ```typescript
    affectedSystems: string[];  // Still system-based
    ```
@@ -279,44 +311,53 @@ else → up
 ### 7.2 What's NOT Easy to Change
 
 1. **Data Model**: StatusItem/StatusIncident/ScheduledMaintenance
+
    - `affectedSystems: string[]` hardcoded throughout
    - No "generic entity" concept
 
 2. **Issue Linking**: Always label-based
+
    - No alternative mechanism to link issues to entities
    - No hierarchical grouping (e.g., "service groups")
 
 3. **Routing**: Always system-based
+
    - `/status/history/{system-slug}` is hardcoded
    - No other entity type routes
 
 4. **Monitoring**: Always keyed by `svc` (service/system name)
+
    - current.json uses `svc` field
    - No alternative grouping mechanism
 
 ## 8. Constraints That Would Need to Change for Alternative Models
 
 ### Constraint 1: Single-Level Hierarchy
+
 - Current: Systems → Incidents/Maintenance
 - Would need: Categories/Components → Systems → Incidents
 - Impact: Add new type layer to all data structures
 
 ### Constraint 2: Name-Based Identification
+
 - Current: System "name" is globally unique identifier
 - Would need: Hierarchical IDs or UUID system
 - Impact: Change all file naming, routing, GitHub linking
 
 ### Constraint 3: Label-Based Linking
+
 - Current: GitHub issue labels → system names
 - Would need: More flexible label parsing (e.g., "api/auth" → hierarchical)
 - Impact: Redesign GitHubStatusService linking logic
 
 ### Constraint 4: Flat Status Items Array
+
 - Current: `StatusData.items: StatusItem[]`
 - Would need: Nested structure or separate entity types
 - Impact: Change all components expecting flat array
 
 ### Constraint 5: Per-System Files
+
 - Current: `status-data/systems/{name}.json` per system
 - Would need: Support for broader groupings
 - Impact: Change file organization, routing, loading logic
@@ -371,4 +412,3 @@ To support a non-system-centric model (e.g., business processes, features, deplo
 - Redesign GitHub integration
 - Redesign routing and file organization
 - Refactor all components to work with generic entities
-

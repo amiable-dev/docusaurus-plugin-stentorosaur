@@ -25,6 +25,7 @@ Three new configuration options have been added to the status plugin:
 Edit `docusaurus.config.ts` to try different combinations:
 
 #### 1. Services Only
+
 ```typescript
 {
   useDemoData: true,
@@ -32,9 +33,11 @@ Edit `docusaurus.config.ts` to try different combinations:
   showIncidents: false,  // Hide incidents
 }
 ```
+
 **Result**: You'll see the status board with 5 systems, but no incident timeline below it.
 
-#### 2. Incidents Only  
+#### 2. Incidents Only
+
 ```typescript
 {
   useDemoData: true,
@@ -42,9 +45,11 @@ Edit `docusaurus.config.ts` to try different combinations:
   showIncidents: true,
 }
 ```
+
 **Result**: You'll see only the incident history timeline, no status board.
 
 #### 3. Force Demo Data
+
 ```typescript
 {
   owner: 'facebook',
@@ -55,9 +60,11 @@ Edit `docusaurus.config.ts` to try different combinations:
   showIncidents: true,
 }
 ```
+
 **Result**: Demo data is shown regardless of token or GitHub issues.
 
 #### 4. Real Data Only (No Demo Fallback)
+
 ```typescript
 {
   owner: 'facebook',
@@ -87,6 +94,7 @@ Visit: `http://localhost:3000/status`
 When demo data is active, you'll see:
 
 **Services (5 total):**
+
 - API Server (Operational)
 - Web Application (Operational)  
 - Database Cluster (Operational)
@@ -94,6 +102,7 @@ When demo data is active, you'll see:
 - Email Service (Operational)
 
 **Incidents (3 total):**
+
 1. Database Performance Degradation (Resolved, Major)
 2. API Rate Limiting Issues (Investigating, Minor)
 3. Payment Processing Delays (Identified, Major)
@@ -101,6 +110,7 @@ When demo data is active, you'll see:
 ## Verifying Configuration
 
 Check the browser console for confirmation:
+
 - Demo data: `[docusaurus-plugin-stentorosaur] No GitHub token provided, using demo data`
 - Real data: `[docusaurus-plugin-stentorosaur] Loaded X services and Y incidents`
 - Filtered: Services/incidents counts will reflect visibility settings

@@ -51,9 +51,11 @@ npm install
 npm start
 ```
 
+
+
 ### Repository Structure
 
-```
+```text
 docusaurus-plugin-stentorosaur/
 ├── src/                    # TypeScript source code
 │   ├── theme/             # React components
@@ -64,6 +66,8 @@ docusaurus-plugin-stentorosaur/
 ├── templates/             # Workflow templates
 └── lib/                   # Compiled output (generated)
 ```
+
+
 
 See [CLAUDE.md](CLAUDE.md) for detailed developer documentation.
 
@@ -88,6 +92,8 @@ Before creating bug reports, please check the [existing issues](https://github.c
 
 Use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.yml).
 
+
+
 ### Suggesting Enhancements
 
 Enhancement suggestions are tracked as GitHub issues. Use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.yml).
@@ -101,20 +107,28 @@ Enhancement suggestions are tracked as GitHub issues. Use the [Feature Request t
 
 ### Your First Contribution
 
+
+
 Look for issues labeled:
+
 - [`good first issue`](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/good%20first%20issue) - Good for newcomers
 - [`help wanted`](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/help%20wanted) - Extra attention needed
 - [`documentation`](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/documentation) - Improve docs
 
 ### Pull Requests
 
+
+
 We actively welcome your pull requests!
 
 **Before submitting:**
+
 1. Search existing PRs to avoid duplicates
 2. For large changes, open an issue first to discuss
 3. Fork the repo and create your branch from `main`
 4. Follow the [Development Workflow](#development-workflow)
+
+
 
 ## Development Workflow
 
@@ -127,11 +141,14 @@ git checkout -b fix/issue-number-description
 ```
 
 Use prefixes:
+
 - `feature/` - New features
 - `fix/` - Bug fixes
 - `docs/` - Documentation changes
 - `test/` - Test improvements
 - `refactor/` - Code refactoring
+
+
 
 ### 2. Make Changes
 
@@ -160,6 +177,8 @@ cd ../test-status-site
 npm start
 ```
 
+
+
 ### 4. Commit Changes
 
 Follow [Commit Guidelines](#commit-guidelines):
@@ -174,6 +193,8 @@ git commit -m "feat: Add notification retry logic"
 ```bash
 git push origin feature/your-feature-name
 ```
+
+
 
 Then create a pull request on GitHub using the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
 
@@ -202,6 +223,8 @@ type StatusItem = {
 };
 ```
 
+
+
 ### React Components
 
 - **Functional components only** - No class components
@@ -227,6 +250,8 @@ export function StatusCard({ name, status, onRefresh }: StatusCardProps) {
 }
 ```
 
+
+
 ### Testing
 
 - **Jest + ts-jest** for testing
@@ -249,6 +274,8 @@ describe('GitHubStatusService', () => {
   });
 });
 ```
+
+
 
 ### File Organization
 
@@ -289,14 +316,19 @@ test(github-service): Add tests for maintenance parsing
 chore(deps): Upgrade Chart.js to v4.5.0
 ```
 
+
+
 ### Scope
 
 Use component/module names:
+
 - `notifications`
 - `charts`
 - `github-service`
 - `monitoring`
 - `workflows`
+
+
 
 ### Subject
 
@@ -315,12 +347,14 @@ Use component/module names:
 
 Indicate breaking changes in footer:
 
-```
+```text
 feat(config): Change entities config format
 
 BREAKING CHANGE: The `systemLabels` config option has been removed.
 Use `entities` instead. Migration script: `scripts/migrate-config.js`
 ```
+
+
 
 ## Pull Request Process
 
@@ -336,6 +370,8 @@ Before submitting, ensure:
 - [ ] No merge conflicts with `main`
 - [ ] PR description explains changes clearly
 
+
+
 ### PR Template
 
 Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md) which includes:
@@ -349,6 +385,8 @@ Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md) which includes:
 
 ### Review Process
 
+
+
 1. **Automated checks** - CI must pass (tests, build, linting)
 2. **Code review** - Maintainers review code, architecture, tests
 3. **Feedback** - Address review comments, iterate as needed
@@ -357,6 +395,8 @@ Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md) which includes:
 
 ### After Merge
 
+
+
 - Your contribution will be mentioned in the next release notes
 - Significant contributors may be invited to the maintainers team
 - Thank you! 🎉
@@ -364,6 +404,7 @@ Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md) which includes:
 ## Recognition
 
 Contributors are:
+
 - Listed in [README.md](README.md#contributors)
 - Mentioned in [CHANGELOG.md](CHANGELOG.md) release notes
 - Given co-author credit in commits

@@ -63,11 +63,13 @@ npx stentorosaur-update-status \
 **Output Files:**
 
 When `--write-incidents` is used:
+
 - Creates `status-data/incidents.json` with active and resolved incidents
 - Includes issues with `status` label
 - Contains last 30 days of resolved incidents
 
 When `--write-maintenance` is used:
+
 - Creates `status-data/maintenance.json` with maintenance windows
 - Includes issues with `maintenance` label
 - Parses YAML frontmatter for start/end times
@@ -150,6 +152,7 @@ useDemoData: false
 ```
 
 When enabled (default), system cards become clickable to show/hide detailed performance charts:
+
 - Response Time trends
 - Uptime visualization (bar/heatmap)
 - SLI/SLO compliance tracking
@@ -158,6 +161,7 @@ When enabled (default), system cards become clickable to show/hide detailed perf
 Charts display in a responsive 2x2 grid (desktop) or vertical stack (mobile), with fullscreen zoom capability.
 
 **Examples:**
+
 ```typescript
 // Enable performance metrics with default 99.9% SLO (default)
 showPerformanceMetrics: true
@@ -257,380 +261,6 @@ plugins: [
 ]
 ```
 
-## Direct Site/Endpoint Configuration
-
-### Overview
-
-Instead of (or in addition to) using GitHub Issues for monitoring configuration, you can configure endpoints directly in the plugin options. This matches [Upptime's endpoint configuration](https://upptime.js.org/docs/configuration#endpoints) and supports all monitoring options.
-
-### Basic Site Configuration
-
-```typescript
-{
-  sites: [
-    {
-      name: 'Main Website',
-      url: 'https://example.com',
-    },
-    {
-      name: 'API Service',
-      url: 'https://api.example.com',
-    },
-  ],
-}
-```
-
-### HTTP Method Configuration
-
-```typescript
-{
-  sites: [
-    {
-      name: 'REST API - GET',
-      url: 'https://api.example.com/health',
-      method: 'GET',
-    },
-    {
-      name: 'GraphQL API - POST',
-      url: 'https://api.example.com/graphql',
-      method: 'POST',
-      body: '{"query":"{health}"}',
-      headers: ['Content-Type: application/json'],
-    },
-    {
-      name: 'Webhook - POST',
-      url: 'https://api.example.com/webhook',
-      method: 'POST',
-      body: '{"event":"health_check"}',
-    },
-  ],
-}
-```
-
-**Supported HTTP Methods:**
-- `GET` (default)
-- `POST`
-- `PUT`
-- `PATCH`
-- `DELETE`
-- `HEAD`
-- `OPTIONS`
-
-### Check Type Configuration
-
-```typescript
-{
-  sites: [
-    {
-      name: 'Website HTTP Check',
-      url: 'https://example.com',
-      check: 'http',  // Default
-    },
-    {
-      name: 'Database TCP Check',
-      url: 'db.example.com',
-      check: 'tcp-ping',
-      port: 5432,
-    },
-    {
-      name: 'WebSocket Check',
-      url: 'wss://ws.example.com',
-      check: 'ws',
-    },
-    {
-      name: 'SSL Certificate Check',
-      url: 'https://secure.example.com',
-      check: 'ssl',
-    },
-  ],
-}
-```
-
-**Supported Check Types:**
-- `http` - HTTP/HTTPS request (default)
-- `tcp-ping` - TCP port check (requires `port` option)
-- `ws` - WebSocket connection check
-- `ssl` - SSL certificate validation check
-
-### Authentication with Headers
-
-```typescript
-{
-  sites: [
-    {
-      name: 'Authenticated API',
-      url: 'https://api.example.com/private',
-      headers: [
-        'Authorization: Bearer $API_TOKEN',
-        'X-API-Key: $API_KEY',
-        'Content-Type: application/json',
-      ],
-    },
-    {
-      name: 'Basic Auth',
-      url: 'https://admin.example.com',
-      headers: [
-        'Authorization: Basic $BASIC_AUTH_TOKEN',
-      ],
-    },
-  ],
-}
-```
-
-**Note:** Use `$SECRET_NAME` syntax to reference environment variables. The monitoring system will substitute these values at runtime.
-
-### Expected Status Codes
-
-```typescript
-{
-  sites: [
-    {
-      name: 'API with Multiple Valid Codes',
-      url: 'https://api.example.com',
-      expectedStatusCodes: [200, 201, 202],
-    },
-    {
-      name: 'Redirect Endpoint',
-      url: 'https://example.com/redirect',
-      expectedStatusCodes: [301, 302, 307, 308],
-    },
-    {
-      name: 'Default (200 only)',
-      url: 'https://example.com',
-      // expectedStatusCodes: [200]  // Default
-    },
-  ],
-}
-```
-
-### Response Time Thresholds
-
-```typescript
-{
-  sites: [
-    {
-      name: 'Fast API',
-      url: 'https://api.example.com',
-      maxResponseTime: 1000,  // 1 second - mark degraded if slower
-    },
-    {
-      name: 'Database Query',
-      url: 'https://db-api.example.com/query',
-      maxResponseTime: 5000,  // 5 seconds
-    },
-  ],
-}
-```
-
-### Custom Status Detection (Body Content)
-
-```typescript
-{
-  sites: [
-    {
-      name: 'Health Endpoint with JSON Check',
-      url: 'https://api.example.com/health',
-      __dangerous__body_down_if_text_missing: '"status":"UP"',
-      __dangerous__body_degraded_if_text_missing: '"all_systems":"operational"',
-    },
-    {
-      name: 'Service with Error Detection',
-      url: 'https://service.example.com/status',
-      __dangerous__body_down: '"error"',
-      __dangerous__body_degraded: '"warning"',
-    },
-  ],
-}
-```
-
-**Body Check Options:**
-- `__dangerous__body_down` - Mark as DOWN if response contains this text
-- `__dangerous__body_degraded` - Mark as DEGRADED if response contains this text
-- `__dangerous__body_down_if_text_missing` - Mark as DOWN if response DOESN'T contain this text
-- `__dangerous__body_degraded_if_text_missing` - Mark as DEGRADED if response DOESN'T contain this text
-
-### SSL Configuration
-
-```typescript
-{
-  sites: [
-    {
-      name: 'Internal Service (Self-Signed SSL)',
-      url: 'https://internal.example.com',
-      __dangerous__insecure: true,  // Disable all SSL verification
-    },
-    {
-      name: 'Dev Environment',
-      url: 'https://dev.example.com',
-      __dangerous__disable_verify_peer: true,  // Disable peer verification
-      __dangerous__disable_verify_host: true,  // Disable host verification
-    },
-  ],
-}
-```
-
-**⚠️ Warning:** SSL verification options should only be used in development or for internal services. They reduce security.
-
-### Display Options
-
-```typescript
-{
-  sites: [
-    {
-      name: 'Main Website',
-      url: 'https://example.com',
-      icon: '🌐',                    // Emoji or icon URL
-      slug: 'main-website',          // Custom URL slug
-      assignees: ['devops', 'admin'], // GitHub users to assign issues
-    },
-    {
-      name: 'API Service',
-      url: 'https://api.example.com',
-      icon: '⚡',
-      slug: 'api',
-    },
-  ],
-}
-```
-
-### IPv6 Support
-
-```typescript
-{
-  sites: [
-    {
-      name: 'IPv6 Enabled Site',
-      url: 'https://ipv6.example.com',
-      ipv6: true,
-    },
-  ],
-}
-```
-
-### Complete Site Configuration Example
-
-```typescript
-{
-  sites: [
-    // Simple HTTP check
-    {
-      name: 'Main Website',
-      url: 'https://example.com',
-      icon: '🌐',
-      slug: 'website',
-      maxResponseTime: 2000,
-    },
-    
-    // Authenticated API
-    {
-      name: 'REST API',
-      url: 'https://api.example.com/v1/health',
-      method: 'GET',
-      headers: [
-        'Authorization: Bearer $API_TOKEN',
-        'Accept: application/json',
-      ],
-      expectedStatusCodes: [200, 204],
-      maxResponseTime: 1000,
-      icon: '⚡',
-      slug: 'api',
-    },
-    
-    // Database TCP check
-    {
-      name: 'PostgreSQL Database',
-      url: 'db.example.com',
-      check: 'tcp-ping',
-      port: 5432,
-      icon: '🗄️',
-      slug: 'database',
-    },
-    
-    // GraphQL with body check
-    {
-      name: 'GraphQL API',
-      url: 'https://graphql.example.com',
-      method: 'POST',
-      headers: ['Content-Type: application/json'],
-      body: '{"query":"{__schema{queryType{name}}}"}',
-      __dangerous__body_down_if_text_missing: '"queryType"',
-      maxResponseTime: 3000,
-      icon: '📊',
-    },
-    
-    // WebSocket
-    {
-      name: 'WebSocket Server',
-      url: 'wss://ws.example.com',
-      check: 'ws',
-      icon: '🔌',
-      slug: 'websocket',
-    },
-    
-    // Internal service with self-signed SSL
-    {
-      name: 'Internal Admin',
-      url: 'https://admin.internal',
-      __dangerous__insecure: true,
-      headers: ['X-Internal-Token: $INTERNAL_TOKEN'],
-      assignees: ['ops-team'],
-    },
-  ],
-}
-```
-
-### Environment Variable Substitution
-
-All site configuration fields support environment variable substitution using `$VARIABLE_NAME` syntax:
-
-```typescript
-{
-  sites: [
-    {
-      name: 'Production API',
-      url: '$API_BASE_URL/health',  // e.g., process.env.API_BASE_URL
-      headers: [
-        'Authorization: Bearer $API_TOKEN',
-        'X-Tenant-ID: $TENANT_ID',
-      ],
-      body: '$REQUEST_BODY',
-    },
-  ],
-}
-```
-
-**Common environment variables:**
-- `$API_TOKEN` - API authentication tokens
-- `$API_KEY` - API keys
-- `$BASIC_AUTH_TOKEN` - Base64-encoded basic auth
-- `$API_BASE_URL` - Base URLs for APIs
-- Custom variables specific to your infrastructure
-
-### Sites Configuration Reference
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `string` | **required** | Display name for the site |
-| `url` | `string` | **required** | URL to monitor (supports `$SECRET` syntax) |
-| `method` | `string` | `'GET'` | HTTP method: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS |
-| `check` | `string` | `'http'` | Check type: http, tcp-ping, ws, ssl |
-| `port` | `number` | - | Port number for TCP ping checks |
-| `ipv6` | `boolean` | `false` | Use IPv6 for checks |
-| `headers` | `string[]` | - | HTTP headers (format: `'Header: value'`) |
-| `body` | `string` | - | Request body for POST/PUT/PATCH |
-| `expectedStatusCodes` | `number[]` | `[200]` | Valid HTTP status codes |
-| `maxResponseTime` | `number` | - | Max response time in ms before marking degraded |
-| `__dangerous__insecure` | `boolean` | `false` | Disable SSL verification ⚠️ |
-| `__dangerous__disable_verify_peer` | `boolean` | `false` | Disable SSL peer verification ⚠️ |
-| `__dangerous__disable_verify_host` | `boolean` | `false` | Disable SSL host verification ⚠️ |
-| `__dangerous__body_down` | `string` | - | Mark DOWN if response contains text |
-| `__dangerous__body_degraded` | `string` | - | Mark DEGRADED if response contains text |
-| `__dangerous__body_down_if_text_missing` | `string` | - | Mark DOWN if text missing |
-| `__dangerous__body_degraded_if_text_missing` | `string` | - | Mark DEGRADED if text missing |
-| `icon` | `string` | - | Emoji or icon URL |
-| `slug` | `string` | - | Custom URL slug (lowercase, hyphens only) |
-| `assignees` | `string[]` | - | GitHub usernames for issue assignment |
-
 ## Common Use Cases
 
 ### 1. Demo Site (no GitHub token)
@@ -680,6 +310,7 @@ All site configuration fields support environment variable substitution using `$
 ```
 
 ### 5. Fallback to Demo Data
+
 ```typescript
 {
   owner: 'your-org',
@@ -817,6 +448,7 @@ Create a GitHub issue with the `maintenance` label and YAML frontmatter:
 
 **Issue Body Format:**
 
+
 ```markdown
 ---
 start: @tomorrow 2am UTC
@@ -938,6 +570,75 @@ plugins: [
 
 ---
 
+## Notification System
+
+**New in v0.13.0**: Send real-time alerts when incidents occur or systems go down.
+
+### Overview
+
+The notification system sends alerts to Slack, Telegram, Email, or Discord via GitHub Actions workflows. Configure notifications in `.notifyrc.json` and they'll trigger automatically when monitoring detects issues or when incidents are created.
+
+### Enabling Notifications
+
+**1. Create `.notifyrc.json` in your repository root:**
+
+```json
+{
+  "enabled": true,
+  "channels": {
+    "slack": {
+      "enabled": true,
+      "webhookUrl": "env:SLACK_WEBHOOK_URL"
+    }
+  },
+  "events": {
+    "incidentOpened": true,
+    "incidentClosed": true,
+    "systemDegraded": true,
+    "systemRestored": true
+  }
+}
+```
+
+**2. Add GitHub Secrets:**
+
+Go to Settings → Secrets and variables → Actions → New repository secret
+
+
+**3. Notifications trigger automatically** via GitHub Actions workflows.
+
+### Configuration Reference
+
+For complete notification setup and configuration options, see [NOTIFICATIONS.md](./NOTIFICATIONS.md).
+
+**Supported Channels:**
+- Slack (via webhooks)
+- Telegram (via bot API)
+- Email (via SMTP)
+- Discord (via webhooks)
+
+**Supported Events:**
+- `incidentOpened` - New incident created
+- `incidentClosed` - Incident resolved
+- `systemDegraded` - System status degraded
+- `systemRestored` - System back to normal
+- `maintenanceStarted` - Scheduled maintenance began
+- `maintenanceCompleted` - Scheduled maintenance finished
+
+**Environment Variable Substitution:**
+
+All notification config supports `env:VARIABLE_NAME` syntax to securely reference GitHub secrets:
+
+```json
+{
+  "slack": {
+    "webhookUrl": "env:SLACK_WEBHOOK_URL"  // References ${{ secrets.SLACK_WEBHOOK_URL }}
+  }
+}
+```
+
+---
+
 ## Interactive Performance Metrics
 
 ### Click-to-Toggle Performance Metrics
@@ -945,12 +646,14 @@ plugins: [
 When `showPerformanceMetrics: true` (default), the status page becomes interactive:
 
 **User Experience:**
+
 1. Click any system card to view its performance metrics
 2. Metrics slide down smoothly below the clicked card
 3. Click a different system to switch to its metrics
 4. Click the active system again to hide metrics (toggle off)
 
 **Features:**
+
 - 🎭 **Smooth animations**: Slide-down reveal with fade-in effects
 - 📊 **Four chart types**: Response Time, Uptime, SLI/SLO, Error Budget
 - 🔄 **Synchronized periods**: Toggle all charts between 24h, 7d, 30d, 90d simultaneously
@@ -999,6 +702,7 @@ When `showPerformanceMetrics: true` (default), the status page becomes interacti
 The new SLI (Service Level Indicator) and SLO (Service Level Objective) charts help track service reliability:
 
 **SLI Chart Features:**
+
 - Daily SLI percentage calculation based on uptime
 - SLO target line (default: 99.9%, configurable)
 - Color-coded compliance: green (above SLO), red (below SLO)
@@ -1071,6 +775,7 @@ import ChartPanel from '@theme/ChartPanel';
 | `sloTarget` | number | `99.9` | SLO percentage target |
 
 **Chart Types:**
+
 - `'response'` - Response time line chart
 - `'uptime'` - Uptime bar/heatmap chart
 - `'sli'` - SLI/SLO compliance line chart
@@ -1092,6 +797,7 @@ npm run swizzle docusaurus-plugin-stentorosaur ChartPanel -- --eject
 ```
 
 **Total swizzleable components: 10**
+
 1. StatusPage
 2. StatusBoard
 3. StatusItem
@@ -1142,6 +848,7 @@ import ResponseTimeChart from '@theme/ResponseTimeChart';
 ```
 
 **Features:**
+
 - Interactive line chart with hover tooltips
 - Multiple time period views (24h, 7d, 30d, 90d)
 - Color-coded data points based on status (green/yellow/red)
@@ -1237,6 +944,7 @@ Demo mode includes sample historical data with ~30 days of checks:
 ### Theme Integration
 
 All charts automatically adapt to your Docusaurus theme:
+
 - Respect dark/light mode settings
 - Use theme CSS variables for colors
 - Match your site's design system

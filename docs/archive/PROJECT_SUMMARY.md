@@ -22,7 +22,7 @@ A complete Docusaurus plugin that creates an Upptime-like status monitoring dash
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                     GitHub Repository                    │
 ├─────────────────────────────────────────────────────────┤
@@ -75,7 +75,7 @@ A complete Docusaurus plugin that creates an Upptime-like status monitoring dash
 
 ## File Structure
 
-```
+```text
 docusaurus-plugin-stentorosaur/
 ├── src/
 │   ├── index.ts              # Main plugin entry point
@@ -126,6 +126,7 @@ docusaurus-plugin-stentorosaur/
 ### 1. Issue-Based Tracking
 
 Issues are labeled to track status:
+
 - `status` - Required label for all status issues
 - System labels (`api`, `website`, etc.) - Identify affected systems
 - Severity labels (`critical`, `major`, `minor`, `maintenance`)
@@ -139,6 +140,7 @@ GitHub Actions monitor endpoints:
 - If recovered → Close open issues, add resolution comment
 ```
 
+
 ### 3. Status Generation
 
 Plugin processes issues at build time:
@@ -150,9 +152,11 @@ Plugin processes issues at build time:
 5. Write to status.json
 ```
 
+
 ### 4. UI Rendering
 
 React components display the data:
+
 - StatusBoard shows all systems
 - StatusItem displays individual status
 - IncidentHistory shows timeline
@@ -190,6 +194,7 @@ system:
 ### Manual Incident
 
 Create GitHub issue with labels:
+
 - `status`
 - `api`
 - `critical`
@@ -273,6 +278,7 @@ npm run swizzle docusaurus-plugin-stentorosaur StatusBoard -- --eject
 ## Future Enhancements
 
 Possible additions:
+
 - [ ] Response time graphs
 - [ ] Uptime percentage calculation
 - [ ] Historical data storage

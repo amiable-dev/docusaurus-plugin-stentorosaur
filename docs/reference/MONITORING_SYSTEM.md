@@ -60,6 +60,7 @@ status-data/
 ```
 
 **Fields:**
+
 - `t` - Timestamp (milliseconds since epoch)
 - `svc` - Service name (e.g., 'api', 'website', 'database')
 - `state` - Status: 'up', 'down', 'degraded', or 'maintenance'
@@ -67,7 +68,8 @@ status-data/
 - `lat` - Latency in milliseconds
 - `err` - Error message (optional, only present if request failed)
 
-**Commit Strategy**: 
+**Commit Strategy**:
+
 - Committed with `[skip ci]` tag
 - Does NOT trigger deployments (filtered by `paths-ignore` in `deploy.yml`)
 - Creates critical GitHub Issues when services go down
@@ -106,12 +108,14 @@ status-data/
 ```
 
 **Severity Levels** (from issue labels):
+
 - `critical` - Complete service outage
 - `major` - Significant degradation
 - `minor` - Minor issues, partial impact
 - `maintenance` - Planned maintenance
 
 **Commit Strategy**:
+
 - Committed with `[skip ci]` tag
 - If contains `critical` incidents → triggers `repository_dispatch` event
 - `repository_dispatch` triggers immediate deployment (~2 min)
@@ -142,6 +146,7 @@ status-data/
 ```
 
 **Status Calculation**:
+
 - `upcoming` - Start time is in the future
 - `in-progress` - Current time between start and end
 - `completed` - End time has passed OR issue is closed
@@ -166,6 +171,7 @@ Scheduled database upgrade to improve performance.
 ```
 
 **Commit Strategy**:
+
 - Committed with `[skip ci]` tag
 - Does NOT trigger immediate deployment
 - Picked up by hourly scheduled deployment
@@ -199,6 +205,7 @@ A rolling 14-day window of all monitoring readings in a compact format:
 ```
 
 **Fields:**
+
 - `t` - Timestamp (milliseconds since epoch)
 - `svc` - Service name (e.g., 'api', 'website', 'database')
 - `state` - Status: 'up', 'down', 'degraded', or 'maintenance'
@@ -260,6 +267,7 @@ node scripts/monitor.js \
 ```
 
 **Options:**
+
 - `--system <name>` - System name (e.g., 'api', 'website')
 - `--url <url>` - URL to monitor
 - `--method <method>` - HTTP method (default: GET)
@@ -281,6 +289,7 @@ The monitoring system uses three coordinated workflows:
 **Purpose**: Check endpoint health and update monitoring data
 
 **Process**:
+
 1. Checkout repository
 2. Setup Node.js 20
 3. Run monitoring script with `--config .monitorrc.json`
@@ -310,6 +319,7 @@ The monitoring system uses three coordinated workflows:
 ```
 
 **Sequential Architecture (v0.4.10+)**:
+
 - Single job monitors all systems in sequence
 - Zero data loss (no race conditions)
 - Single commit with all data
@@ -318,6 +328,7 @@ The monitoring system uses three coordinated workflows:
 **Commit Message**: `Update monitoring data [skip ci]`
 
 **Critical Issue Creation**:
+
 - When service goes down → Automatically creates GitHub Issue
 - Labels: `status`, `critical`, `<service-name>`
 - Title: `🔴 <Service> is down`
@@ -325,7 +336,8 @@ The monitoring system uses three coordinated workflows:
 
 #### 2. Status Update (`status-update.yml`)
 
-**Trigger**: 
+**Trigger**:
+
 - GitHub Issue events (opened, closed, labeled, edited)
 - Schedule: Every hour (cron: `0 * * * *`)
 - Manual: `workflow_dispatch`
@@ -333,6 +345,7 @@ The monitoring system uses three coordinated workflows:
 **Purpose**: Generate incidents.json and maintenance.json from GitHub Issues
 
 **Process**:
+
 1. Checkout repository
 2. Setup Node.js 20
 3. Run `npx stentorosaur-update-status --write-incidents --write-maintenance`
@@ -373,6 +386,7 @@ npx stentorosaur-update-status \
 ##### deploy.yml (Immediate Deployment)
 
 **Triggers**:
+
 - `push` to `main` branch (code changes)
 - `repository_dispatch` with type `status-updated` (critical incidents)
 - `workflow_dispatch` (manual)
@@ -390,6 +404,7 @@ on:
 ```
 
 **Result**:
+
 - Monitoring commits (every 5 min) → **NOT deployed**
 - Code changes → **Deployed immediately**
 - Critical incidents → **Deployed immediately** (~2 min)
@@ -401,11 +416,13 @@ on:
 **Purpose**: Pick up non-critical status updates
 
 **Process**:
+
 1. Checkout repository with all status files
 2. Build Docusaurus site (plugin reads 3 status files)
 3. Deploy to GitHub Pages
 
 **Result**:
+
 - Non-critical incidents → **Deployed within 1 hour**
 - Maintenance updates → **Deployed within 1 hour**
 
@@ -467,12 +484,14 @@ Deployment:
 Runs daily at 00:05 UTC to compress yesterday's JSONL files.
 
 **Steps:**
+
 1. Checkout repository
 2. Find yesterday's uncompressed JSONL file
 3. Compress with gzip
 4. Commit with message: `📦 Compress archive for YYYY-MM-DD`
 
 **File Lifecycle:**
+
 - **Today** - `history-2025-11-03.jsonl` (uncompressed, actively appending)
 - **Tomorrow** - File becomes `history-2025-11-03.jsonl.gz` (compressed, read-only)
 
@@ -502,26 +521,31 @@ const history = serviceReadings.map(r => ({
 ## Benefits
 
 ### 1. No Git History Pollution
+
 - Each check appends **one line** to today's JSONL file
 - Only one file changes per check (not entire JSON array)
 - Git diffs are minimal and readable
 
 ### 2. Fast Site Loads
+
 - `current.json` contains only last 14 days (~4,000 readings for 5-minute checks)
 - Small file size (~200-400 KB) loads quickly
 - No need to parse years of historical data
 
 ### 3. Efficient Storage
+
 - Daily JSONL files are compressed after 24 hours
 - Gzip compression typically achieves 80-90% reduction
 - Old data remains accessible but doesn't bloat repository
 
 ### 4. Simple Append Operations
+
 - No JSON parsing/stringifying for every check
 - Just append one line: `echo '{"t":...}' >> file.jsonl`
 - Works efficiently even with large files
 
 ### 5. Easy to Query
+
 - JSONL is line-oriented, perfect for streaming
 - Can use `grep`, `jq`, or other CLI tools
 - Easy to merge multiple days for analysis
@@ -592,17 +616,20 @@ Then update your workflow to use it:
 ## Performance Characteristics
 
 **Monitoring Script:**
+
 - HTTP request: ~100-500ms (depends on endpoint)
 - JSONL append: ~1-5ms (simple file write)
 - current.json rebuild: ~50-200ms (scan 14 days)
 - Total time per check: ~200-700ms
 
 **Data Loading:**
+
 - current.json fetch: ~50-200ms (200-400 KB file)
 - Parsing 4,000 readings: ~10-30ms
 - Total load time: ~100-300ms
 
 **Storage:**
+
 - One day of 5-minute checks: ~50 KB uncompressed
 - After gzip: ~5-10 KB compressed
 - 14 days in current.json: ~200-400 KB

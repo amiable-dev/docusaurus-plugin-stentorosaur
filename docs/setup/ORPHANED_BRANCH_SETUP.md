@@ -11,29 +11,35 @@ This guide explains how to set up the orphaned `status-data` branch for storing 
 An orphaned branch provides several benefits for status monitoring data:
 
 ### 1. **Repository Size Management**
+
 - Main branch stays lean (faster clones and checkouts)
 - Status data history isolated from code history
 - Can prune old monitoring data without affecting code
 
 ### 2. **Logical Separation of Concerns**
-```
+
+```text
 main branch:          Source code, documentation, config
 status-data branch:   Runtime monitoring data, metrics, incidents
 gh-pages branch:      Built static site (if using GitHub Pages)
 ```
 
 ### 3. **Performance Optimization**
+
 Without orphaned branch:
+
 - 288 commits/day × 365 = 105,120 commits/year just for status updates
 - Pollutes git history with automated commits
 - Slows down clone and checkout operations
 
 With orphaned branch:
+
 - Main branch remains clean with only code commits
 - Status updates isolated to separate branch
 - Fast operations on main branch
 
 ### 4. **CI/CD Isolation**
+
 - Status updates don't trigger unnecessary CI/CD pipelines
 - Clear separation in workflow triggers
 - Easier to manage retention policies
@@ -110,6 +116,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 ```
 
 The following workflows are already configured for orphaned branch:
+
 - `monitor-systems.yml` - Monitors systems and writes to status-data branch
 - `status-update.yml` - Updates incidents/maintenance from GitHub issues
 - `deploy.yml` - Builds and deploys, reading from status-data branch
@@ -324,30 +331,37 @@ git archive --format=tar.gz --output=status-data-backup.tar.gz status-data
 ### Issue: "Branch status-data does not exist"
 
 **Solution**: Run the setup script:
+
 ```bash
 npx stentorosaur-setup-status-branch
 ```
 
+
 ### Issue: "You have uncommitted changes"
 
 **Solution**: Commit or stash your changes before running migration:
+
 ```bash
 git stash
 npx stentorosaur-migrate-to-status-branch
 git stash pop
 ```
 
+
 ### Issue: "Failed to push to remote"
 
 **Solution**: The branch may not be pushed yet:
+
 ```bash
 git checkout status-data
 git push -u origin status-data
 ```
 
+
 ### Issue: Build fails to find status-data
 
 **Solution**: Ensure your build workflow checks out both branches:
+
 ```yaml
 - uses: actions/checkout@v4
   with:
@@ -385,9 +399,9 @@ git push -u origin status-data
 ## Additional Resources
 
 - [Upptime Documentation](https://upptime.js.org/)
-- [Git Orphan Branches](https://git-scm.com/docs/git-checkout#Documentation/git-checkout.txt---orphanltnewbranchgt)
+- [Git Orphan Branches](<https://git-scm.com/docs/git-checkout#Documentation/git-checkout.txt---orphanltnewbranchgt>)
 - [GitHub Actions Best Practices](https://docs.github.com/en/actions/learn-github-actions/best-practices-for-github-actions)
-- [Plugin Documentation](./README.md)
+- [Plugin Documentation](../../README.md)
 
 ## Support
 

@@ -3,6 +3,7 @@
 ## Quick Index of System-Centric Assumptions
 
 ### Type Definition Locations
+
 | Type | Location | System Assumption |
 |------|----------|-------------------|
 | `StatusItem` | src/types.ts:33-42 | `name` field is unique system identifier |
@@ -12,6 +13,7 @@
 | `SystemStatusFile` | src/types.ts:17-31 | `name` field must match StatusItem.name |
 
 ### Configuration
+
 | Setting | Location | System Meaning |
 |---------|----------|----------------|
 | `systemLabels` | src/options.ts:14,57 | Array of system identifiers (from GitHub labels) |
@@ -20,7 +22,8 @@
 ## Issue-to-System Linking
 
 ### Entry Point: GitHub Service
-```
+
+```text
 File: src/github-service.ts
 Class: GitHubStatusService
 ```
@@ -28,26 +31,32 @@ Class: GitHubStatusService
 #### Key Methods
 
 **1. Constructor (Line 47-63)**
+
 - Takes `systemLabels: string[]` - these define what systems exist
 - Stored as `this.systemLabels` - used throughout for linking
 
 **2. fetchStatusIssues() (Line 68-87)**
+
 - Fetches issues with `statusLabel` (default: "status")
 - Returns all matching issues, regardless of other labels
 
 **3. convertIssueToIncident() (Line 92-131)**
+
 ```typescript
 // Line 105-108: THE CRITICAL LINK
 const affectedSystems = labels.filter((label) =>
   this.systemLabels.includes(label)
 );
 ```
+
 **This is where GitHub issue labels → system names**
+
 - Takes all issue labels
 - Keeps only those that exist in `systemLabels`
 - Result: `affectedSystems: string[]` with system names
 
 **4. generateStatusItems() (Line 136-178)**
+
 ```typescript
 // Line 139-146: Initialize ALL configured systems
 for (const system of this.systemLabels) {
@@ -69,13 +78,15 @@ for (const incident of incidents) {
 ```
 
 **Key Points:**
+
 - Systems come from `systemLabels` (line 140)
 - Only open incidents processed (line 150)
 - Status hierarchy: critical → down, major/minor → degraded, maintenance → maintenance
 - Closed incidents completely ignored
 
 ### Data Flow
-```
+
+```text
 GitHub Issues
     ↓
 fetchStatusIssues()
@@ -94,6 +105,7 @@ StatusItem[] with status based on affectedSystems
 #### Key Functions
 
 **1. convertReadingsToSystemFiles() (Line 77-126)**
+
 ```typescript
 // Line 81: Group readings by SYSTEM (svc field)
 if (!systemMap.has(reading.svc)) {
@@ -114,6 +126,7 @@ for (const [systemName, systemReadings] of systemMap.entries()) {
 **Key Point:** Grouping key is `svc` (service name) = system name
 
 **2. readSystemFiles() (Line 21-72)**
+
 - Reads `status-data/systems/` directory
 - Expects one `.json` file per system
 - Returns array of partial StatusItem data
@@ -121,6 +134,7 @@ for (const [systemName, systemReadings] of systemMap.entries()) {
 **3. Plugin loadContent() (Line 198-514)**
 
 **Section 1: Current.json reading (Line 232-360)**
+
 ```typescript
 // Line 247: Group readings by system
 const systemMap = new Map<string, any[]>();
@@ -142,11 +156,13 @@ for (const [systemName, readings] of systemMap.entries()) {
 ```
 
 **Key Points:**
+
 - `svc` field must match some system identifier
 - One item per `svc` value
 - If you have monitoring data for undefined systems, they'll appear
 
 **Section 2: GitHub API fallback (Line 333-352)**
+
 ```typescript
 if (token && !shouldUseDemoData && incidents.length === 0) {
   const service = new GitHubStatusService(...);
@@ -156,6 +172,7 @@ if (token && !shouldUseDemoData && incidents.length === 0) {
 ```
 
 **Section 3: System files merge (Line 407-445)**
+
 ```typescript
 // Read system/*.json files
 const systemFileData = await readSystemFiles(systemsDir);
@@ -173,7 +190,8 @@ items = items.map(item => {
 ### File Organization
 
 **Source Files:**
-```
+
+```text
 status-data/
 ├── current.json              # Time-series readings with `svc` field
 ├── incidents.json            # StatusIncident[] with `affectedSystems`
@@ -185,7 +203,8 @@ status-data/
 ```
 
 **Build Output:**
-```
+
+```text
 build/status-data/
 ├── status.json              # Complete StatusData
 ├── current.json             # Copied from source
@@ -203,6 +222,7 @@ build/status-data/
 ### File: src/index.ts, contentLoaded() (Line 516-563)
 
 **Route Creation:**
+
 ```typescript
 // Line 547-554: Create slug from system name
 const systemsToRoute = content.items.map(item => ({
@@ -225,6 +245,7 @@ systemsToRoute.forEach(({name, slug}) => {
 ```
 
 **Key Points:**
+
 - One route per system in `content.items`
 - Route path = `/status/history/{slug}`
 - Slug generated from system name with consistent algorithm
@@ -258,6 +279,7 @@ items.map((item, index) => {
 ```
 
 **Key Points:**
+
 - Displays one card per system (item)
 - Passes system name to click handler
 - All incidents shown (filtered by component)
@@ -363,6 +385,7 @@ interface PerformanceMetricsProps {
 ### File: src/demo-data.ts
 
 **Demo Status Items (Line 28-80):**
+
 ```typescript
 const items: StatusItem[] = [
   { name: 'Main Website', status: 'up', ... },
@@ -374,6 +397,7 @@ const items: StatusItem[] = [
 ```
 
 **Demo Incidents (Line 82-125):**
+
 ```typescript
 const incidents: StatusIncident[] = [
   {
@@ -394,7 +418,7 @@ const incidents: StatusIncident[] = [
 
 ## Summary: File Dependencies
 
-```
+```text
 src/types.ts                                  ← Define StatusItem, StatusIncident
     ↓
 src/github-service.ts                         ← Link GitHub issues to systems
@@ -442,26 +466,31 @@ src/theme/PerformanceMetrics/index.tsx       ← System metrics
 ## Validation Points
 
 1. **systemLabels Configuration**
+
    - File: src/options.ts
    - Must be defined for systems to exist
    - Empty array → no systems
 
 2. **GitHub Issue Labels**
+
    - File: src/github-service.ts:106-108
    - Must match systemLabels exactly
    - Case-sensitive
 
 3. **Monitoring Data (svc field)**
+
    - File: src/index.ts:249
    - Must match a system name
    - Or system appears without monitoring data
 
 4. **File Organization**
+
    - Location: status-data/systems/
    - Filename: system-name-slugified.json
    - Must exist for system to have charts
 
 5. **Route Creation**
+
    - Location: src/index.ts:557-562
    - One route per item in content.items
    - Slug must be URL-safe (already sanitized)

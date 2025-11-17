@@ -19,6 +19,7 @@ Configure the following categories in your repository settings:
 - **Purpose:** Catch-all for conversations that don't fit other categories
 
 **Use for:**
+
 - General questions about the project
 - Community announcements
 - Feedback on the project direction
@@ -31,6 +32,7 @@ Configure the following categories in your repository settings:
 - **Purpose:** Community brainstorming before formal feature requests
 
 **Use for:**
+
 - Early-stage feature ideas
 - Getting community feedback on proposals
 - Discussing feasibility of features
@@ -40,19 +42,24 @@ Configure the following categories in your repository settings:
 
 ### 🙏 Q&A
 
+
 - **Format:** Question/Answer
 - **Description:** Ask questions about installation, configuration, and usage
 - **Purpose:** Get help from the community and maintainers
 
 **Use for:**
+
 - "How do I...?" questions
 - Troubleshooting setup issues
 - Configuration questions
 - Best practices discussions
 
+
 **Features:**
+
 - Supports marking answers as "Accepted"
 - Questions can be marked as "Answered"
+
 
 ### 🎉 Show and Tell
 
@@ -61,6 +68,7 @@ Configure the following categories in your repository settings:
 - **Purpose:** Community showcases and inspiration
 
 **Use for:**
+
 - Sharing your status page setup
 - Demonstrating custom configurations
 - Case studies of interesting use cases
@@ -74,6 +82,7 @@ Configure the following categories in your repository settings:
 - **Purpose:** Important project updates
 
 **Use for:**
+
 - New release announcements
 - Breaking change warnings
 - Roadmap updates
@@ -105,6 +114,7 @@ Consider pinning these discussions:
 Apply labels to discussions for better organization:
 
 ### Topic Labels
+
 - `topic:monitoring` - Health checks and uptime tracking
 - `topic:incidents` - GitHub Issues integration
 - `topic:notifications` - Slack, Telegram, Email, Discord
@@ -114,11 +124,13 @@ Apply labels to discussions for better organization:
 - `topic:github-actions` - CI/CD and workflows
 
 ### Status Labels
+
 - `answered` - Question has been answered (Q&A only)
 - `needs-info` - Waiting for more information
 - `good-first-issue` - Good for newcomers to explore
 
 ### Special Labels
+
 - `upptime-related` - Questions about Upptime compatibility
 - `migration` - Migrating from other tools
 - `showcase` - Featured showcases (Show and Tell)
@@ -126,19 +138,24 @@ Apply labels to discussions for better organization:
 ## Moderation Guidelines
 
 ### Response Time Goals
+
 - Q&A: 1-2 business days
 - Ideas: 1 week for initial feedback
 - General: Best effort
 - Announcements: N/A (maintainer-only)
 
 ### When to Lock Discussions
+
 - Discussion has gone off-topic
 - Code of Conduct violations
 - Spam or abuse
 - Discussion has been resolved and archived
 
 ### When to Convert to Issues
+
 Convert discussions to issues when:
+
+
 - Feature idea has clear consensus and spec
 - Bug report is confirmed and reproducible
 - Security concern is identified (convert to private security advisory)
@@ -182,15 +199,18 @@ Remind participants to:
 ## Integration with Other Channels
 
 ### Link from Documentation
+
 - Add "Discussions" link to README.md
 - Reference in SUPPORT.md
 - Include in CONTRIBUTING.md
 
 ### Link from Issues
+
 - Add discussion link to issue templates
 - Suggest discussing ideas before opening feature requests
 
 ### Link from Code of Conduct
+
 - Reference discussions as primary community space
 
 ## Resources

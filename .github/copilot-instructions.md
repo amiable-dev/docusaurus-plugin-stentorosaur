@@ -409,11 +409,171 @@ Without `issues: write` permission, workflows will fail with "Resource not acces
 3. Ensure `permissions:` block is included in workflow file
 4. Commit to `.github/workflows/` in their project
 
-## Key Documentation Files
-- `README.md` - User-facing installation/configuration guide
-- `CONFIGURATION.md` - Detailed config examples
-- `PROJECT_SUMMARY.md` - Architecture diagrams and file structure
-- `TESTING.md` - Test scenarios for configuration options
-- `QUICKSTART.md` - Minimal setup guide
+## Documentation Structure and Rules
+
+**IMPORTANT**: All code changes require documentation review and updates. Follow the documentation organization rules defined in `DOCUMENTATION_REORGANIZATION_SUMMARY.md`.
+
+### Documentation Organization (v0.14.0+)
+
+The project follows a structured documentation layout:
+
+```text
+Root Directory (Collaboration & Quick Start)
+├── README.md ⭐ Main documentation
+├── QUICKSTART.md ⭐ 5-minute setup guide
+├── CONTRIBUTING.md ⭐ Contribution guidelines
+├── DOCS.md ⭐ Navigation hub
+├── CODE_OF_CONDUCT.md, SECURITY.md, SUPPORT.md
+├── CHANGELOG.md, CLAUDE.md
+
+docs/
+├── README.md - Directory index
+├── reference/ - Feature documentation (CONFIGURATION, MONITORING_SYSTEM, NOTIFICATIONS, TESTING)
+├── setup/ - Advanced setup guides (ORPHANED_BRANCH_SETUP, PUBLISHING, TRUSTED_PUBLISHING_SETUP)
+├── architecture/ - System design docs (ARCHITECTURE-INDEX, ARCHITECTURE-SUMMARY, ARCHITECTURE-ANALYSIS)
+└── archive/ - Legacy documentation
+```
+
+### Documentation Update Rules
+
+**When adding new code features:**
+
+1. **Update relevant documentation** based on change type:
+   - New features → Update `README.md` + `docs/reference/CONFIGURATION.md`
+   - New configuration options → Update `docs/reference/CONFIGURATION.md`
+   - Monitoring changes → Update `docs/reference/MONITORING_SYSTEM.md`
+   - Notification changes → Update `docs/reference/NOTIFICATIONS.md`
+   - Testing changes → Update `docs/reference/TESTING.md`
+   - Breaking changes → Update `README.md` + `CHANGELOG.md` + affected reference docs
+
+2. **Add version notes** for new features:
+   ```markdown
+   **New in v0.15.0**: Description of feature
+   ```
+
+3. **Update CHANGELOG.md** under `[Unreleased]` section:
+   - `Added` - New features
+   - `Changed` - Changes to existing functionality
+   - `Fixed` - Bug fixes
+   - `Deprecated` - Soon-to-be removed features
+   - `Removed` - Removed features
+   - `Security` - Security fixes
+
+4. **Check and update cross-references**:
+   - Verify all internal links still work
+   - Update links if files moved or renamed
+   - Use relative paths: `./docs/reference/CONFIGURATION.md`
+
+5. **Update code examples**:
+   - Ensure all examples in documentation reflect current implementation
+   - Test examples actually work
+   - Include TypeScript types where applicable
+
+### Where to Add New Documentation
+
+**Reference Documentation** (features, APIs, configuration):
+- Add to `docs/reference/`
+- Examples: New plugin options, API methods, feature guides
+
+**Setup Guides** (deployment, CI/CD, advanced configuration):
+- Add to `docs/setup/`
+- Examples: New workflow templates, deployment strategies, environment setup
+
+**Architecture Documentation** (design, technical analysis):
+- Add to `docs/architecture/`
+- Examples: Design decisions, system architecture changes, technical deep-dives
+
+**Collaboration Documentation** (CODE_OF_CONDUCT, SECURITY, etc.):
+- Keep in root directory
+- Examples: Governance, security policies, contribution guidelines
+
+### Documentation Review Checklist
+
+Before committing code changes, verify:
+
+- [ ] All affected documentation files updated
+- [ ] Version notes added for new features
+- [ ] CHANGELOG.md updated under `[Unreleased]`
+- [ ] Code examples tested and working
+- [ ] Cross-references verified (no broken links)
+- [ ] DOCS.md updated if adding new doc files
+- [ ] Markdownlint issues resolved
+
+### Key Documentation Files
+
+**Root Level (Always Check First)**:
+- `README.md` - Main documentation, installation, configuration
+- `QUICKSTART.md` - Getting started guide
+- `CHANGELOG.md` - Version history (update with every change)
+- `DOCS.md` - Navigation hub for all documentation
+
+**Reference Documentation (`docs/reference/`)**:
+- `CONFIGURATION.md` - Complete configuration options
+- `MONITORING_SYSTEM.md` - Monitoring architecture and setup
+- `NOTIFICATIONS.md` - Alert system configuration
+- `TESTING.md` - Testing guidelines and scenarios
+
+**Setup Guides (`docs/setup/`)**:
+- `ORPHANED_BRANCH_SETUP.md` - Status data branch configuration
+- `TRUSTED_PUBLISHING_SETUP.md` - npm publishing setup
+- `PUBLISHING.md` - Release workflow
+
+**Architecture (`docs/architecture/`)**:
+- `ARCHITECTURE-INDEX.md` - Architecture overview
+- `ARCHITECTURE-SUMMARY.md` - High-level design
+- `ARCHITECTURE-ANALYSIS.md` - Technical analysis
+
+### Documentation Standards
+
+All documentation must follow these standards:
+
+1. **GitHub-flavored Markdown** with proper formatting
+2. **Clear hierarchical headers** with descriptive titles
+3. **Working code examples** for all features
+4. **Cross-references** to related documentation
+5. **Version context** for new features (e.g., "v0.5.0+")
+6. **Current implementation** - reflect actual codebase state
+7. **Markdownlint compliance** - no linting errors
+
+### Common Documentation Update Scenarios
+
+**Adding a new configuration option:**
+1. Update `docs/reference/CONFIGURATION.md` with option details
+2. Update `README.md` if it's a major feature
+3. Add example usage
+4. Update CHANGELOG.md
+5. Add version note
+
+**Adding a new feature:**
+1. Update `README.md` features list
+2. Create or update relevant reference doc
+3. Add to QUICKSTART.md if simple to use
+4. Update CHANGELOG.md
+5. Add version note
+
+**Fixing a bug:**
+1. Update CHANGELOG.md under `### Fixed`
+2. Update docs if behavior changed
+3. No version note needed for bug fixes
+
+**Breaking change:**
+1. Update all affected documentation
+2. Add migration guide in CHANGELOG.md
+3. Update SEMVER (bump MAJOR version)
+4. Add prominent warning in README.md
+
+### Documentation Maintenance
+
+**Before Every Commit:**
+- Review documentation changes alongside code changes
+- Test all code examples in documentation
+- Verify no broken links introduced
+- Run markdownlint to catch formatting issues
+
+**Before Every Release:**
+- Move `[Unreleased]` items in CHANGELOG.md to new version
+- Update version notes throughout documentation
+- Verify all examples work with new version
+- Check DOCS.md navigation is current
 
 When answering questions, reference these docs for authoritative information.

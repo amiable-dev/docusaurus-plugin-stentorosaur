@@ -281,21 +281,25 @@ This document compares all configuration options from [Upptime](https://upptime.
 ## Implementation Roadmap
 
 ### Phase 1: Core Functionality ⚠️ In Progress
+
 - [x] Basic display options (title, description, toggles) ✅
 - [ ] Site/endpoint configuration [Issue #25](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues/25)
 - [ ] Globalping support [Issue #22](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues/22)
 - [ ] ICMP ping [Issue #23](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues/23)
 
 ### Phase 2: Customization
+
 - [ ] Branding options (logo, intro) [Issue #26](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues/26)
 - [ ] Globalping authentication docs [Issue #24](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues/24)
 
 ### Phase 3: Automation
+
 - [ ] Assignees and workflow scheduling [Issue #27](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues/27)
 - [ ] Commit message customization
 - [ ] Notification integrations
 
 ### Phase 4: Advanced Features
+
 - [ ] Custom status detection
 - [ ] SSL/security options
 - [ ] Self-hosted runners
@@ -307,6 +311,7 @@ This document compares all configuration options from [Upptime](https://upptime.
 
 ### Docusaurus vs Upptime Config
 Many Upptime `status-website` options have direct Docusaurus equivalents:
+
 - **Theme** → Use Docusaurus `colorMode`
 - **Navbar** → Use Docusaurus `themeConfig.navbar`
 - **Favicon** → Use Docusaurus `favicon`
@@ -317,6 +322,7 @@ These should be documented in a migration guide rather than duplicated in plugin
 
 ### Plugin-Specific Features
 The plugin adds features not in Upptime:
+
 - ✅ `defaultSLO` - Default SLO target percentage
 - ✅ `systemSLOs` - Per-system SLO targets
 - ✅ Interactive performance metrics with charts
