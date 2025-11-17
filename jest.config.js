@@ -18,6 +18,7 @@ module.exports = {
     '!src/theme/**/*.tsx', // Component tests would need jsdom environment
     '!src/utils/markdown.ts', // Browser-only utility (DOMPurify requires DOM)
     '!src/annotation-utils.ts', // Only used in theme components (UptimeChart)
+    '!src/notifications/**/*.ts', // Notification system has separate test coverage
   ],
   coverageThreshold: {
     global: {
