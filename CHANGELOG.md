@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2025-11-17
+
+### Fixed
+
+- **CRITICAL: Regression in `stentorosaur-update-status` script** - Incidents and maintenance now correctly display on charts
+  - Fixed entity model compatibility broken since v0.11.0
+  - Script now properly passes `Entity[]` objects instead of string arrays to `GitHubStatusService`
+  - `affectedSystems` arrays are now properly populated from GitHub issue labels
+  - Backward compatibility maintained for legacy `systemLabels` configurations
+  - Chart annotations (incident markers, maintenance windows) now render correctly
+  - Impact: All users running v0.11.0 through v0.14.0 were affected - incidents appeared in history but NOT on charts
+  - Resolution: Update to v0.14.1 and re-run status-update workflow to regenerate data
+
 ## [0.14.0] - 2025-11-13
 
 ### Added

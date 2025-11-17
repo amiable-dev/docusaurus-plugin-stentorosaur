@@ -14,7 +14,7 @@
  *   GITHUB_OWNER - Repository owner (defaults to docusaurus.config.js)
  *   GITHUB_REPO - Repository name (defaults to docusaurus.config.js)
  *   STATUS_LABEL - Label to filter issues (default: 'status')
- *   SYSTEM_LABELS - Comma-separated list of system labels (default: from config)
+ *   SYSTEM_LABELS - [DEPRECATED] Use entities in config (legacy support only)
  * 
  * Options:
  *   --output-dir <path>      Output directory for status data (default: build/status-data)
@@ -191,9 +191,33 @@ async function updateStatus() {
     const owner = process.env.GITHUB_OWNER || pluginConfig.owner || actualConfig.organizationName;
     const repo = process.env.GITHUB_REPO || pluginConfig.repo || actualConfig.projectName;
     const statusLabel = process.env.STATUS_LABEL || pluginConfig.statusLabel || 'status';
-    const systemLabels = process.env.SYSTEM_LABELS 
-      ? process.env.SYSTEM_LABELS.split(',').map(s => s.trim())
-      : pluginConfig.systemLabels || [];
+
+    // Load entities configuration (v0.11.0+)
+    let entities = pluginConfig.entities || [];
+
+    // Backward compatibility: convert old systemLabels to entities
+    if (!entities.length && pluginConfig.systemLabels) {
+      verbose('Converting legacy systemLabels to entities for backward compatibility');
+      entities = pluginConfig.systemLabels.map(name => ({
+        name,
+        type: 'system'
+      }));
+    }
+
+    // Environment variable override for entities (legacy support)
+    if (process.env.SYSTEM_LABELS) {
+      verbose('Using SYSTEM_LABELS from environment (legacy support)');
+      entities = process.env.SYSTEM_LABELS.split(',').map(s => s.trim()).map(name => ({
+        name,
+        type: 'system'
+      }));
+    }
+
+    // Get label scheme configuration (v0.11.0+)
+    const labelScheme = pluginConfig.labelScheme;
+
+    // Get maintenance labels configuration
+    const maintenanceLabels = pluginConfig.scheduledMaintenance?.labels || ['scheduled-maintenance'];
 
     if (!token) {
       console.error('Error: GITHUB_TOKEN not provided.');
@@ -212,12 +236,22 @@ async function updateStatus() {
 
     log(`Fetching status data from ${owner}/${repo}...`);
     verbose('Status label:', statusLabel);
-    verbose('System labels:', systemLabels);
+    verbose('Entities:', entities.map(e => `${e.name} (${e.type})`).join(', '));
+    verbose('Label scheme:', labelScheme);
+    verbose('Maintenance labels:', maintenanceLabels);
 
     // Import the GitHubStatusService (use dynamic import for ESM compatibility)
     const {GitHubStatusService} = require('../lib/github-service.js');
 
-    const service = new GitHubStatusService(token, owner, repo, statusLabel, systemLabels);
+    const service = new GitHubStatusService(
+      token,
+      owner,
+      repo,
+      statusLabel,
+      entities,           // Entity[] instead of string[]
+      labelScheme,        // Label scheme configuration
+      maintenanceLabels   // Maintenance labels
+    );
     const result = await service.fetchStatusData();
 
     const statusData = {
