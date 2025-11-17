@@ -61,7 +61,7 @@ npm install @amiable-dev/docusaurus-plugin-stentorosaur
 yarn add @amiable-dev/docusaurus-plugin-stentorosaur
 ```
 
-> **📚 Recommended**: Use an orphaned `status-data` branch for storing monitoring data (following the Upptime pattern). This keeps your main branch lean and improves performance. See [Orphaned Branch Setup Guide](./ORPHANED_BRANCH_SETUP.md) for setup instructions.
+> **📚 Recommended**: Use an orphaned `status-data` branch for storing monitoring data (following the Upptime pattern). This keeps your main branch lean and improves performance. See [Orphaned Branch Setup Guide](./docs/setup/ORPHANED_BRANCH_SETUP.md) for setup instructions.
 
 ## GitHub Token Setup
 
@@ -879,7 +879,7 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 # Configure your endpoints in monitor-systems.yml
 ```
 
-See [MONITORING_SYSTEM.md](./MONITORING_SYSTEM.md) for complete documentation.
+See [MONITORING_SYSTEM.md](./docs/reference/MONITORING_SYSTEM.md) for complete documentation.
 
 ### Three-File Data Architecture
 
@@ -992,7 +992,7 @@ npx stentorosaur-update-status --write-incidents --write-maintenance --verbose
 npx stentorosaur-update-status --output-dir ./public/status --write-incidents --write-maintenance
 ```
 
-See [CONFIGURATION.md](./CONFIGURATION.md) for CLI option details.
+See [CONFIGURATION.md](./docs/reference/CONFIGURATION.md) for CLI option details.
 
 ## Status Data Storage Patterns
 
@@ -1225,7 +1225,7 @@ jobs:
 }
 ```
 
-See [CONFIGURATION.md](./CONFIGURATION.md) for detailed examples.
+See [CONFIGURATION.md](./docs/reference/CONFIGURATION.md) for detailed examples.
 
 ## How It Works
 
@@ -1542,7 +1542,7 @@ Send real-time alerts to Slack, Telegram, Email, or Discord when incidents occur
 
 **Supported Channels:** Slack, Telegram, Email (SMTP), Discord
 
-**📖 Complete Guide**: See [NOTIFICATIONS.md](./NOTIFICATIONS.md) for setup instructions, configuration examples, and troubleshooting.
+**📖 Complete Guide**: See [NOTIFICATIONS.md](./docs/reference/NOTIFICATIONS.md) for setup instructions, configuration examples, and troubleshooting.
 
 ## Best Practices
 
@@ -1600,7 +1600,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for d
 
 - **Issues**: [GitHub Issues](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/discussions)
-- **Documentation**: See [CONFIGURATION.md](./CONFIGURATION.md) for detailed examples
+- **Documentation**: See [CONFIGURATION.md](./docs/reference/CONFIGURATION.md) for detailed examples
 
 ## License
 

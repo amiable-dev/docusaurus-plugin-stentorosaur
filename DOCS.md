@@ -69,7 +69,7 @@ Historical and legacy documentation:
 
 ### By Task
 
-**I want to...**
+I want to...
 
 - **Install the plugin** → [README.md - Installation](./README.md#installation)
 - **Get started quickly** → [QUICKSTART.md](./QUICKSTART.md)
@@ -86,24 +86,28 @@ Historical and legacy documentation:
 
 ### By Role
 
-**Developers**
+#### Developers
+
 1. [QUICKSTART.md](./QUICKSTART.md) - Quick setup
 2. [CONTRIBUTING.md](./CONTRIBUTING.md) - Development workflow
 3. [docs/reference/TESTING.md](./docs/reference/TESTING.md) - Testing guidelines
 4. [CLAUDE.md](./CLAUDE.md) - AI-assisted development
 
-**DevOps/Platform Engineers**
+#### DevOps/Platform Engineers
+
 1. [docs/reference/MONITORING_SYSTEM.md](./docs/reference/MONITORING_SYSTEM.md) - Monitoring setup
 2. [docs/setup/ORPHANED_BRANCH_SETUP.md](./docs/setup/ORPHANED_BRANCH_SETUP.md) - Branch strategy
 3. [docs/reference/NOTIFICATIONS.md](./docs/reference/NOTIFICATIONS.md) - Alert configuration
 4. [README.md - GitHub Actions](./README.md#github-actions-setup) - CI/CD workflows
 
-**Site Administrators**
+#### Site Administrators
+
 1. [README.md](./README.md) - Complete feature overview
 2. [docs/reference/CONFIGURATION.md](./docs/reference/CONFIGURATION.md) - Configuration options
 3. [README.md - Maintenance Tickets](./README.md#creating-maintenance-tickets) - Scheduling maintenance
 
-**Architects**
+#### Architects
+
 1. [docs/architecture/ARCHITECTURE-INDEX.md](./docs/architecture/ARCHITECTURE-INDEX.md) - System design
 2. [docs/architecture/ARCHITECTURE-SUMMARY.md](./docs/architecture/ARCHITECTURE-SUMMARY.md) - High-level overview
 3. [docs/archive/UPPTIME_CONFIGURATION_COMPARISON.md](./docs/archive/UPPTIME_CONFIGURATION_COMPARISON.md) - Upptime comparison
@@ -111,6 +115,7 @@ Historical and legacy documentation:
 ## 🔍 Search Tips
 
 All documentation is in Markdown format and searchable via:
+
 - **GitHub's built-in search** - Use the search bar at the top of the repo
 - **Command+F / Ctrl+F** - Search within individual documents
 - **grep** - `grep -r "search term" docs/`
@@ -118,6 +123,7 @@ All documentation is in Markdown format and searchable via:
 ## 📝 Documentation Standards
 
 All documentation follows these standards:
+
 - ✅ GitHub-flavored Markdown
 - ✅ Clear hierarchical structure with descriptive headers
 - ✅ Working code examples for all features

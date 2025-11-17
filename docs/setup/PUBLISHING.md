@@ -2,13 +2,25 @@
 
 This guide outlines the process for publishing beta and stable releases to npm.
 
+## Overview
+
+Publishing is fully automated via GitHub Actions using a two-workflow system:
+
+1. **release.yml** - Triggered on git tag push → Creates GitHub Release with changelog
+2. **publish.yml** - Triggered when GitHub Release is published → Publishes to npm with trusted publishing
+
+**You never run `npm publish` locally** - all publishing happens via GitHub Actions.
+
 ## Prerequisites
 
 Before publishing, ensure you have:
 
-1. **npm Account**: Create an account at <https://www.npmjs.com> if you don't have one
-2. **npm Authentication**: Be logged in via `npm login`
-3. **Repository Access**: Write access to the GitHub repository
+1. **GitHub Repository Access**: Write access to push tags
+2. **GitHub Personal Access Token (GH_PAT)**: Required for creating releases
+   - Go to GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens
+   - Create token with "Contents" write permission for the repository
+   - Add as repository secret: Settings → Secrets → Actions → New secret: `GH_PAT`
+3. **npm Trusted Publishing**: Configured for @amiable-dev scope (see [TRUSTED_PUBLISHING_SETUP.md](./TRUSTED_PUBLISHING_SETUP.md))
 4. **Clean Working Directory**: All changes committed and pushed
 
 ## Pre-Publishing Checklist
@@ -21,131 +33,104 @@ Before publishing, ensure you have:
 - [ ] Version number is correct in `package.json`
 - [ ] README.md is up to date
 
-## Beta Release Process (Pre-1.0.0)
+## Automated Release Process
 
-### 1. Verify Current State
+### Overview of Workflow
 
-```bash
-# Ensure you're on the main branch
-git checkout main
-git pull origin main
-
-# Verify clean state
-git status
-
-# Check current version
-npm version
+```text
+Developer creates tag → Push tag → release.yml runs → Creates GitHub Release
+                                                    ↓
+                                            publish.yml triggered
+                                                    ↓
+                                            Publishes to npm
 ```
 
-### 2. Run Tests and Build
+### Step-by-Step Release Process
+
+**1. Update version in package.json**
 
 ```bash
-# Run full test suite
-npm test
-
-# Run with coverage to verify thresholds
-npm run test:coverage
-
-# Build the package
-npm run build
-
-# Verify build output
-ls -la lib/
+# Edit package.json manually or use npm version
+# Example: "version": "0.14.0" → "0.15.0"
 ```
 
-### 3. Update Version for Beta
+**2. Update CHANGELOG.md**
 
-Current version: `0.1.0-beta.0`
+Add a new version section:
 
-For subsequent beta releases:
+```markdown
+## [0.15.0] - 2025-11-14
 
-```bash
-# For bug fixes: 0.1.0-beta.0 → 0.1.0-beta.1
-npm version prerelease --preid=beta
+### Added
+- New feature description
 
-# For new features: 0.1.0-beta.0 → 0.2.0-beta.0
-npm version preminor --preid=beta
+### Changed
+- Updated behavior description
 
-# For breaking changes: 0.1.0-beta.0 → 0.2.0-beta.0
-npm version premajor --preid=beta
+### Fixed
+- Bug fix description
 ```
 
-This will:
-
-- Update `package.json` version
-- Create a git commit
-- Create a git tag
-
-### 4. Verify Package Contents
-
-Before publishing, check what will be included:
+**3. Commit changes**
 
 ```bash
-# Dry run to see what would be published
-npm pack --dry-run
-
-# Create actual tarball for inspection
-npm pack
-
-# Extract and inspect
-tar -xzf docusaurus-plugin-stentorosaur-*.tgz
-ls -la package/
+git add package.json CHANGELOG.md
+git commit -m "chore: Bump version to 0.15.0"
 ```
 
-Verify that:
-
-- `lib/` directory is included
-- `src/` directory is NOT included
-- `__tests__/` is NOT included
-- `coverage/` is NOT included
-- Only `README.md` is included (no other .md files)
-
-### 5. Publish Beta to npm
+**4. Create and push git tag**
 
 ```bash
-# Publish with beta tag
-npm publish --tag beta --access public
+# Create tag matching package.json version
+git tag v0.15.0
 
-# Verify publication
-npm view docusaurus-plugin-stentorosaur
-npm view docusaurus-plugin-stentorosaur dist-tags
-```
-
-### 6. Push Git Changes
-
-```bash
-# Push commits and tags
+# Push commit and tag
 git push origin main
-git push origin --tags
+git push origin v0.15.0
 ```
 
-### 7. Test Beta Installation
+**5. GitHub Actions takes over**
 
-In a separate test project:
+- `release.yml` workflow triggers on tag push
+- Extracts changelog for this version
+- Creates GitHub Release (marked as pre-release if version < 1.0.0)
+- `publish.yml` workflow triggers when release is published
+- Runs tests, builds package, publishes to npm with trusted publishing
+
+**6. Monitor workflow**
+
+Go to repository → Actions tab → Watch workflows complete
+
+**7. Verify publication**
+
+```bash
+# Check npm
+npm view @amiable-dev/docusaurus-plugin-stentorosaur
+
+# Check GitHub releases
+# Visit: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/releases
+```
+
+### Testing Published Version
+
+In a test project:
 
 ```bash
 # Create test directory
-mkdir /tmp/test-plugin-beta
-cd /tmp/test-plugin-beta
+mkdir /tmp/test-plugin-release
+cd /tmp/test-plugin-release
 
 # Initialize test project
 npm init -y
 
-# Install beta version
-npm install @amiable-dev/docusaurus-plugin-stentorosaur@beta
+# Install latest version
+npm install @amiable-dev/docusaurus-plugin-stentorosaur
+
+# Or install specific version
+npm install @amiable-dev/docusaurus-plugin-stentorosaur@0.15.0
 
 # Verify installation
 npm list @amiable-dev/docusaurus-plugin-stentorosaur
-```
-
-Test in actual Docusaurus project:
-
-```bash
-# In your Docusaurus project
-npm install @amiable-dev/docusaurus-plugin-stentorosaur@beta
-
-# Or specify exact version
-npm install @amiable-dev/docusaurus-plugin-stentorosaur@0.1.0-beta.0
 ```
 
 ## Stable Release Process (1.0.0+)
@@ -157,116 +142,124 @@ Release 1.0.0 when:
 - All planned features are complete
 - Documentation is comprehensive
 - No critical bugs remain
-- Beta testing completed successfully
+- Beta testing completed successfully (v0.x.x versions)
 - Breaking API changes are finalized
 
-### 1. Update to Stable Version
+### Releasing 1.0.0
 
-```bash
-# Remove beta designation
-npm version 1.0.0
+Same process as above, but:
 
-# Or use npm's versioning
-npm version major  # For 1.0.0
-```
+1. Update `package.json` version to `1.0.0`
+2. Update CHANGELOG.md with comprehensive release notes
+3. Commit changes: `git commit -m "chore: Release v1.0.0"`
+4. Create tag: `git tag v1.0.0`
+5. Push: `git push origin main && git push origin v1.0.0`
+6. GitHub Actions automatically creates release and publishes to npm
+7. Release will NOT be marked as pre-release (version >= 1.0.0)
 
-### 2. Update Package Metadata
+### Post-1.0.0 Versioning
 
-Ensure `package.json` has:
-
-- Correct `version` (without -beta)
-- Updated `description`
-- All `keywords` relevant for npm search
-- Valid `repository`, `bugs`, `homepage` URLs
-
-### 3. Publish to Latest Tag
-
-```bash
-# Build
-npm run build
-
-# Publish as latest (default tag)
-npm publish --access public
-
-# Verify
-npm view docusaurus-plugin-stentorosaur
-```
-
-### 4. Create GitHub Release
-
-1. Go to GitHub repository
-2. Click "Releases" → "Draft a new release"
-3. Tag: `v1.0.0`
-4. Title: "v1.0.0 - Initial Stable Release"
-5. Description: Include changelog, breaking changes, migration guide
-6. Publish release
-
-## Version Management Strategy
-
-### Beta Versions (0.x.x-beta.x)
-
-- Use for testing and feedback
-- Breaking changes allowed
-- Document changes in commit messages
-- Tag with `beta` on npm
-
-### Stable Versions (1.x.x)
-
-After 1.0.0, follow semantic versioning:
+After 1.0.0, follow semantic versioning strictly:
 
 - **Patch** (1.0.1): Bug fixes, no breaking changes
 - **Minor** (1.1.0): New features, backward compatible
 - **Major** (2.0.0): Breaking changes
 
-## npm Commands Reference
+Same automated process for all versions - just create the tag.
+
+## Version Management Strategy
+
+### Pre-1.0.0 Versions (0.x.x)
+
+- Use for development and testing
+- Breaking changes allowed
+- All releases marked as pre-release on GitHub
+- Document changes in CHANGELOG.md
+
+### Post-1.0.0 Versions
+
+Follow strict semantic versioning:
+
+- **Patch** (1.0.1): Bug fixes, no breaking changes
+- **Minor** (1.1.0): New features, backward compatible
+- **Major** (2.0.0): Breaking changes
+
+## Useful npm Commands
 
 ```bash
-# Login to npm
-npm login
-
-# Check login status
-npm whoami
-
 # View package info
 npm view @amiable-dev/docusaurus-plugin-stentorosaur
 
-# View all versions
+# View all published versions
 npm view @amiable-dev/docusaurus-plugin-stentorosaur versions
 
 # View dist-tags
 npm view @amiable-dev/docusaurus-plugin-stentorosaur dist-tags
 
-# Unpublish (within 72 hours)
-npm unpublish @amiable-dev/docusaurus-plugin-stentorosaur@0.1.0-beta.0
-
-# Deprecate a version
-npm deprecate @amiable-dev/docusaurus-plugin-stentorosaur@0.1.0-beta.0 "Use 0.1.0-beta.1 instead"
+# Deprecate a version (if needed)
+npm deprecate @amiable-dev/docusaurus-plugin-stentorosaur@0.14.0 "Use 0.15.0 instead"
 ```
+
+## GitHub Actions Workflows
+
+### release.yml Workflow
+
+**Trigger**: Push git tag matching `v*`
+
+**What it does**:
+
+1. Extracts version from tag (removes 'v' prefix)
+2. Determines if pre-release (version < 1.0.0)
+3. Extracts changelog section for this version from CHANGELOG.md
+4. Creates GitHub Release with `gh release create`
+5. Uses `GH_PAT` secret for authentication
+
+**Required Secret**: `GH_PAT` (GitHub Personal Access Token with Contents write permission)
+
+### publish.yml Workflow
+
+**Trigger**: GitHub release published event
+
+**What it does**:
+
+1. Checks out code
+2. Installs dependencies with `npm ci`
+3. Runs tests with `npm test`
+4. Builds package with `npm run build`
+5. Publishes to npm using trusted publishing (OIDC)
+
+**Required Setup**: npm trusted publishing configured for @amiable-dev scope
 
 ## Troubleshooting
 
-### "You do not have permission to publish"
+### Workflow fails at "Create GitHub Release"
 
-- Verify you're logged in: `npm whoami`
-- Check you have access to the package scope
-- For first publish, package name might be taken
+**Error**: `gh: error creating release: HTTP 401`
 
-### "Version already exists"
+**Solution**: Check `GH_PAT` secret exists and has Contents write permission
 
-- You cannot republish the same version
-- Increment version: `npm version patch`
+### Workflow fails at "Publish to npm"
+
+**Error**: `npm ERR! code EUNKNOWN`
+
+**Solution**: Ensure npm trusted publishing is configured correctly (see [TRUSTED_PUBLISHING_SETUP.md](./TRUSTED_PUBLISHING_SETUP.md))
+
+### Tag pushed but no release created
+
+**Solution**: Check Actions tab for workflow errors. Ensure tag matches `v*` pattern.
+
+### Release created but npm publish failed
+
+**Solution**: Check publish.yml workflow logs. Common issues:
+- Tests failing
+- Build errors
+- Trusted publishing not configured
 
 ### "Package not found" after publishing
 
 - Wait a few minutes for npm CDN propagation
 - Clear npm cache: `npm cache clean --force`
-- Try accessing via unpkg: `https://unpkg.com/@amiable-dev/docusaurus-plugin-stentorosaur@beta/`
-
-### Build files missing from package
-
-- Check `.npmignore` is correct
-- Ensure `lib/` is not ignored
-- Run `npm pack --dry-run` to preview contents
+- Check unpkg: `https://unpkg.com/@amiable-dev/docusaurus-plugin-stentorosaur/`
 
 ## Post-Publishing Tasks
 
@@ -280,11 +273,11 @@ After successful publish:
 
 ## Security Considerations
 
-1. **Never commit** npm tokens to git
-2. **Use 2FA** on npm account
-3. **Audit dependencies**: `npm audit`
-4. **Review package contents** before publishing
-5. **Unpublish quickly** if credentials leaked
+1. **GH_PAT Secret**: Store GitHub Personal Access Token only in repository secrets, never commit to git
+2. **Trusted Publishing**: Uses OIDC tokens (no long-lived npm tokens needed)
+3. **Use 2FA** on npm account (required for trusted publishing)
+4. **Audit dependencies**: `npm audit` (runs in CI)
+5. **Review package contents**: Check `.npmignore` to ensure only `lib/` and necessary files are included
 
 ## Resources
 

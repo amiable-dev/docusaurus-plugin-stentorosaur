@@ -17,9 +17,9 @@ Start with the official documentation:
 ### Core Documentation
 
 - **[README.md](README.md)** - Installation, configuration, features
-- **[NOTIFICATIONS.md](NOTIFICATIONS.md)** - Setting up alerts to Slack/Telegram/Email/Discord
+- **[NOTIFICATIONS.md](./docs/reference/NOTIFICATIONS.md)** - Setting up alerts to Slack/Telegram/Email/Discord
 - **[QUICKSTART.md](QUICKSTART.md)** - Get started in 10 minutes
-- **[CONFIGURATION.md](CONFIGURATION.md)** - Complete configuration reference
+- **[CONFIGURATION.md](./docs/reference/CONFIGURATION.md)** - Complete configuration reference
 - **[CLAUDE.md](CLAUDE.md)** - Developer documentation
 
 ### Blog Series
@@ -35,8 +35,6 @@ Start with the official documentation:
 
 - **[Upptime](https://github.com/upptime/upptime)** - Our foundation (standalone status pages)
 - **[Docusaurus](https://docusaurus.io/docs)** - Framework documentation
-
-
 
 ## Community Support
 
@@ -61,11 +59,11 @@ Before posting, check if your question has been answered:
 
 - [How do I get a GitHub token?](https://github.com/settings/tokens)
 - [Why am I seeing demo data in production?](README.md#github-token-setup)
-- [How do I use the orphaned status-data branch?](ORPHANED_BRANCH_SETUP.md)
+- [How do I use the orphaned status-data branch?](./docs/setup/ORPHANED_BRANCH_SETUP.md)
 
 ### Configuration
 
-- [How do I add custom entities?](CONFIGURATION.md#entities)
+- [How do I add custom entities?](./docs/reference/CONFIGURATION.md#entities)
 - [How do I track business processes?](https://amiable.dev/blog/stentorosaur-process-monitoring)
 - [How do I set up scheduled maintenance?](README.md#scheduled-maintenance)
 
@@ -73,7 +71,7 @@ Before posting, check if your question has been answered:
 
 - [How do I change monitoring frequency?](templates/workflows/monitor-systems.yml)
 - [How do I monitor private endpoints?](README.md#monitoring-private-endpoints)
-- [How do I set up notifications?](NOTIFICATIONS.md)
+- [How do I set up notifications?](./docs/reference/NOTIFICATIONS.md)
 
 ### Troubleshooting
 
@@ -88,8 +86,6 @@ Tag questions with:
 - [`docusaurus-plugin-stentorosaur`](https://stackoverflow.com/questions/tagged/docusaurus-plugin-stentorosaur)
 - [`docusaurus`](https://stackoverflow.com/questions/tagged/docusaurus)
 - [`upptime`](https://stackoverflow.com/questions/tagged/upptime)
-
-
 
 ## Bug Reports
 
@@ -116,8 +112,6 @@ Found a bug? Please report it!
 
 Response time: Typically within 2-3 business days
 
-
-
 ## Feature Requests
 
 Have an idea for a new feature?
@@ -140,8 +134,6 @@ Have an idea for a new feature?
 - Additional context - Examples, screenshots, etc.
 
 Response time: Typically within 1 week
-
-
 
 ## Priority Support
 
@@ -172,8 +164,6 @@ Support the project and get priority support:
 - Listed as sponsor in README
 - Early access to new features
 
-
-
 ## Security Issues
 
 Do not report security vulnerabilities publicly!
@@ -181,8 +171,6 @@ Do not report security vulnerabilities publicly!
 See [SECURITY.md](SECURITY.md) for our security policy.
 
 Report to: [security@amiable.dev](mailto:security@amiable.dev)
-
-
 
 ## Contributing
 
@@ -196,8 +184,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 - [Help wanted](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/help%20wanted)
 - [Documentation](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/documentation)
 
-
-
 ## Community
 
 ### Stay Updated
@@ -210,8 +196,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ### Code of Conduct
 
 All interactions are governed by our [Code of Conduct](CODE_OF_CONDUCT.md). Be respectful, inclusive, and constructive.
-
-
 
 ## Response Times
 

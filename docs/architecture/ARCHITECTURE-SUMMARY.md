@@ -1,5 +1,24 @@
 # Stentorosaur Architecture Analysis - Executive Summary
 
+> **⚠️ OUTDATED DOCUMENTATION WARNING**
+>
+> This architecture analysis reflects v0.5.x implementation and is significantly outdated.
+>
+> **Current Version**: v0.14.0
+>
+> **Major Changes Since This Doc Was Written**:
+> - `systemLabels` configuration replaced by `entities` model (v0.10.0+)
+> - Entity types introduced: system, process, project, event, sla, custom (v0.10.0+)
+> - Label scheme configuration added: namespaced (`system:api`) vs legacy (`api`) (v0.10.0+)
+> - LabelParser abstraction introduced for flexible label parsing (v0.10.0+)
+> - Notification system added (v0.13.0+)
+> - Scheduled maintenance tracking added (v0.9.0+)
+> - Three-file data architecture: current.json, incidents.json, maintenance.json (v0.4.11+)
+>
+> **For Current Implementation**: See [../../CLAUDE.md](../../CLAUDE.md) for up-to-date architecture guidance.
+>
+> **This doc is kept for historical reference only.**
+
 ## Document Overview
 
 This folder contains a comprehensive analysis of the Stentorosaur plugin's system-centric architecture:

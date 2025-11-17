@@ -51,8 +51,6 @@ npm install
 npm start
 ```
 
-
-
 ### Repository Structure
 
 ```text
@@ -66,8 +64,6 @@ docusaurus-plugin-stentorosaur/
 ├── templates/             # Workflow templates
 └── lib/                   # Compiled output (generated)
 ```
-
-
 
 See [CLAUDE.md](CLAUDE.md) for detailed developer documentation.
 
@@ -92,8 +88,6 @@ Before creating bug reports, please check the [existing issues](https://github.c
 
 Use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.yml).
 
-
-
 ### Suggesting Enhancements
 
 Enhancement suggestions are tracked as GitHub issues. Use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.yml).
@@ -107,8 +101,6 @@ Enhancement suggestions are tracked as GitHub issues. Use the [Feature Request t
 
 ### Your First Contribution
 
-
-
 Look for issues labeled:
 
 - [`good first issue`](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/good%20first%20issue) - Good for newcomers
@@ -116,8 +108,6 @@ Look for issues labeled:
 - [`documentation`](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/labels/documentation) - Improve docs
 
 ### Pull Requests
-
-
 
 We actively welcome your pull requests!
 
@@ -127,8 +117,6 @@ We actively welcome your pull requests!
 2. For large changes, open an issue first to discuss
 3. Fork the repo and create your branch from `main`
 4. Follow the [Development Workflow](#development-workflow)
-
-
 
 ## Development Workflow
 
@@ -147,8 +135,6 @@ Use prefixes:
 - `docs/` - Documentation changes
 - `test/` - Test improvements
 - `refactor/` - Code refactoring
-
-
 
 ### 2. Make Changes
 
@@ -177,8 +163,6 @@ cd ../test-status-site
 npm start
 ```
 
-
-
 ### 4. Commit Changes
 
 Follow [Commit Guidelines](#commit-guidelines):
@@ -193,8 +177,6 @@ git commit -m "feat: Add notification retry logic"
 ```bash
 git push origin feature/your-feature-name
 ```
-
-
 
 Then create a pull request on GitHub using the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
 
@@ -223,8 +205,6 @@ type StatusItem = {
 };
 ```
 
-
-
 ### React Components
 
 - **Functional components only** - No class components
@@ -250,8 +230,6 @@ export function StatusCard({ name, status, onRefresh }: StatusCardProps) {
 }
 ```
 
-
-
 ### Testing
 
 - **Jest + ts-jest** for testing
@@ -275,8 +253,6 @@ describe('GitHubStatusService', () => {
 });
 ```
 
-
-
 ### File Organization
 
 - **One component per file** - `StatusCard.tsx`, not `Components.tsx`
@@ -288,7 +264,7 @@ describe('GitHubStatusService', () => {
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>(<scope>): <subject>
 
 <body>
@@ -316,8 +292,6 @@ test(github-service): Add tests for maintenance parsing
 chore(deps): Upgrade Chart.js to v4.5.0
 ```
 
-
-
 ### Scope
 
 Use component/module names:
@@ -327,8 +301,6 @@ Use component/module names:
 - `github-service`
 - `monitoring`
 - `workflows`
-
-
 
 ### Subject
 
@@ -354,8 +326,6 @@ BREAKING CHANGE: The `systemLabels` config option has been removed.
 Use `entities` instead. Migration script: `scripts/migrate-config.js`
 ```
 
-
-
 ## Pull Request Process
 
 ### PR Checklist
@@ -370,8 +340,6 @@ Before submitting, ensure:
 - [ ] No merge conflicts with `main`
 - [ ] PR description explains changes clearly
 
-
-
 ### PR Template
 
 Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md) which includes:
@@ -385,8 +353,6 @@ Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md) which includes:
 
 ### Review Process
 
-
-
 1. **Automated checks** - CI must pass (tests, build, linting)
 2. **Code review** - Maintainers review code, architecture, tests
 3. **Feedback** - Address review comments, iterate as needed
@@ -394,8 +360,6 @@ Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md) which includes:
 5. **Merge** - Maintainers merge approved PRs
 
 ### After Merge
-
-
 
 - Your contribution will be mentioned in the next release notes
 - Significant contributors may be invited to the maintainers team

@@ -25,9 +25,7 @@ Create a Personal Access Token at <https://github.com/settings/tokens> with `rep
 > - Without a token, the plugin shows **demo data** (useful for testing)
 > - See the [README](./README.md#github-token-setup) for detailed token setup
 
-
-
-## Step 2: Configure Docusaurus
+## Step 3: Configure Docusaurus
 
 Add to your `docusaurus.config.js`:
 
@@ -60,9 +58,7 @@ module.exports = {
 };
 ```
 
-
-
-## Step 3: Set up GitHub Actions
+## Step 4: Set up GitHub Actions
 
 The plugin uses three workflows that work together:
 
@@ -102,8 +98,6 @@ cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/
 - ✅ Creates GitHub Issues for critical failures
 - ✅ Commits with `[skip ci]` (doesn't trigger deployments)
 
-
-
 ### Workflow 2: Status Update (Required for Incident Tracking)
 
 Copy the status update workflow:
@@ -138,8 +132,6 @@ npx stentorosaur-update-status \
 # --verbose            Enable detailed logging
 # --commit             Auto-commit changes with emoji messages
 ```
-
-
 
 ### Workflow 3: Deployment (Required)
 
@@ -191,8 +183,6 @@ Monitoring Data:
     → Data available for next scheduled deployment
 ```
 
-
-
 ### Complete Workflow Setup Summary
 
 After copying all workflows, you'll have:
@@ -226,8 +216,6 @@ Maintenance:
     → maintenance.json → [skip ci] → deploy-scheduled.yml (hourly) → DEPLOY
 ```
 
-
-
 ### Issue Template (Optional but Recommended)
 
 ```bash
@@ -235,7 +223,7 @@ mkdir -p .github/ISSUE_TEMPLATE
 cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/ISSUE_TEMPLATE/status-issue.yml .github/ISSUE_TEMPLATE/
 ```
 
-## Step 4: Create Your First Status Issue
+## Step 5: Create Your First Status Issue
 
 Create a new GitHub issue with these labels:
 
@@ -264,9 +252,7 @@ Scheduled database upgrade to improve performance.
 
 Tip: You can use simple entity labels (`api`) or namespaced (`system:api`). Both work!
 
-
-
-## Step 5: View Your Status Page
+## Step 6: View Your Status Page
 
 Start your Docusaurus dev server:
 
@@ -310,8 +296,6 @@ Pick the layout that works best for you:
   },
 }
 ```
-
-
 
 ### Track Scheduled Maintenance
 
@@ -359,8 +343,6 @@ Edit the plugin configuration to customize:
 **Fullscreen Zoom**: Click any chart to view it fullscreen for detailed analysis.
 
 **Keyboard Navigation**: Use Tab, Enter, and Space keys for full accessibility.
-
-
 
 ### Embed Charts in Your Docs
 
@@ -454,5 +436,5 @@ import ChartPanel from '@theme/ChartPanel';
 ## Need Help?
 
 - Read the [full documentation](README.md)
-- [Report an issue](https://github.com/your-org/docusaurus-plugin-stentorosaur/issues)
-- [Join discussions](https://github.com/your-org/docusaurus-plugin-stentorosaur/discussions)
+- [Report an issue](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues)
+- [Join discussions](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/discussions)

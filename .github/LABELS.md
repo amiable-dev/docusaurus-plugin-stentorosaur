@@ -89,7 +89,8 @@ This document describes the complete label system for organizing issues, pull re
 ### For Issues
 
 **Bug Report:**
-```
+
+```text
 bug
 priority:medium
 area:charts
@@ -97,7 +98,8 @@ status:needs-info
 ```
 
 **Feature Request:**
-```
+
+```text
 enhancement
 priority:low
 area:notifications
@@ -105,7 +107,8 @@ help wanted
 ```
 
 **Good First Issue:**
-```
+
+```text
 good first issue
 beginner friendly
 area:documentation
@@ -115,28 +118,32 @@ mentor available
 ### For Pull Requests
 
 **New Feature:**
-```
+
+```text
 enhancement
 area:monitoring
 status:needs-review
 ```
 
 **Bug Fix:**
-```
+
+```text
 bug
 area:incidents
 priority:high
 ```
 
 **Breaking Change:**
-```
+
+```text
 breaking change
 enhancement
 area:configuration
 ```
 
 **Documentation:**
-```
+
+```text
 documentation
 area:theme
 ```
@@ -144,20 +151,23 @@ area:theme
 ### For Discussions
 
 **Q&A:**
-```
+
+```text
 question
 area:configuration
 discussion:answered
 ```
 
 **Feature Idea:**
-```
+
+```text
 discussion:idea
 area:notifications
 ```
 
 **Showcase:**
-```
+
+```text
 discussion:showcase
 area:charts
 ```
@@ -303,14 +313,16 @@ jobs:
 
 ## Label Best Practices
 
-### Do:
+### Do
+
 - ✅ Use multiple labels to describe issues fully
 - ✅ Update labels as issue status changes
 - ✅ Use area labels to help contributors find issues
 - ✅ Add `good first issue` for beginner-friendly tasks
 - ✅ Mark breaking changes clearly
 
-### Don't:
+### Don't
+
 - ❌ Over-label (5-6 labels max per issue)
 - ❌ Create one-off labels (use existing ones)
 - ❌ Skip priority labels on bugs
@@ -318,10 +330,11 @@ jobs:
 
 ## Review Schedule
 
-Labels should be reviewed and cleaned up:
-- **Monthly:** Remove unused labels
-- **Quarterly:** Review color scheme consistency
-- **As needed:** Add new area labels for new features
+Labels should be reviewed and cleaned up
+
+- **Monthly** - Remove unused labels
+- **Quarterly** - Review color scheme consistency
+- **As needed** - Add new area labels for new features
 
 ---
 

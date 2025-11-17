@@ -44,7 +44,6 @@ Related to #
 
 **Breaking change details:**
 
-
 ## Testing
 
 <!-- Describe the tests you ran and how to reproduce them -->
@@ -61,6 +60,7 @@ Related to #
 <!-- Describe how you manually tested this -->
 
 **Test environment:**
+
 - Plugin version:
 - Docusaurus version:
 - Node.js version:
@@ -77,9 +77,7 @@ Related to #
 
 **Before:**
 
-
 **After:**
-
 
 ## Configuration Changes
 
@@ -100,7 +98,7 @@ Related to #
 - [ ] My changes generate no new warnings or errors
 - [ ] I have added JSDoc comments for new functions/classes
 
-### Testing
+### Tests
 
 - [ ] I have added tests that prove my fix is effective or that my feature works
 - [ ] New and existing unit tests pass locally with my changes
@@ -138,4 +136,3 @@ Related to #
 - [ ] Blocked (reason: )
 
 **Review notes:**
-
