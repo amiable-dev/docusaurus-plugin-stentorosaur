@@ -1,23 +1,33 @@
-name: Monitor Systems
+name: Status Monitor
 
-# IMPORTANT: This workflow writes to the 'status-data' orphaned branch
+# CONSOLIDATED WORKFLOW: Health checks + Incident sync + Notifications
+#
+# This single workflow replaces:
+#   - monitor-systems.yml (health checks)
+#   - status-update.yml (incident/maintenance sync)
 #
 # Prerequisites:
 #   Run once to create the orphaned branch:
 #   npm run setup-status-branch
 #
 # The 'status-data' branch is isolated from 'main' to keep the repository lean.
-# This pattern is used by Upptime and recommended for monitoring data storage.
 
 on:
   schedule:
-    # Runs every 5 minutes
+    # Run every 5 minutes for health checks
     - cron: '*/5 * * * *'
   workflow_dispatch:
+  issues:
+    # Respond to issue events for immediate incident updates
+    types: [opened, closed, labeled, unlabeled, edited]
 
 permissions:
   issues: write
-  contents: write  # Required to commit response time data
+  contents: write
+
+concurrency:
+  group: status-monitor
+  cancel-in-progress: false  # Don't cancel running checks
 
 jobs:
   monitor:
@@ -43,28 +53,45 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: main/package-lock.json
 
+      # Install dependencies (only needed for stentorosaur-update-status)
+      - name: Install dependencies
+        working-directory: main
+        run: npm ci
+
+      # STEP 1: Health checks (only on schedule/manual trigger, not on issue events)
       - name: Monitor all systems
         id: check
+        if: github.event_name != 'issues'
         continue-on-error: true
         working-directory: main
         run: |
-          # Clear npm cache to ensure we always get the latest plugin version
-          npm cache clean --force
-
           # Monitor all systems defined in .monitorrc.json
-          # Output directory points to status-data branch checkout
-          npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-monitor \
+          npx stentorosaur-monitor \
             --config .monitorrc.json \
             --output-dir ../status-data \
             --verbose
         env:
           STATUS_DATA_DIR: ../status-data
 
+      # STEP 2: Update incidents and maintenance from GitHub issues
+      - name: Update incidents and maintenance
+        working-directory: main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx stentorosaur-update-status \
+            --write-incidents \
+            --write-maintenance \
+            --verbose \
+            --output-dir ../status-data
+
+      # STEP 3: Commit all status data changes
       - name: Commit status data
         working-directory: status-data
         run: |
-          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -74,13 +101,12 @@ jobs:
             exit 0
           fi
 
-          # Stage only monitoring data (current.json and archives)
-          # DO NOT stage incidents.json or maintenance.json - those are managed by status-update.yml
-          git add current.json archives/ 2>/dev/null || true
+          # Stage all status data files
+          git add current.json archives/ incidents.json maintenance.json 2>/dev/null || true
 
           # Commit with timestamp
           TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          git commit -m "📊 Update monitoring data: $TIMESTAMP" || echo "Nothing to commit"
+          git commit -m "📊 Update status data: $TIMESTAMP" || echo "Nothing to commit"
 
           # Push with retry logic
           MAX_RETRIES=3
@@ -102,9 +128,10 @@ jobs:
               fi
             fi
           done
-          
+
+      # STEP 4: Manage downtime issues (only on schedule, not on issue events)
       - name: Manage downtime issues
-        if: always()
+        if: github.event_name != 'issues'
         uses: actions/github-script@v7
         with:
           script: |
@@ -139,7 +166,13 @@ jobs:
             }
 
             // Parse current.json from status-data branch
-            const currentData = JSON.parse(fs.readFileSync('status-data/current.json', 'utf8'));
+            let currentData = [];
+            try {
+              currentData = JSON.parse(fs.readFileSync('status-data/current.json', 'utf8'));
+            } catch (error) {
+              console.log('No current.json found, skipping issue management');
+              return;
+            }
 
             // Get latest reading for each system
             const latestBySystem = {};
@@ -180,18 +213,18 @@ jobs:
                   repo: context.repo.repo,
                   title: `${systemName} is down`,
                   body: `## Incident Report
-                  
-                  **System:** ${systemName}
-                  **Status:** Down
-                  **HTTP Status Code:** ${latest.code}
-                  **Time:** ${new Date(latest.t).toISOString()}
-                  **URL:** ${systemConfig.url}
-                  ${latest.err ? `**Error:** ${latest.err}` : ''}
-                  
-                  The system is currently experiencing issues and is not responding as expected.
-                  
-                  ---
-                  *This issue was automatically created by the monitoring workflow.*`,
+
+**System:** ${systemName}
+**Status:** Down
+**HTTP Status Code:** ${latest.code}
+**Time:** ${new Date(latest.t).toISOString()}
+**URL:** ${systemConfig.url}
+${latest.err ? `**Error:** ${latest.err}` : ''}
+
+The system is currently experiencing issues and is not responding as expected.
+
+---
+*This issue was automatically created by the monitoring workflow.*`,
                   labels: ['status', systemName, 'critical', 'automated']
                 });
               } else if (!isDown && issues.data.length > 0) {
@@ -202,16 +235,16 @@ jobs:
                     repo: context.repo.repo,
                     issue_number: issue.number,
                     body: `## ✅ Resolved
-                    
-                    The system has recovered and is now operational.
-                    
-                    **Time:** ${new Date(latest.t).toISOString()}
-                    **Response Time:** ${latest.lat}ms
-                    
-                    ---
-                    *This update was automatically posted by the monitoring workflow.*`
+
+The system has recovered and is now operational.
+
+**Time:** ${new Date(latest.t).toISOString()}
+**Response Time:** ${latest.lat}ms
+
+---
+*This update was automatically posted by the monitoring workflow.*`
                   });
-                  
+
                   await github.rest.issues.update({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
@@ -222,30 +255,73 @@ jobs:
               }
             }
 
+      # STEP 5: Generate notification events (on issue events only)
+      - name: Generate notification events
+        id: generate-events
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            const issue = context.payload.issue;
+            const action = context.payload.action;
+
+            // Skip if not a status issue
+            if (!issue.labels.some(l => l.name === 'status')) {
+              console.log('Not a status issue, skipping');
+              return;
+            }
+
+            const severity = issue.labels.find(l => ['critical', 'major', 'minor'].includes(l.name))?.name || 'minor';
+            const affectedEntities = issue.labels
+              .filter(l => !['status', 'critical', 'major', 'minor', 'maintenance', 'automated'].includes(l.name))
+              .map(l => l.name.replace(/^(system:|process:)/, ''));
+
+            let event = null;
+
+            if (issue.labels.some(l => l.name === 'maintenance')) {
+              if (action === 'opened' || action === 'labeled') {
+                event = { type: 'maintenance.scheduled', timestamp: new Date().toISOString(), maintenance: { id: issue.number, title: issue.title, affectedEntities, url: issue.html_url } };
+              } else if (action === 'closed') {
+                event = { type: 'maintenance.completed', timestamp: new Date().toISOString(), maintenance: { id: issue.number, title: issue.title, affectedEntities, url: issue.html_url } };
+              }
+            } else {
+              if (action === 'opened') {
+                event = { type: 'incident.opened', timestamp: new Date().toISOString(), incident: { id: issue.number, title: issue.title, severity, affectedEntities, url: issue.html_url } };
+              } else if (action === 'closed') {
+                event = { type: 'incident.closed', timestamp: new Date().toISOString(), incident: { id: issue.number, title: issue.title, affectedEntities, url: issue.html_url } };
+              } else if (action === 'labeled' || action === 'unlabeled' || action === 'edited') {
+                event = { type: 'incident.updated', timestamp: new Date().toISOString(), incident: { id: issue.number, title: issue.title, severity, affectedEntities, url: issue.html_url } };
+              }
+            }
+
+            if (event) {
+              fs.writeFileSync('status-data/events.json', JSON.stringify(event, null, 2));
+              console.log('Generated event:', event.type);
+            }
+
+      # STEP 6: Send notifications
       - name: Send notifications
         if: always()
         continue-on-error: true
         working-directory: main
         run: |
-          # Check if notification config exists
           if [ ! -f .notifyrc.json ]; then
             echo "⏭️  No .notifyrc.json found, skipping notifications"
             exit 0
           fi
 
-          # Check if events file exists (created by monitor script)
           if [ ! -f ../status-data/events.json ]; then
             echo "⏭️  No events to notify about"
             exit 0
           fi
 
-          # Send notifications for monitoring events
-          npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur stentorosaur-notify \
+          npx stentorosaur-notify \
             --config .notifyrc.json \
             --events ../status-data/events.json \
             --verbose || echo "⚠️  Notifications failed (non-blocking)"
         env:
-          # Pass secrets as environment variables (resolved via env:VAR_NAME in config)
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -256,3 +332,11 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
+
+      # STEP 7: Trigger deployment for critical incidents
+      - name: Trigger deployment for critical issues
+        if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          event-type: status-updated
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -13,12 +13,11 @@ on:
     branches:
       - main
     paths-ignore:
-      # Don't trigger deploy when only monitoring workflows change
+      # Don't trigger deploy when only monitoring workflow changes
       - '.github/workflows/monitor-systems.yml'
-      - '.github/workflows/status-update.yml'
   workflow_dispatch:
   # Deploy immediately when critical status updates occur
-  # Triggered by status-update.yml when critical issues are detected
+  # Triggered by the status monitor workflow when critical issues are detected
   repository_dispatch:
     types: [status-updated]
 
@@ -44,7 +43,7 @@ jobs:
         with:
           ref: main
           path: main
-          fetch-depth: 0
+          fetch-depth: 1  # Shallow clone for speed - deploy doesn't need git history
 
       # Checkout status-data branch for monitoring data
       - name: Checkout status-data branch

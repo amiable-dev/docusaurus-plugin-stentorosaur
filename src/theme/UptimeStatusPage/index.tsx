@@ -38,6 +38,7 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
     maintenance = [],
     overallStatus = 'operational',
     useDemoData = false,
+    fetchUrl,
   } = statusData || {};
 
   // State for system files with historical data
@@ -62,12 +63,14 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
     }
 
     // Otherwise try to load from status-data
+    // Use fetchUrl if configured for runtime data fetching (e.g., from raw.githubusercontent.com)
+    const dataBaseUrl = fetchUrl || '/status-data';
     async function loadSystemFiles() {
       const files: SystemStatusFile[] = [];
-      
+
       try {
-        console.log('[UptimeStatusPage] Fetching /status-data/current.json');
-        const response = await fetch('/status-data/current.json');
+        console.log('[UptimeStatusPage] Fetching', `${dataBaseUrl}/current.json`);
+        const response = await fetch(`${dataBaseUrl}/current.json`);
         if (response.ok) {
           const data = await response.json();
           const readings: Array<{
@@ -123,7 +126,7 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
     if (statusItems.length > 0) {
       loadSystemFiles();
     }
-  }, [statusItems, systems]);
+  }, [statusItems, systems, fetchUrl]);
 
   // Default section titles
   const defaultTitles = {

@@ -368,6 +368,14 @@ export interface PluginOptions {
    * Alternative to using GitHub issues for monitoring configuration
    */
   sites?: SiteConfig[];
+
+  /**
+   * URL for runtime status data fetching
+   * When set, theme components will fetch live data from this URL instead of relative paths.
+   * Example: 'https://raw.githubusercontent.com/owner/repo/status-data'
+   * This enables live status updates without requiring site rebuilds.
+   */
+  fetchUrl?: string;
 }
 
 export interface StatusData {
@@ -381,6 +389,10 @@ export interface StatusData {
   useDemoData?: boolean;
   systems?: StatusItem[]; // Alias for items for compatibility
   overallStatus?: 'operational' | 'degraded' | 'outage' | 'maintenance';
+  /**
+   * URL for runtime status data fetching (passed from plugin options)
+   */
+  fetchUrl?: string;
 }
 
 export interface UptimeStatusSection {

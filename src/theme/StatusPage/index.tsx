@@ -29,6 +29,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     showIncidents = true,
     showPerformanceMetrics = true,
     useDemoData = false,
+    fetchUrl,
   } = statusData || {};
   const [systemFiles, setSystemFiles] = useState<SystemStatusFile[]>([]);
   const [activeSystemIndex, setActiveSystemIndex] = useState<number | null>(null);
@@ -47,8 +48,10 @@ export default function StatusPage({statusData}: Props): JSX.Element {
       const files: SystemStatusFile[] = [];
       
       // Try new format first (current.json - v0.4.0+)
+      // Use fetchUrl if configured for runtime data fetching (e.g., from raw.githubusercontent.com)
+      const dataBaseUrl = fetchUrl || '/status-data';
       try {
-        const response = await fetch('/status-data/current.json');
+        const response = await fetch(`${dataBaseUrl}/current.json`);
         if (response.ok) {
           const data = await response.json();
           const readings: Array<{
@@ -105,7 +108,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
             .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
             .replace(/\s+/g, '-') // Replace spaces with hyphens
             .replace(/-+/g, '-'); // Replace multiple hyphens with single
-          const response = await fetch(`/status-data/systems/${fileName}.json`);
+          const response = await fetch(`${dataBaseUrl}/systems/${fileName}.json`);
           
           if (response.ok) {
             const data: SystemStatusFile = await response.json();
@@ -124,7 +127,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     if (items.length > 0) {
       loadSystemFiles();
     }
-  }, [items, showPerformanceMetrics]);
+  }, [items, showPerformanceMetrics, fetchUrl]);
 
   // Handle system card click to toggle performance metrics
   const handleSystemClick = (systemName: string) => {

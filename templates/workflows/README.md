@@ -2,23 +2,52 @@
 
 This directory contains GitHub Actions workflow templates for monitoring your services and updating your status page.
 
+## Architecture Overview
+
+The optimized architecture decouples **data collection** from **site builds**, enabling 5-minute monitoring at low cost:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  DATA COLLECTION (every 5 min via monitor-systems.yml)          │
+│  ─────────────────────────────────────────────────────────────  │
+│  1. Health checks → current.json, archives/                     │
+│  2. Issue sync → incidents.json, maintenance.json               │
+│  3. Commit to status-data branch                                │
+│  4. Critical incidents trigger immediate deployment             │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  DATA DISPLAY (runtime fetch - $0 GitHub Actions cost)          │
+│  ─────────────────────────────────────────────────────────────  │
+│  Browser fetches current.json from raw.githubusercontent.com    │
+│  (Configure fetchUrl in plugin options for live data)           │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  SITE BUILD (only on content changes to main)                   │
+│  ─────────────────────────────────────────────────────────────  │
+│  Triggers: push to main, critical incidents, manual dispatch    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## Required Workflows
 
-These workflows are **required** for a functioning status page:
+### 1. `monitor-systems.yml` - Status Monitor
 
-### 1. `monitor-systems.yml` ⭐ REQUIRED
+**This single workflow handles all status monitoring needs:**
 
-Monitors your endpoints and records response times using **sequential monitoring** (v0.4.10+).
-
-- **Schedule**: Every 5 minutes
-- **Creates**: `status-data/current.json` and `status-data/archives/YYYY/MM/history-YYYY-MM-DD.jsonl`
-- **Action**: Makes HTTP requests to your endpoints sequentially, records status and response time
-- **Commits**: Single commit with all systems' data (e.g., "Update monitoring data [skip ci]")
-- **Important**: Uses `status-data/` directory (NOT in `build/`) to ensure Git tracks the monitoring data
+- **Schedule**: Every 5 minutes (configurable)
+- **Also triggers on**: Issue events (opened, closed, labeled, edited)
+- **Functions**:
+  1. Health checks for all configured endpoints
+  2. Syncs GitHub Issues to incidents.json and maintenance.json
+  3. Creates/closes issues for automatic downtime detection
+  4. Sends notifications (if configured)
+  5. Triggers immediate deployment for critical incidents
 
 **Configuration Required:**
 
-1. **Create `.monitorrc.json`** in your repository root:
+1. Create `.monitorrc.json` in your repository root:
 
 ```json
 {
@@ -29,261 +58,128 @@ Monitors your endpoints and records response times using **sequential monitoring
 }
 ```
 
-2. **Verify URLs are valid and publicly accessible**
-   - Invalid URLs (like `null.example.com` or `localhost`) will always fail
-   - Private/internal URLs are not accessible from GitHub Actions runners
+2. Ensure URLs are valid and publicly accessible
 
-**Why Sequential Monitoring?**
+### 2. `deploy.yml` - Deployment
 
-- ✅ **Zero data loss** - All systems captured in single commit
-- ✅ **No race conditions** - Only one git push operation
-- ✅ **No merge conflicts** - Single job eliminates concurrent operations
-- ✅ **Scales reliably** - Works with 10+ systems without data loss
-- ⚠️ **Trade-off**: ~5s per system (but guarantees 100% data capture)
+Builds and deploys your status page.
 
-### 2. `status-update.yml` ⭐ REQUIRED
+**Triggers:**
+- Push to `main` branch (code/content changes)
+- `repository_dispatch: status-updated` (critical incidents)
+- Manual `workflow_dispatch`
 
-Syncs GitHub Issues to status page (for incident tracking) and generates incidents/maintenance data files.
+**Does NOT trigger on:**
+- Monitoring workflow file changes (paths-ignore)
 
-- **Triggers**: 
-  - On issue events (opened, closed, labeled, edited)
-  - Hourly schedule
-  - Manual workflow_dispatch
-- **Creates**: `status-data/incidents.json` and `status-data/maintenance.json`
-- **Action**: 
-  - Fetches issues labeled with "status" and configured system labels
-  - Generates `incidents.json` from issues with `status` label
-  - Generates `maintenance.json` from issues with `maintenance` label
-  - Triggers `repository_dispatch` event for critical incidents (immediate deployment)
-- **Environment**: Requires `GITHUB_TOKEN` (automatically provided by GitHub Actions)
-- **CLI Command**: `npx stentorosaur-update-status --write-incidents --write-maintenance`
-
-**Configuration Required:**
-- Ensure your `docusaurus.config.js` has correct `owner` and `repo` settings
-- Configure system labels in plugin options if using custom labels
-
-**Smart Deployment (v0.4.13+):**
-- Critical incidents trigger `repository_dispatch` → immediate deployment (~2 min)
-- Non-critical incidents wait for hourly scheduled deployment
-- Uses `[skip ci]` tag to avoid duplicate deployments
-
-### 3. `deploy.yml` or `deploy-scheduled.yml` ⭐ REQUIRED (use BOTH)
-
-Builds and deploys your status page with updated data.
-
-**deploy.yml** - Immediate deployments:
-- **Triggers**:
-  - Push to `main` branch (code changes)
-  - `repository_dispatch` event type `status-updated` (critical incidents)
-  - Manual `workflow_dispatch`
-- **Path Filtering (v0.4.13+)**:
-  - Ignores `status-data/current.json` (monitoring data)
-  - Ignores `status-data/archives/**` (historical archives)
-- **Result**: Critical incidents deploy within ~2 minutes
-
-**deploy-scheduled.yml** - Scheduled deployments:
-- **Triggers**: Hourly cron schedule (configurable)
-- **Purpose**: Pick up non-critical incident updates and maintenance changes
-- **Result**: Non-critical updates deploy within 1 hour
-
-**Why Both?**
-- `deploy.yml` provides instant response to critical incidents
-- `deploy-scheduled.yml` ensures regular updates without excessive Actions usage
-- Monitoring commits (every 5 min) don't trigger any deployments (paths-ignore)
-
-**Recommended Setup:**
-```bash
-cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/deploy.yml .github/workflows/
-cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/deploy-scheduled.yml .github/workflows/
-```
-
-## Optional Workflows
+## Optional Workflow
 
 ### `compress-archives.yml` (Recommended)
 
-Compresses old JSONL archive files to save space.
+Compresses old JSONL archive files daily to save repository space.
 
-- **Schedule**: Daily
-- **Action**: Finds yesterday's JSONL file and gzips it
+- **Schedule**: Daily at 00:05 UTC
+- **Action**: Gzips yesterday's JSONL file
 - **Benefit**: Reduces repository size over time
 
-### `calculate-metrics.yml` ⚠️ DEPRECATED
+## Deleted Workflows (v0.15.0+)
 
-**Do NOT use this workflow for new installations!**
+These workflows are no longer needed and have been removed:
 
-This workflow is for the legacy data format only (systems/*.json files). The new monitoring system (`monitor-systems.yml`) already includes all metrics in `current.json`.
+| Workflow | Reason |
+|----------|--------|
+| `status-update.yml` | Merged into `monitor-systems.yml` |
+| `deploy-scheduled.yml` | Not needed with runtime data fetching |
+| `calculate-metrics.yml` | Deprecated - metrics included in `current.json` |
 
-**Only enable this if:**
+## Runtime Data Fetching
 
-1. You have existing `build/status-data/systems/*.json` files from a legacy setup
-2. You are NOT using the `stentorosaur-monitor` script
-3. You want to calculate metrics from git commit history
+For live status updates without rebuilding the site, configure `fetchUrl` in your plugin options:
 
-For new installations, **delete this file** or leave it disabled.
-
-## Data Flow Architecture
-
-Here's how the workflows work together to provide real-time monitoring with smart deployments:
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│  MONITORING (Every 5 minutes): monitor-systems.yml                       │
-├──────────────────────────────────────────────────────────────────────────┤
-│  ┌────────────┐      ┌─────────────────┐      ┌─────────────────────┐   │
-│  │ Check URLs │─────>│ Record to JSONL │─────>│ Rebuild current.json│   │
-│  │(Sequential)│      │   (Append-only) │      │  (14-day window)    │   │
-│  └────────────┘      └─────────────────┘      └─────────────────────┘   │
-│                              │                           │               │
-│                              v                           v               │
-│                   archives/YYYY/MM/            status-data/              │
-│                   history-YYYY-MM-DD.jsonl     current.json              │
-│                                                                           │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │ Git Commit: "Update monitoring data [skip ci]"                   │   │
-│  │ → Does NOT trigger deployment (paths-ignore in deploy.yml)       │   │
-│  │ → If critical failure: Creates GitHub Issue                      │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────────┐
-│  INCIDENT TRACKING (On issue events + hourly): status-update.yml         │
-├──────────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐      ┌──────────────────────────────────────┐      │
-│  │ Fetch GH Issues │─────>│ Generate incidents.json              │      │
-│  │ (status labels) │      │ Generate maintenance.json            │      │
-│  └─────────────────┘      └──────────────────────────────────────┘      │
-│                                           │                              │
-│                                           v                              │
-│                                  status-data/                            │
-│                                  ├─ incidents.json                       │
-│                                  └─ maintenance.json                     │
-│                                                                           │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │ Git Commit: "Update status data [skip ci]"                       │   │
-│  │ → If CRITICAL incident: Trigger repository_dispatch              │   │
-│  │   → deploy.yml runs IMMEDIATELY (~2 min)                         │   │
-│  │ → If non-critical: Wait for hourly deploy-scheduled.yml          │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────────┐
-│  DEPLOYMENT: deploy.yml + deploy-scheduled.yml                           │
-├──────────────────────────────────────────────────────────────────────────┤
-│  deploy.yml (IMMEDIATE):                                                 │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │ Triggers:                                                        │    │
-│  │   • Push to main (code changes)                                 │    │
-│  │   • repository_dispatch: status-updated (critical incidents)    │    │
-│  │   • workflow_dispatch (manual)                                  │    │
-│  │                                                                  │    │
-│  │ Filters (paths-ignore):                                         │    │
-│  │   • status-data/current.json → IGNORED                          │    │
-│  │   • status-data/archives/** → IGNORED                           │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                           │
-│  deploy-scheduled.yml (HOURLY):                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │ Triggers: Hourly cron schedule                                  │    │
-│  │ Purpose: Pick up non-critical updates                           │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                           │
-│  ┌───────────┐     ┌─────────────────────┐     ┌──────────────┐         │
-│  │ Build Site│────>│ Read all 3 files:   │────>│ Deploy Pages │         │
-│  └───────────┘     │ • current.json      │     └──────────────┘         │
-│                    │ • incidents.json    │                               │
-│                    │ • maintenance.json  │                               │
-│                    └─────────────────────┘                               │
-└──────────────────────────────────────────────────────────────────────────┘
+```javascript
+// docusaurus.config.js
+plugins: [
+  [
+    '@amiable-dev/docusaurus-plugin-stentorosaur',
+    {
+      owner: 'your-org',
+      repo: 'your-repo',
+      entities: [...],
+      // Enable runtime fetch for live data
+      fetchUrl: 'https://raw.githubusercontent.com/your-org/your-repo/status-data',
+    },
+  ],
+],
 ```
 
-### Three-File Data Architecture (v0.4.11+)
+With `fetchUrl` configured:
+- Status page fetches live data on each page view
+- No site rebuild needed for status updates
+- 5-minute monitoring updates appear immediately
+- Site only rebuilds for content changes or critical incidents
 
-The plugin uses three separate data files for optimal performance and smart deployments:
+## Three-File Data Architecture
 
-| File | Purpose | Updated By | Frequency | Triggers Deployment? |
-|------|---------|------------|-----------|---------------------|
-| `current.json` | Time-series monitoring data (14-day rolling window) | `monitor-systems.yml` | Every 5 min | ❌ No (paths-ignore) |
-| `incidents.json` | Active and resolved incidents from GitHub Issues | `status-update.yml` | On issue events + hourly | ⚡ Yes if critical |
-| `maintenance.json` | Scheduled maintenance windows | `status-update.yml` | On issue events + hourly | ⏰ Hourly deploy |
-
-**Smart Deployment Logic:**
-- 🚨 **Critical incidents** → `repository_dispatch` → deploy.yml → **~2 minute deployment**
-- 📋 **Non-critical incidents** → Waits for deploy-scheduled.yml → **~1 hour deployment**
-- 📊 **Monitoring data** → paths-ignore filter → **No deployment triggered**
-
-### Data Flow Summary
-
-| Event | Workflow | Files Updated | Deployment | Latency |
-|-------|----------|---------------|------------|---------|
-| Endpoint check (every 5m) | `monitor-systems.yml` | `current.json` | None | N/A |
-| Critical endpoint down | `monitor-systems.yml` | `current.json` + creates Issue | Via `status-update.yml` → `deploy.yml` | ~2 min |
-| Issue opened/closed | `status-update.yml` | `incidents.json`, `maintenance.json` | `deploy.yml` if critical, else hourly | 2 min / 1 hour |
-| Hourly check | `status-update.yml` | `incidents.json`, `maintenance.json` | `deploy-scheduled.yml` | 1 hour |
-| Code push to main | N/A | N/A | `deploy.yml` | ~5 min |
+| File | Purpose | Updated By | Frequency |
+|------|---------|------------|-----------|
+| `current.json` | Time-series monitoring data (14-day window) | Health checks | Every 5 min |
+| `incidents.json` | Active/resolved incidents from GitHub Issues | Issue sync | On change + 5 min |
+| `maintenance.json` | Scheduled maintenance windows | Issue sync | On change + 5 min |
 
 ## Setup Checklist
 
-When setting up monitoring for the first time:
+1. [ ] Copy workflow files to `.github/workflows/`:
+   ```bash
+   mkdir -p .github/workflows
+   cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/monitor-systems.yml .github/workflows/
+   cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/deploy.yml .github/workflows/
+   cp node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/workflows/compress-archives.yml .github/workflows/
+   ```
 
-- [ ] Copy workflow files to `.github/workflows/`
-- [ ] Create `.monitorrc.json` in repository root with your endpoints
-- [ ] Edit `monitor-systems.yml` if needed (defaults work for most cases)
-- [ ] Verify URLs are publicly accessible (test in browser or with `curl`)
-- [ ] Ensure `docusaurus.config.js` has correct repo settings
-- [ ] Copy BOTH deployment workflows: `deploy.yml` AND `deploy-scheduled.yml`
-- [ ] Configure `entities` in plugin config (v0.11.0+) to define tracked items
-- [ ] (Optional) Enable `compress-archives.yml` to save space
-- [ ] Delete or disable `calculate-metrics.yml` (deprecated, not needed)
-- [ ] Commit and push workflows
-- [ ] Verify first workflow run succeeds
-- [ ] Check that `status-data/` is being populated with 3 files:
-  - [ ] `current.json` (from monitor-systems.yml)
-  - [ ] `incidents.json` (from status-update.yml)
-  - [ ] `maintenance.json` (from status-update.yml)
-- [ ] Ensure `status-data/` is NOT in `.gitignore`
-- [ ] Test critical incident flow:
-  - [ ] Create issue with `status` + `critical` + system label
-  - [ ] Verify `repository_dispatch` triggers immediate deployment
-  - [ ] Check deployment completes within ~2 minutes
+2. [ ] Create `.monitorrc.json` with your endpoints
+
+3. [ ] Create the orphaned status-data branch:
+   ```bash
+   npm run setup-status-branch
+   ```
+
+4. [ ] Configure `fetchUrl` in `docusaurus.config.js` for live data
+
+5. [ ] Commit and push workflows
+
+6. [ ] Verify first workflow run succeeds
 
 ## Troubleshooting
 
 ### "Website is down" false alerts
+- Check that URLs are valid and publicly accessible
+- Invalid URLs (like `localhost`) always fail from GitHub Actions
 
-- Check that URLs in `monitor-systems.yml` are valid and publicly accessible
-- Invalid URLs (like `null.example.com` or `localhost`) will always fail
-- Private/internal URLs are not accessible from GitHub Actions runners
-
-### No data appearing on status page
-
+### No data on status page
 - Verify workflows are running (check Actions tab)
-- Check that `status-data/` directory exists and has data files
-- **CRITICAL**: Ensure `status-data/` is NOT in `.gitignore`
-- Verify monitoring commits are appearing in Git history (every 5 minutes)
-- Ensure deployment workflow includes status data in build
-- Check browser console for fetch errors
+- Ensure `status-data` branch exists
+- Check that `fetchUrl` is configured correctly
+- Look for fetch errors in browser console
 
-### Status showing stale data
+### Stale data
+- If using runtime fetch: Check network tab for successful JSON fetch
+- Verify monitoring commits are appearing on status-data branch
+- Ensure no caching issues with raw.githubusercontent.com
 
-- Verify `status-update.yml` is running regularly
-- Check that GitHub Issues have correct labels
-- Ensure `GITHUB_TOKEN` is available (should be automatic)
+## Migration from Previous Versions
 
-### Metrics not calculating
+If upgrading from v0.14.x or earlier:
 
-- If using new format (current.json): Metrics are already included, no action needed
-- If using legacy format (systems/*.json): Enable `calculate-metrics.yml`
-- Don't mix formats - use one or the other
+1. Delete deprecated workflow files from your `.github/workflows/`:
+   - `status-update.yml`
+   - `deploy-scheduled.yml`
+   - `calculate-metrics.yml`
 
-## Migration from Legacy Format
+2. Copy the new consolidated `monitor-systems.yml`
 
-If you have existing `systems/*.json` files:
+3. Add `fetchUrl` to plugin config for live data
 
-1. Keep both formats temporarily for comparison
-2. Run `monitor-systems.yml` to start collecting new format data
-3. Compare data accuracy over a few days
-4. Once satisfied, disable `calculate-metrics.yml`
-5. Clean up old `systems/*.json` files
+4. Remove hourly deploy schedule (no longer needed)
 
 ## Need Help?
 
