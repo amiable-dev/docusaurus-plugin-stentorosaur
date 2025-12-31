@@ -148,6 +148,7 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
     timezone: Joi.string(),
   }),
   sites: Joi.array().items(siteConfigSchema).default(DEFAULT_OPTIONS.sites),
+  fetchUrl: Joi.string().uri({ allowRelative: true }),
 });
 
 export function validateOptions({
