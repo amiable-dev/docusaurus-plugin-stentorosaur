@@ -5,14 +5,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Layout from '@theme/Layout';
 import StatusBoard from '../StatusBoard';
 import IncidentHistory from '../IncidentHistory';
 import MaintenanceList from '../Maintenance/MaintenanceList';
 import PerformanceMetrics from '../PerformanceMetrics';
-import type {StatusData, SystemStatusFile} from '../../types';
+import type {StatusData, SystemStatusFile, DataSource} from '../../types';
 import {PLUGIN_VERSION} from '../../version';
+import { buildFetchUrl } from '../../data-source-resolver';
 import styles from './styles.module.css';
 
 export interface Props {
@@ -30,13 +31,31 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     showPerformanceMetrics = true,
     useDemoData = false,
     fetchUrl,
+    dataSource,
   } = statusData || {};
   const [systemFiles, setSystemFiles] = useState<SystemStatusFile[]>([]);
   const [activeSystemIndex, setActiveSystemIndex] = useState<number | null>(null);
-  
+
   // Default values if not provided
   const title = useDemoData ? 'Demo Data: System Status' : 'System Status';
   const description = 'Current operational status of our systems';
+
+  // Resolve data fetch base URL from dataSource (preferred) or legacy fetchUrl
+  const dataBaseUrl = useMemo(() => {
+    if (dataSource) {
+      // Build URL from dataSource, stripping the file part to get base URL
+      const url = buildFetchUrl(dataSource);
+      if (url) {
+        // Remove file:// prefix for browser context
+        const cleanUrl = url.startsWith('file://') ? url.replace('file://', '') : url;
+        // Get directory path (remove filename)
+        const lastSlash = cleanUrl.lastIndexOf('/');
+        return lastSlash > 0 ? cleanUrl.substring(0, lastSlash) : cleanUrl;
+      }
+    }
+    // Fall back to legacy fetchUrl or default
+    return fetchUrl || '/status-data';
+  }, [dataSource, fetchUrl]);
 
   // Load system files with historical data for charts
   useEffect(() => {
@@ -44,12 +63,13 @@ export default function StatusPage({statusData}: Props): JSX.Element {
       if (!showPerformanceMetrics) {
         return;
       }
-      
+
+      // Skip fetching for build-only strategy
+      if (dataSource?.strategy === 'build-only') {
+        return;
+      }
+
       const files: SystemStatusFile[] = [];
-      
-      // Try new format first (current.json - v0.4.0+)
-      // Use fetchUrl if configured for runtime data fetching (e.g., from raw.githubusercontent.com)
-      const dataBaseUrl = fetchUrl || '/status-data';
       try {
         const response = await fetch(`${dataBaseUrl}/current.json`);
         if (response.ok) {
@@ -127,7 +147,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     if (items.length > 0) {
       loadSystemFiles();
     }
-  }, [items, showPerformanceMetrics, fetchUrl]);
+  }, [items, showPerformanceMetrics, dataBaseUrl, dataSource]);
 
   // Handle system card click to toggle performance metrics
   const handleSystemClick = (systemName: string) => {

@@ -5,13 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import Layout from '@theme/Layout';
 import IncidentHistory from '../IncidentHistory';
 import MaintenanceList from '../Maintenance/MaintenanceList';
 import StatusBoard from '../StatusBoard';
 import PerformanceMetrics from '../PerformanceMetrics';
-import type {StatusData, UptimeStatusPageConfig, SystemStatusFile, StatusItem} from '../../types';
+import type {StatusData, UptimeStatusPageConfig, SystemStatusFile, StatusItem, DataSource} from '../../types';
+import { buildFetchUrl } from '../../data-source-resolver';
 import styles from './styles.module.css';
 
 export interface Props {
@@ -39,6 +40,7 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
     overallStatus = 'operational',
     useDemoData = false,
     fetchUrl,
+    dataSource,
   } = statusData || {};
 
   // State for system files with historical data
@@ -49,6 +51,23 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
 
   // Use systems or items (backward compatibility)
   const statusItems = systems || items || [];
+
+  // Resolve data fetch base URL from dataSource (preferred) or legacy fetchUrl
+  const dataBaseUrl = useMemo(() => {
+    if (dataSource) {
+      // Build URL from dataSource, stripping the file part to get base URL
+      const url = buildFetchUrl(dataSource);
+      if (url) {
+        // Remove file:// prefix for browser context
+        const cleanUrl = url.startsWith('file://') ? url.replace('file://', '') : url;
+        // Get directory path (remove filename)
+        const lastSlash = cleanUrl.lastIndexOf('/');
+        return lastSlash > 0 ? cleanUrl.substring(0, lastSlash) : cleanUrl;
+      }
+    }
+    // Fall back to legacy fetchUrl or default
+    return fetchUrl || '/status-data';
+  }, [dataSource, fetchUrl]);
 
   console.log('[UptimeStatusPage] Render - statusItems:', statusItems.length, 'systems:', systems?.length, 'items:', items?.length);
 
@@ -62,9 +81,10 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
       return;
     }
 
-    // Otherwise try to load from status-data
-    // Use fetchUrl if configured for runtime data fetching (e.g., from raw.githubusercontent.com)
-    const dataBaseUrl = fetchUrl || '/status-data';
+    // Skip fetching for build-only strategy
+    if (dataSource?.strategy === 'build-only') {
+      return;
+    }
     async function loadSystemFiles() {
       const files: SystemStatusFile[] = [];
 
@@ -126,7 +146,7 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
     if (statusItems.length > 0) {
       loadSystemFiles();
     }
-  }, [statusItems, systems, fetchUrl]);
+  }, [statusItems, systems, dataBaseUrl, dataSource]);
 
   // Default section titles
   const defaultTitles = {
