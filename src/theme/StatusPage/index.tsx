@@ -57,6 +57,23 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     return fetchUrl || '/status-data';
   }, [dataSource, fetchUrl]);
 
+  // Helper: Create SystemStatusFile from build-time item data
+  const createSystemFilesFromItems = (): SystemStatusFile[] => {
+    const files: SystemStatusFile[] = [];
+    for (const item of items) {
+      if (item.history && item.history.length > 0) {
+        files.push({
+          name: item.name,
+          url: '',
+          lastChecked: item.lastChecked || new Date().toISOString(),
+          currentStatus: item.status,
+          history: item.history,
+        });
+      }
+    }
+    return files;
+  };
+
   // Load system files with historical data for charts
   useEffect(() => {
     async function loadSystemFiles() {
@@ -64,8 +81,12 @@ export default function StatusPage({statusData}: Props): JSX.Element {
         return;
       }
 
-      // Skip fetching for build-only strategy
+      // For build-only strategy, use build-time data from items
       if (dataSource?.strategy === 'build-only') {
+        const buildTimeFiles = createSystemFilesFromItems();
+        if (buildTimeFiles.length > 0) {
+          setSystemFiles(buildTimeFiles);
+        }
         return;
       }
 
@@ -82,7 +103,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
             lat: number;
             err?: string;
           }> = data.readings || data;
-          
+
           // Group readings by service
           const serviceMap = new Map<string, typeof readings>();
           for (const reading of readings) {
@@ -92,7 +113,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
             }
             serviceMap.get(key)!.push(reading);
           }
-          
+
           // Convert to SystemStatusFile format
           for (const item of items) {
             const serviceReadings = serviceMap.get(item.name.toLowerCase());
@@ -111,14 +132,14 @@ export default function StatusPage({statusData}: Props): JSX.Element {
               });
             }
           }
-          
+
           setSystemFiles(files);
           return; // Success, don't try legacy format
         }
       } catch (error) {
-        // Fall through to legacy format
+        // Fall through to legacy format or build-time fallback
       }
-      
+
       // Fallback to legacy format (systems/*.json)
       for (const item of items) {
         try {
@@ -129,7 +150,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
             .replace(/\s+/g, '-') // Replace spaces with hyphens
             .replace(/-+/g, '-'); // Replace multiple hyphens with single
           const response = await fetch(`${dataBaseUrl}/systems/${fileName}.json`);
-          
+
           if (response.ok) {
             const data: SystemStatusFile = await response.json();
             if (data.history && data.history.length > 0) {
@@ -140,10 +161,16 @@ export default function StatusPage({statusData}: Props): JSX.Element {
           // Silently ignore - file might not exist
         }
       }
-      
-      setSystemFiles(files);
+
+      // If no runtime data fetched, fall back to build-time data
+      if (files.length === 0) {
+        const buildTimeFiles = createSystemFilesFromItems();
+        setSystemFiles(buildTimeFiles);
+      } else {
+        setSystemFiles(files);
+      }
     }
-    
+
     if (items.length > 0) {
       loadSystemFiles();
     }
