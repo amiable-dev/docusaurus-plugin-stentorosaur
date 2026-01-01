@@ -85,11 +85,9 @@ export function validateStatusData(data: unknown): ValidatedStatusData {
   const result = StatusDataSchema.safeParse(data);
 
   if (!result.success) {
-    const errors = result.error?.errors || result.error?.issues || [];
-    const errorMessages = errors
-      .map((err: { path?: (string | number)[]; message?: string }) =>
-        `${(err.path || []).join('.')}: ${err.message || 'Unknown error'}`
-      )
+    const issues = result.error.issues;
+    const errorMessages = issues
+      .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
       .join('; ');
     throw new Error(`Invalid status data: ${errorMessages || 'Validation failed'}`);
   }
