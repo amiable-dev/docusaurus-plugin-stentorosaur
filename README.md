@@ -350,6 +350,99 @@ module.exports = {
 };
 ```
 
+### Data Source Configuration (v0.16.0+)
+
+The `dataSource` option configures how the status page fetches live data at runtime. This is useful for showing real-time updates after the initial page load.
+
+#### Data Source Strategies
+
+**1. GitHub Strategy** (for public repositories):
+
+```javascript
+{
+  dataSource: {
+    strategy: 'github',
+    owner: 'my-org',
+    repo: 'my-repo',
+    branch: 'status-data',  // default: 'status-data'
+    path: 'current.json',   // default: 'current.json'
+  }
+}
+```
+
+**2. HTTP Strategy** (universal adapter):
+
+```javascript
+// Simple URL string (auto-converts to http strategy)
+{
+  dataSource: 'https://status-api.example.com/current.json'
+}
+
+// Full configuration with cache busting
+{
+  dataSource: {
+    strategy: 'http',
+    url: 'https://gist.githubusercontent.com/user/id/raw/status.json',
+    cacheBust: true,  // Appends ?t=timestamp to bypass CDN cache
+  }
+}
+
+// Works with any JSON endpoint:
+// - GitHub Pages: https://myorg.github.io/status-data/current.json
+// - Gists: https://gist.githubusercontent.com/user/id/raw/status.json
+// - S3/R2: https://bucket.s3.amazonaws.com/status.json
+// - Custom proxies: https://status-api.workers.dev/current.json
+```
+
+**3. Static Strategy** (for monorepos):
+
+```javascript
+{
+  dataSource: {
+    strategy: 'static',
+    path: '/status-data/current.json',  // Path relative to site root
+  }
+}
+```
+
+**4. Build-Only Strategy** (no runtime fetching):
+
+```javascript
+{
+  dataSource: {
+    strategy: 'build-only',
+  }
+}
+```
+
+#### Legacy fetchUrl Support
+
+The `fetchUrl` option is deprecated but still works for backward compatibility:
+
+```javascript
+// Deprecated - still works
+{
+  fetchUrl: 'https://raw.githubusercontent.com/my-org/my-repo/status-data/current.json'
+}
+
+// Preferred - use dataSource instead
+{
+  dataSource: {
+    strategy: 'github',
+    owner: 'my-org',
+    repo: 'my-repo',
+  }
+}
+```
+
+#### Security Considerations
+
+- **Never put tokens in `dataSource`** - Headers with authentication tokens will be exposed in the client bundle
+- **Use HTTPS** - HTTP URLs will fail on HTTPS sites due to mixed content policy
+- **For private repos** - Use a server-side proxy (Cloudflare Worker, Vercel Edge Function) that adds auth headers securely
+
+See [ADR-001](./docs/adrs/ADR-001-configurable-data-fetching-strategies.md) for detailed architecture documentation.
+
 ### Entity Configuration
 
 The plugin uses an **entity model** that allows you to track different types of entities with rich metadata.
@@ -1320,6 +1413,8 @@ graph LR
 | `statusLabel` | string | `'status'` | Label to filter status issues |
 | `entities` | Entity[] | `[]` | **NEW v0.11.0**: Entities to track (replaces systemLabels) |
 | `labelScheme` | string | `'namespaced'` | **NEW v0.11.0**: Label parsing scheme ('namespaced' or 'legacy') |
+| `dataSource` | DataSource | `{ strategy: 'build-only' }` | **NEW v0.16.0**: Runtime data fetching strategy. See [Data Source Configuration](#data-source-configuration-v0160) |
+| `fetchUrl` | string | `undefined` | **DEPRECATED**: Use `dataSource` instead. URL for runtime status data fetching |
 | `token` | string | `process.env.GITHUB_TOKEN` | GitHub API token |
 | `updateInterval` | number | `60` | Update frequency (minutes) |
 | `dataPath` | string | `'status-data'` | Where to store status data |
