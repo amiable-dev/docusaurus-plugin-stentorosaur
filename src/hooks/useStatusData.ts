@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { DataSource } from '../types';
-import { buildFetchUrl } from '../data-source-resolver';
+import { buildFetchUrl } from '../data-source-resolver.client';
 import { validateAndParseResponse, ValidatedStatusData } from '../data-source-validator';
 
 /**
