@@ -212,19 +212,21 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   title: `${systemName} is down`,
-                  body: `## Incident Report
-
-**System:** ${systemName}
-**Status:** Down
-**HTTP Status Code:** ${latest.code}
-**Time:** ${new Date(latest.t).toISOString()}
-**URL:** ${systemConfig.url}
-${latest.err ? `**Error:** ${latest.err}` : ''}
-
-The system is currently experiencing issues and is not responding as expected.
-
----
-*This issue was automatically created by the monitoring workflow.*`,
+                  body: [
+                    '## Incident Report',
+                    '',
+                    `**System:** ${systemName}`,
+                    '**Status:** Down',
+                    `**HTTP Status Code:** ${latest.code}`,
+                    `**Time:** ${new Date(latest.t).toISOString()}`,
+                    `**URL:** ${systemConfig.url}`,
+                    latest.err ? `**Error:** ${latest.err}` : '',
+                    '',
+                    'The system is currently experiencing issues and is not responding as expected.',
+                    '',
+                    '---',
+                    '*This issue was automatically created by the monitoring workflow.*'
+                  ].filter(Boolean).join('\n'),
                   labels: ['status', systemName, 'critical', 'automated']
                 });
               } else if (!isDown && issues.data.length > 0) {
@@ -234,15 +236,17 @@ The system is currently experiencing issues and is not responding as expected.
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     issue_number: issue.number,
-                    body: `## ✅ Resolved
-
-The system has recovered and is now operational.
-
-**Time:** ${new Date(latest.t).toISOString()}
-**Response Time:** ${latest.lat}ms
-
----
-*This update was automatically posted by the monitoring workflow.*`
+                    body: [
+                      '## ✅ Resolved',
+                      '',
+                      'The system has recovered and is now operational.',
+                      '',
+                      `**Time:** ${new Date(latest.t).toISOString()}`,
+                      `**Response Time:** ${latest.lat}ms`,
+                      '',
+                      '---',
+                      '*This update was automatically posted by the monitoring workflow.*'
+                    ].join('\n')
                   });
 
                   await github.rest.issues.update({
