@@ -7,7 +7,7 @@
 
 import {Joi} from '@docusaurus/utils-validation';
 import type {OptionValidationContext} from '@docusaurus/types';
-import type {PluginOptions, SiteConfig} from './types';
+import type {PluginOptions, SiteConfig, DataSource} from './types';
 
 export const DEFAULT_OPTIONS: Partial<PluginOptions> = {
   statusLabel: 'status',
@@ -109,6 +109,160 @@ const siteConfigSchema = Joi.object<SiteConfig>({
   assignees: Joi.array().items(Joi.string()),
 });
 
+/**
+ * ADR-001: DataSource Validation Schemas
+ *
+ * Discriminated union validation for configurable data fetching strategies.
+ * The schema handles:
+ * - String shorthand (URL) -> converts to HTTP strategy
+ * - Object with strategy field -> validates per-strategy requirements
+ *
+ * @see docs/adrs/ADR-001-configurable-data-fetching-strategies.md
+ */
+
+// GitHub strategy schema
+const githubDataSourceSchema = Joi.object({
+  strategy: Joi.string().valid('github').required(),
+  owner: Joi.string().required().messages({
+    'any.required': '"owner" is required for github strategy',
+    'string.empty': '"owner" is required for github strategy',
+  }),
+  repo: Joi.string().required().messages({
+    'any.required': '"repo" is required for github strategy',
+    'string.empty': '"repo" is required for github strategy',
+  }),
+  branch: Joi.string().default('status-data'),
+  path: Joi.string().default('current.json'),
+});
+
+// HTTP strategy schema
+const httpDataSourceSchema = Joi.object({
+  strategy: Joi.string().valid('http').required(),
+  url: Joi.string().required().messages({
+    'any.required': '"url" is required for http strategy',
+    'string.empty': '"url" is required for http strategy',
+  }),
+  headers: Joi.object().pattern(Joi.string(), Joi.string()),
+  cacheBust: Joi.boolean().default(false),
+});
+
+// Static strategy schema
+const staticDataSourceSchema = Joi.object({
+  strategy: Joi.string().valid('static').required(),
+  path: Joi.string().required().messages({
+    'any.required': '"path" is required for static strategy',
+    'string.empty': '"path" is required for static strategy',
+  }),
+});
+
+// Build-only strategy schema
+const buildOnlyDataSourceSchema = Joi.object({
+  strategy: Joi.string().valid('build-only').required(),
+}).unknown(false); // Strip extra fields
+
+/**
+ * DataSource schema - handles both string shorthand and object configuration
+ *
+ * Usage:
+ * - String: 'https://example.com/status.json' -> { strategy: 'http', url: '...' }
+ * - Object: { strategy: 'github', owner: '...', repo: '...' }
+ */
+export const dataSourceSchema = Joi.alternatives()
+  .try(
+    // String shorthand -> convert to HTTP strategy
+    Joi.string().custom((value, helpers) => {
+      return {
+        strategy: 'http',
+        url: value,
+        cacheBust: false,
+      };
+    }, 'string to http strategy'),
+
+    // Object with strategy discriminator
+    Joi.object({
+      strategy: Joi.string().valid('github', 'http', 'static', 'build-only').required(),
+    }).unknown(true) // Allow other fields, validated below
+      .custom((value, helpers) => {
+        // Validate based on strategy
+        let result;
+        switch (value.strategy) {
+          case 'github':
+            result = githubDataSourceSchema.validate(value);
+            break;
+          case 'http':
+            result = httpDataSourceSchema.validate(value);
+            break;
+          case 'static':
+            result = staticDataSourceSchema.validate(value);
+            break;
+          case 'build-only':
+            result = buildOnlyDataSourceSchema.validate(value);
+            break;
+          default:
+            return helpers.error('any.invalid', { message: `Unknown strategy: ${value.strategy}` });
+        }
+
+        if (result.error) {
+          throw result.error;
+        }
+        return result.value;
+      }, 'strategy validation')
+  )
+  .messages({
+    'alternatives.match': '"dataSource" must be a URL string or an object with a valid strategy',
+  });
+
+/**
+ * Validate and resolve dataSource from plugin options.
+ * Handles:
+ * - New dataSource config (preferred)
+ * - Legacy fetchUrl (deprecated, emits warning)
+ * - Default to build-only when neither present
+ *
+ * @param options - Plugin options containing dataSource and/or fetchUrl
+ * @returns Resolved DataSource configuration
+ */
+export function validateDataSource(options: {
+  dataSource?: DataSource | string;
+  fetchUrl?: string;
+}): DataSource {
+  // dataSource takes precedence
+  if (options.dataSource !== undefined) {
+    // If fetchUrl is also present, warn that it's ignored
+    if (options.fetchUrl !== undefined) {
+      console.warn(
+        '[Stentorosaur] Both dataSource and fetchUrl provided. ' +
+        'dataSource takes precedence, fetchUrl will be ignored.'
+      );
+    }
+
+    // Validate and convert dataSource
+    const result = dataSourceSchema.validate(options.dataSource);
+    if (result.error) {
+      throw result.error;
+    }
+    return result.value as DataSource;
+  }
+
+  // Legacy fetchUrl support (deprecated)
+  if (options.fetchUrl !== undefined) {
+    console.warn(
+      '[Stentorosaur] fetchUrl is deprecated. Use dataSource instead. ' +
+      'fetchUrl will be removed in v1.0.'
+    );
+
+    // Convert fetchUrl to HTTP strategy
+    return {
+      strategy: 'http',
+      url: options.fetchUrl,
+      cacheBust: false,
+    };
+  }
+
+  // Default: build-only
+  return { strategy: 'build-only' };
+}
+
 const pluginOptionsSchema = Joi.object<PluginOptions>({
   owner: Joi.string(),
   repo: Joi.string(),
@@ -149,6 +303,7 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
   }),
   sites: Joi.array().items(siteConfigSchema).default(DEFAULT_OPTIONS.sites),
   fetchUrl: Joi.string().uri({ allowRelative: true }),
+  dataSource: dataSourceSchema,
 });
 
 export function validateOptions({

@@ -19,6 +19,82 @@ export type EntityType =
   | 'sla'         // Service level agreement
   | 'custom';     // User-defined
 
+/**
+ * ADR-001: Configurable Data Fetching Strategies
+ *
+ * DataSource is a discriminated union type that defines how the plugin fetches
+ * status data at runtime. The 'strategy' field serves as the discriminator.
+ *
+ * @see docs/adrs/ADR-001-configurable-data-fetching-strategies.md
+ */
+
+/**
+ * GitHub strategy - fetch from raw.githubusercontent.com (public repos only)
+ */
+export interface GitHubDataSource {
+  strategy: 'github';
+  /** GitHub repository owner */
+  owner: string;
+  /** GitHub repository name */
+  repo: string;
+  /** Branch containing status data (default: 'status-data') */
+  branch?: string;
+  /** Path to status file (default: 'current.json') */
+  path?: string;
+}
+
+/**
+ * HTTP strategy - universal adapter for any HTTP endpoint
+ * Covers: GitHub Gists, GitHub Pages, Cloudflare Workers, S3, custom proxies
+ */
+export interface HttpDataSource {
+  strategy: 'http';
+  /** URL to fetch status data from */
+  url: string;
+  /** Optional headers (BUILD-TIME ONLY - never exposed to browser) */
+  headers?: Record<string, string>;
+  /** Append cache-busting timestamp parameter (default: false) */
+  cacheBust?: boolean;
+}
+
+/**
+ * Static strategy - read from local file (monorepo support)
+ */
+export interface StaticDataSource {
+  strategy: 'static';
+  /** Path to local file (relative or absolute) */
+  path: string;
+}
+
+/**
+ * Build-only strategy - no runtime fetch, use only build-time data
+ */
+export interface BuildOnlyDataSource {
+  strategy: 'build-only';
+}
+
+/**
+ * DataSource discriminated union type
+ *
+ * Usage in switch statements provides exhaustive type checking:
+ * ```typescript
+ * function handleDataSource(ds: DataSource) {
+ *   switch (ds.strategy) {
+ *     case 'github': return ds.owner + '/' + ds.repo;
+ *     case 'http': return ds.url;
+ *     case 'static': return ds.path;
+ *     case 'build-only': return null;
+ *     default: const _: never = ds; // Compile error if case missed
+ *   }
+ * }
+ * ```
+ */
+export type DataSource =
+  | GitHubDataSource
+  | HttpDataSource
+  | StaticDataSource
+  | BuildOnlyDataSource;
+
 export interface StatusCheckHistory {
   timestamp: string;
   status: StatusItemStatus;
@@ -374,8 +450,42 @@ export interface PluginOptions {
    * When set, theme components will fetch live data from this URL instead of relative paths.
    * Example: 'https://raw.githubusercontent.com/owner/repo/status-data'
    * This enables live status updates without requiring site rebuilds.
+   *
+   * @deprecated Use `dataSource` instead. Will be removed in v1.0.
    */
   fetchUrl?: string;
+
+  /**
+   * Data source configuration for runtime status data fetching.
+   *
+   * Can be:
+   * - A URL string (shorthand for HTTP strategy)
+   * - A DataSource object with strategy-specific options
+   *
+   * @example
+   * // String shorthand (HTTP strategy)
+   * dataSource: 'https://status-api.example.com/current.json'
+   *
+   * @example
+   * // GitHub strategy (public repos)
+   * dataSource: {
+   *   strategy: 'github',
+   *   owner: 'my-org',
+   *   repo: 'my-repo',
+   *   branch: 'status-data'
+   * }
+   *
+   * @example
+   * // HTTP strategy (gists, proxies, etc.)
+   * dataSource: {
+   *   strategy: 'http',
+   *   url: 'https://gist.githubusercontent.com/.../current.json',
+   *   cacheBust: true
+   * }
+   *
+   * @see docs/adrs/ADR-001-configurable-data-fetching-strategies.md
+   */
+  dataSource?: DataSource | string;
 }
 
 export interface StatusData {
@@ -391,8 +501,15 @@ export interface StatusData {
   overallStatus?: 'operational' | 'degraded' | 'outage' | 'maintenance';
   /**
    * URL for runtime status data fetching (passed from plugin options)
+   * @deprecated Use `dataSource` instead
    */
   fetchUrl?: string;
+
+  /**
+   * Resolved data source configuration for runtime fetching
+   * Theme components use this to determine how to fetch live data
+   */
+  dataSource?: DataSource;
 }
 
 export interface UptimeStatusSection {
