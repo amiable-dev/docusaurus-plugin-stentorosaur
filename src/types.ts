@@ -320,6 +320,48 @@ export interface ChartAnnotation {
   };
 }
 
+/**
+ * ADR-002: Daily summary entry for historical data aggregation
+ *
+ * Represents aggregated statistics for a single day.
+ * Used in daily-summary.json for 90-day heatmap visualization.
+ */
+export interface DailySummaryEntry {
+  /** ISO date string (YYYY-MM-DD) */
+  date: string;
+  /** Uptime percentage as decimal (0.0 to 1.0) */
+  uptimePct: number;
+  /** Average latency in milliseconds (null if no successful checks) */
+  avgLatencyMs: number | null;
+  /** 95th percentile latency in milliseconds (null if no successful checks) */
+  p95LatencyMs: number | null;
+  /** Total number of checks performed */
+  checksTotal: number;
+  /** Number of successful checks (up or maintenance) */
+  checksPassed: number;
+  /** Number of incident transitions (up → down) */
+  incidentCount: number;
+}
+
+/**
+ * ADR-002: Daily summary file for historical data aggregation
+ *
+ * Schema v1 for daily-summary.json, containing aggregated daily statistics
+ * for all monitored services over a configurable time window.
+ *
+ * @see docs/adrs/ADR-002-historical-data-aggregation.md
+ */
+export interface DailySummaryFile {
+  /** Schema version (currently 1) */
+  version: number;
+  /** ISO timestamp of last update */
+  lastUpdated: string;
+  /** Number of days covered */
+  windowDays: number;
+  /** Aggregated data per service (key = service name) */
+  services: Record<string, DailySummaryEntry[]>;
+}
+
 export interface PluginOptions {
   /**
    * GitHub repository owner (defaults to the site's organizationName)

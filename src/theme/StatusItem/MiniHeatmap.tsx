@@ -20,7 +20,7 @@ export interface MiniHeatmapProps {
   maintenance?: ScheduledMaintenance[];
   /** System name to filter incidents and maintenance */
   systemName?: string;
-  /** Number of days to show (default 90) */
+  /** Number of days to show (default 14, expandable to 90 with daily-summary.json) */
   days?: number;
 }
 
@@ -33,7 +33,7 @@ export default function MiniHeatmap({
   incidents = [],
   maintenance = [],
   systemName,
-  days = 90,
+  days = 14,
 }: MiniHeatmapProps): JSX.Element {
   // Calculate daily uptime percentages
   const calculateDailyUptime = () => {

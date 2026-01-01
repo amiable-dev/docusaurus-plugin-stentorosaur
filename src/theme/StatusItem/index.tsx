@@ -5,8 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React from 'react';
-import type {StatusItem as StatusItemType, StatusIncident, ScheduledMaintenance} from '../../types';
+import React, { useMemo } from 'react';
+import type {StatusItem as StatusItemType, StatusIncident, ScheduledMaintenance, StatusCheckHistory} from '../../types';
+import { useDailySummary } from '../../hooks/useDailySummary';
 import MiniHeatmap from './MiniHeatmap';
 import styles from './styles.module.css';
 
@@ -18,6 +19,10 @@ export interface Props {
   showUptime?: boolean;
   showMiniChart?: boolean;
   onClick?: () => void;
+  /** Base URL for fetching daily-summary.json (enables 90-day heatmap) */
+  dataBaseUrl?: string;
+  /** Number of days to show in heatmap (default: 14, or 90 if dataBaseUrl provided) */
+  heatmapDays?: number;
 }
 
 const statusConfig = {
@@ -51,8 +56,70 @@ export default function StatusItem({
   showUptime = true,
   showMiniChart = true,
   onClick,
+  dataBaseUrl,
+  heatmapDays,
 }: Props): JSX.Element {
   const config = statusConfig[item.status];
+
+  // Determine days to show: use prop if provided, otherwise 90 if dataBaseUrl, else 14
+  const daysToShow = heatmapDays ?? (dataBaseUrl ? 90 : 14);
+
+  // Fetch daily summary data if baseUrl provided (ADR-002)
+  const { data: summaryData } = useDailySummary({
+    baseUrl: dataBaseUrl || '',
+    serviceName: item.name,
+    days: daysToShow,
+    enabled: !!dataBaseUrl && showMiniChart,
+  });
+
+  // Convert summary data to history format for MiniHeatmap
+  const enhancedHistory = useMemo((): StatusCheckHistory[] => {
+    // Start with existing history
+    const existingHistory = item.history || [];
+
+    // If no summary data, return existing
+    if (!summaryData || summaryData.length === 0) {
+      return existingHistory;
+    }
+
+    // Create synthetic history entries from summary data
+    // Each day becomes a single "check" with status based on uptimePct
+    const summaryAsHistory: StatusCheckHistory[] = summaryData.map(entry => {
+      // Determine status from uptime percentage
+      let status: 'up' | 'down' | 'degraded' | 'maintenance' = 'up';
+      if (entry.uptimePct < 0.5) {
+        status = 'down';
+      } else if (entry.uptimePct < 0.99) {
+        status = 'degraded';
+      }
+
+      return {
+        timestamp: `${entry.date}T12:00:00Z`, // Noon UTC as representative time
+        status,
+        code: entry.checksPassed > 0 ? 200 : 500,
+        responseTime: entry.avgLatencyMs || 0,
+      };
+    });
+
+    // Merge: prefer existing history for recent days, use summary for older days
+    const existingDates = new Set(
+      existingHistory.map(h => h.timestamp.split('T')[0])
+    );
+
+    // Add summary entries for dates not in existing history
+    const combined = [...existingHistory];
+    for (const entry of summaryAsHistory) {
+      const dateKey = entry.timestamp.split('T')[0];
+      if (!existingDates.has(dateKey)) {
+        combined.push(entry);
+      }
+    }
+
+    // Sort by timestamp descending (most recent first)
+    return combined.sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  }, [item.history, summaryData]);
 
   return (
     <div 
@@ -118,8 +185,8 @@ export default function StatusItem({
         )}
       </div>
 
-      {showMiniChart && item.history && item.history.length > 0 && (
-        <MiniHeatmap history={item.history} incidents={incidents} maintenance={maintenance} systemName={item.name} days={90} />
+      {showMiniChart && enhancedHistory.length > 0 && (
+        <MiniHeatmap history={enhancedHistory} incidents={incidents} maintenance={maintenance} systemName={item.name} days={daysToShow} />
       )}
     </div>
   );

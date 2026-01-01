@@ -18,6 +18,7 @@ The monitoring system uses a **three-file architecture** that separates monitori
 ```
 status-data/
 ├── current.json          # Time-series monitoring readings (updated every 5min)
+├── daily-summary.json    # 90-day aggregated stats (v0.17.0+)
 ├── incidents.json        # Active and resolved incidents from GitHub Issues
 ├── maintenance.json      # Scheduled maintenance windows
 └── archives/
@@ -73,6 +74,85 @@ status-data/
 - Committed with `[skip ci]` tag
 - Does NOT trigger deployments (filtered by `paths-ignore` in `deploy.yml`)
 - Creates critical GitHub Issues when services go down
+
+#### 1b. daily-summary.json (Historical Aggregation - v0.17.0+)
+
+**Purpose**: Aggregated daily statistics for 90-day heatmap visualization
+**Updated By**: `monitor-systems.yml` workflow (regenerated on every monitor run)
+**Source**: Aggregation from `current.json` and archived JSONL files
+**Retention**: Rolling 90-day window (~10KB per 2 services)
+
+**The Problem**: The 90-day heatmap was 84% empty because it only read from `current.json` (14-day window).
+
+**The Solution**: Aggregate daily statistics from archives into a compact summary file.
+
+**Format**: Object with per-service daily entries
+
+```json
+{
+  "version": 1,
+  "lastUpdated": "2025-12-31T22:00:00Z",
+  "windowDays": 90,
+  "services": {
+    "api": [
+      {
+        "date": "2025-12-30",
+        "uptimePct": 0.998,
+        "avgLatencyMs": 145,
+        "p95LatencyMs": 320,
+        "checksTotal": 144,
+        "checksPassed": 143,
+        "incidentCount": 0
+      }
+    ]
+  }
+}
+```
+
+**Fields:**
+
+- `version` - Schema version (currently 1)
+- `lastUpdated` - ISO timestamp of last update
+- `windowDays` - Number of days covered
+- `services` - Object with service names as keys
+- `date` - ISO date string (YYYY-MM-DD)
+- `uptimePct` - Uptime percentage as decimal (0.0 to 1.0)
+- `avgLatencyMs` - Average latency in ms (null if no successful checks)
+- `p95LatencyMs` - 95th percentile latency in ms (null if no successful checks)
+- `checksTotal` - Total number of checks performed
+- `checksPassed` - Number of successful checks (up or maintenance)
+- `incidentCount` - Number of up→down transitions
+
+**Design Principles (ADR-002)**:
+
+- **Store percentages, not strings**: `uptimePct: 0.998` not `status: "ok"`
+- **Include p95 latency**: Averages hide spikes; p95 reveals bad days
+- **UTC dates**: All date fields are ISO 8601 in UTC
+- **Schema versioning**: Enables future migrations
+- **Raw counts**: `checksTotal` and `checksPassed` allow recalculating with different rules
+
+**Hybrid Read Pattern**:
+
+The frontend uses a hybrid approach to ensure today's data is live:
+
+```typescript
+// Frontend loads both files in parallel
+const [summary, current] = await Promise.all([
+  fetch('/status-data/daily-summary.json'),
+  fetch('/status-data/current.json')
+]);
+
+// Merge: today from current.json + history from summary
+const data = [aggregateToday(current), ...summary.services[serviceName]];
+```
+
+**Bootstrap Existing Data**:
+
+```bash
+npx bootstrap-summary --output-dir status-data --window 90
+```
+
+See [ADR-002](../adrs/ADR-002-historical-data-aggregation.md) for full architecture documentation.
 
 #### 2. incidents.json (Issue-Based Incidents)
 

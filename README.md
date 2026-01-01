@@ -16,7 +16,7 @@ A Docusaurus plugin that creates an Upptime-like status monitoring dashboard pow
   - Bar charts and heatmaps for uptime visualization
   - Multiple time period views (24h, 7d, 30d, 90d)
   - Automatic dark/light theme support
-  - Mini heatmaps on system cards: 90-day uptime visualization with vertical rectangles
+  - Mini heatmaps on system cards: 14-day default, expandable to 90-day with daily-summary.json
   - Extensible annotation system: Display maintenance windows and incidents as chart annotations
   - Markdown rendering support: Full GitHub-flavored markdown in incident and maintenance descriptions
 - 💾 **Dataset Download**: Export chart data for offline analysis
@@ -955,12 +955,83 @@ The plugin uses an **append-only monitoring architecture** that eliminates Git h
 ```text
 status-data/                               # Committed to Git
 ├── current.json                           # Hot file (rolling 14-day window)
+├── daily-summary.json                     # 90-day aggregated stats (v0.17.0+)
 └── archives/
     └── 2025/11/
         ├── history-2025-11-01.jsonl.gz   # Compressed (yesterday and older)
         ├── history-2025-11-02.jsonl.gz   # Compressed
         └── history-2025-11-03.jsonl      # Uncompressed (today)
 ```
+
+### Historical Data Aggregation (v0.17.0+)
+
+The plugin supports **90-day heatmap visualization** through a daily summary file that aggregates historical data from archives.
+
+**The Problem:** The 90-day heatmap was 84% empty because it relied only on `current.json` (14-day rolling window), ignoring the archived historical data.
+
+**The Solution:** A `daily-summary.json` file is generated during each monitor run, aggregating daily stats from both `current.json` and archive files.
+
+**Schema (v1):**
+
+```json
+{
+  "version": 1,
+  "lastUpdated": "2025-12-31T22:00:00Z",
+  "windowDays": 90,
+  "services": {
+    "api": [
+      {
+        "date": "2025-12-30",
+        "uptimePct": 0.998,
+        "avgLatencyMs": 145,
+        "p95LatencyMs": 320,
+        "checksTotal": 144,
+        "checksPassed": 143,
+        "incidentCount": 0
+      }
+    ]
+  }
+}
+```
+
+**Key Features:**
+
+- **Hybrid Read Pattern**: Today's live data from `current.json` is merged with historical data from `daily-summary.json`
+- **Automatic Generation**: The summary file is regenerated on every monitor run
+- **Atomic Writes**: Uses temp file + rename pattern to prevent corruption
+- **Efficient**: ~10KB for 2 services × 90 days (vs ~15MB if storing raw data)
+
+**Bootstrap Existing Data:**
+
+If you're upgrading from an older version, run the bootstrap script to generate the initial summary from existing archives:
+
+```bash
+npx bootstrap-summary --output-dir status-data --window 90
+```
+
+**TypeScript Types:**
+
+```typescript
+import { DailySummaryFile, DailySummaryEntry } from '@amiable-dev/docusaurus-plugin-stentorosaur';
+```
+
+**React Hook:**
+
+```typescript
+import { useDailySummary } from '@amiable-dev/docusaurus-plugin-stentorosaur';
+
+function MyComponent() {
+  const { data, loading, error } = useDailySummary({
+    baseUrl: '/status-data',
+    serviceName: 'api',
+    days: 90,
+  });
+
+  // data is DailySummaryEntry[] with merged today + historical data
+}
+```
+
+See [ADR-002](./docs/adrs/ADR-002-historical-data-aggregation.md) for detailed architecture documentation.
 
 **Setup:**
 

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-01-01
+
+### Added
+
+- **Historical data aggregation (ADR-002)** - Resolve the "84% empty heatmap" problem
+  - New `daily-summary.json` file with pre-aggregated daily stats (uptime%, avgLatency, P95, incidents)
+  - New `generateDailySummary()` function in monitor.js generates summaries on each monitoring run
+  - New `stentorosaur-bootstrap-summary` CLI script for one-time backfill of existing archives
+  - New `useDailySummary` React hook with hybrid read pattern (today from current.json, history from summary)
+  - New `DailySummaryEntry` and `DailySummaryFile` TypeScript types
+  - New `dataBaseUrl` and `heatmapDays` props on `StatusItem` component
+
+### Changed
+
+- **MiniHeatmap default changed from 90 to 14 days** - Honest UI that reflects actual data availability
+  - With `dataBaseUrl` configured, automatically expands to 90 days using daily-summary.json
+
+### Documentation
+
+- Updated README.md with Historical Data Aggregation section
+- Updated MONITORING_SYSTEM.md with daily-summary.json documentation
+- ADR-002 marked as implemented
+
 ## [0.14.2] - 2025-11-17
 
 ### Fixed
