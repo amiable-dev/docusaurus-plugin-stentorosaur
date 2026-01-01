@@ -133,8 +133,12 @@ export default function StatusPage({statusData}: Props): JSX.Element {
             }
           }
 
-          setSystemFiles(files);
-          return; // Success, don't try legacy format
+          // Only use current.json data if we found matching items
+          if (files.length > 0) {
+            setSystemFiles(files);
+            return; // Success, don't try legacy format
+          }
+          // Otherwise, fall through to try legacy format or build-time data
         }
       } catch (error) {
         // Fall through to legacy format or build-time fallback
