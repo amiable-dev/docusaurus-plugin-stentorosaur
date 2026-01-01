@@ -12,7 +12,7 @@ import MaintenanceList from '../Maintenance/MaintenanceList';
 import StatusBoard from '../StatusBoard';
 import PerformanceMetrics from '../PerformanceMetrics';
 import type {StatusData, UptimeStatusPageConfig, SystemStatusFile, StatusItem, DataSource} from '../../types';
-import { buildFetchUrl } from '../../data-source-resolver';
+import { buildFetchUrl } from '../../data-source-resolver.client';
 import styles from './styles.module.css';
 
 export interface Props {

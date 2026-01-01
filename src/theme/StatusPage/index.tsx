@@ -13,7 +13,7 @@ import MaintenanceList from '../Maintenance/MaintenanceList';
 import PerformanceMetrics from '../PerformanceMetrics';
 import type {StatusData, SystemStatusFile, DataSource} from '../../types';
 import {PLUGIN_VERSION} from '../../version';
-import { buildFetchUrl } from '../../data-source-resolver';
+import { buildFetchUrl } from '../../data-source-resolver.client';
 import styles from './styles.module.css';
 
 export interface Props {
