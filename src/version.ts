@@ -3,4 +3,4 @@
  * DO NOT EDIT MANUALLY - This file is generated from package.json
  */
 
-export const PLUGIN_VERSION = '0.16.3';
+export const PLUGIN_VERSION = '0.16.4';
