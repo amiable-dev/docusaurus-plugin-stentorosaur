@@ -11,8 +11,16 @@
     "stentorosaur-setup-status-branch": "scripts/setup-status-branch.js",
     "stentorosaur-migrate-to-status-branch": "scripts/migrate-to-status-branch.js",
     "stentorosaur-cleanup-status-branch": "scripts/cleanup-status-branch.js",
-    "stentorosaur-bootstrap-summary": "scripts/bootstrap-summary.js"
+    "stentorosaur-bootstrap-summary": "scripts/bootstrap-summary.js",
+    "stentorosaur-init": "scripts/init.js",
+    "stentorosaur-config": "scripts/config.js"
   },
+  "files": [
+    "lib",
+    "scripts",
+    "templates",
+    "src/plugin-status.d.ts"
+  ],
   "keywords": [
     "docusaurus",
     "plugin",

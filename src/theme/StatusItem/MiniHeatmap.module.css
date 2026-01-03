@@ -19,19 +19,19 @@
 .cells {
   display: flex;
   gap: 2px;
-  max-width: 100%;
+  width: 100%;
   margin-bottom: 0.75rem;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .cell {
-  width: 3px;
-  height: 30px;
-  border-radius: 1px;
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border-radius: 2px;
   cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: opacity 0.2s ease;
   position: relative;
-  flex-shrink: 0;
 }
 
 .cell.hasIncident {
@@ -74,9 +74,8 @@
 }
 
 .cell:hover {
-  transform: scale(1.3);
-  opacity: 0.8;
-  z-index: 1;
+  opacity: 0.7;
+  filter: brightness(1.1);
 }
 
 .legend {
@@ -135,8 +134,7 @@
   }
 
   .cell {
-    width: 2px;
-    height: 20px;
+    height: 30px;
   }
 
   .uptimeStats {
