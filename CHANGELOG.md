@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-01-03
+
+### Added
+
+- **Automatic Makefile integration** - postinstall script patches consuming project's Makefile
+  - Adds include statement for `Makefile.status` if not present
+  - Adds Status Monitoring section to `make help` output
+  - Skips gracefully if no Makefile exists or already configured
+
 ## [0.18.0] - 2026-01-03
 
 ### Added
