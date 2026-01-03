@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-01-03
+
+### Added
+
+- **Makefile commands for consuming sites** - Streamlined setup and configuration
+  - New `templates/Makefile.status` with commands: `status-init`, `status-add-system`, `status-add-process`, `status-list`, `status-test`, `status-run`, `status-validate`, `status-workflows`
+  - Include in your project: `include node_modules/@amiable-dev/docusaurus-plugin-stentorosaur/templates/Makefile.status`
+- **`stentorosaur-init` CLI** - Initialize `.monitorrc.json` and `status-data/` directory
+- **`stentorosaur-config` CLI** - Configuration management with subcommands:
+  - `add-system` - Add monitoring endpoint with URL, method, timeout, expected codes
+  - `add-process` - Add business process for tracking via GitHub labels
+  - `remove-system` - Remove a system from monitoring
+  - `list` - Display all configured systems and processes
+  - `validate` - Validate configuration files
+  - `generate` - Output docusaurus.config.js snippet
+- **Package distribution** - Added `files` array to include `templates/` in npm package
+
+### Fixed
+
+- **MiniHeatmap cells now span full card width** - Changed from fixed 3px width to `flex: 1`
+- **MiniHeatmap height increased to 40px** - Better visibility for status indicators
+- **Scrollbar-on-hover issue fixed** - Removed `transform: scale()` hover effect that caused overflow
+
 ## [0.17.0] - 2026-01-01
 
 ### Added
