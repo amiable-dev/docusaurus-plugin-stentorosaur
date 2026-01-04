@@ -381,8 +381,20 @@ export interface PluginOptions {
   /**
    * Entity definitions (REQUIRED as of v0.11.0)
    * Replaces deprecated systemLabels
+   *
+   * When entitiesSource is 'monitorrc' or 'hybrid', this serves as optional overrides
    */
   entities: Entity[];
+
+  /**
+   * Source for entity discovery (ADR-003)
+   * - 'config': Use only entities from docusaurus.config.js (default, backward compatible)
+   * - 'monitorrc': Auto-discover from .monitorrc.json (single source of truth)
+   * - 'hybrid': Merge both, with config overriding monitorrc
+   *
+   * @default 'config'
+   */
+  entitiesSource?: 'config' | 'monitorrc' | 'hybrid';
 
   /**
    * Label parsing scheme for GitHub issue labels

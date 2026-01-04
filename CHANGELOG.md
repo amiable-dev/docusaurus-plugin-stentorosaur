@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-01-03
+
+### Added
+
+- **Entity auto-discovery from `.monitorrc.json`** (ADR-003) - Single source of truth for monitoring configuration
+  - New `entitiesSource` plugin option: `'config'` (default), `'monitorrc'`, or `'hybrid'`
+  - When set to `'monitorrc'`, entities are auto-discovered from `.monitorrc.json` - no need to duplicate in `docusaurus.config.js`
+  - When set to `'hybrid'`, merges both sources with `docusaurus.config.js` taking precedence for overrides
+  - Build-time warnings when systems in `.monitorrc.json` are missing from `docusaurus.config.js` entities
+
+- **Hidden systems support** - Monitor systems without displaying them on status page
+  - New `display: false` flag in `.monitorrc.json` system entries
+  - CLI: `--hidden` flag for `add-system` and `update-system` commands
+  - CLI: `--visible` flag for `update-system` to unhide a system
+  - Hidden systems are monitored but excluded from status page display
+
+- **`status-update-system` Makefile command** - Update existing system configuration
+  - Update URL, method, timeout, expected codes
+  - Toggle hidden/visible status
+  - Update display name and description
+  - Usage: `make status-update-system name=api url=https://new-url.com`
+
+- **Enhanced CLI for `stentorosaur-config`**
+  - New `update-system` subcommand with all update options
+  - Added `--display-name` and `--description` options for `add-system`
+  - Improved `list` output shows hidden systems separately with clear visual distinction
+
 ## [0.19.0] - 2026-01-03
 
 ### Added

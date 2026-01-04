@@ -9,11 +9,192 @@ import path from 'path';
 import fs from 'fs-extra';
 import {normalizeUrl} from '@docusaurus/utils';
 import type {LoadContext, Plugin} from '@docusaurus/types';
-import type{PluginOptions, StatusData, StatusItem, SystemStatusFile, StatusIncident, ScheduledMaintenance} from './types';
+import type {PluginOptions, StatusData, StatusItem, SystemStatusFile, StatusIncident, ScheduledMaintenance, Entity} from './types';
 import {GitHubStatusService} from './github-service';
 import {getDemoStatusData, getDemoSystemFiles, getDemoCurrentJson} from './demo-data';
 
 export {validateOptions} from './options';
+
+/**
+ * System entry in .monitorrc.json
+ */
+interface MonitorRcSystem {
+  system: string;
+  url: string;
+  method?: string;
+  timeout?: number;
+  expectedCodes?: number[];
+  maxResponseTime?: number;
+  /** If false, system is monitored but not displayed on status page */
+  display?: boolean;
+  /** Optional display name */
+  displayName?: string;
+  /** Optional description */
+  description?: string;
+}
+
+/**
+ * .monitorrc.json schema
+ */
+interface MonitorRcConfig {
+  systems: MonitorRcSystem[];
+}
+
+/**
+ * Load entities from .monitorrc.json (ADR-003: Single Source of Truth)
+ *
+ * When entitiesSource is 'monitorrc' or 'hybrid', we auto-discover entities
+ * from the monitoring config rather than requiring manual docusaurus.config.js updates.
+ *
+ * @param siteDir - Docusaurus site directory
+ * @returns Array of Entity objects discovered from .monitorrc.json
+ */
+async function loadEntitiesFromMonitorRc(siteDir: string): Promise<Entity[]> {
+  const configPath = path.join(siteDir, '.monitorrc.json');
+
+  if (!(await fs.pathExists(configPath))) {
+    console.log('[docusaurus-plugin-stentorosaur] No .monitorrc.json found, skipping auto-discovery');
+    return [];
+  }
+
+  try {
+    const config: MonitorRcConfig = await fs.readJson(configPath);
+
+    if (!config.systems || !Array.isArray(config.systems)) {
+      console.warn('[docusaurus-plugin-stentorosaur] .monitorrc.json has no systems array');
+      return [];
+    }
+
+    // Filter out hidden systems and convert to Entity format
+    const entities: Entity[] = config.systems
+      .filter(sys => sys.display !== false) // Only include visible systems
+      .map(sys => ({
+        name: sys.system,
+        displayName: sys.displayName || sys.system,
+        type: 'system' as const,
+        description: sys.description,
+        monitoring: {
+          enabled: true,
+          url: sys.url,
+          method: (sys.method || 'GET') as 'GET' | 'POST' | 'HEAD',
+          timeout: sys.timeout,
+          expectedCodes: sys.expectedCodes,
+          maxResponseTime: sys.maxResponseTime,
+        },
+      }));
+
+    console.log(
+      `[docusaurus-plugin-stentorosaur] Auto-discovered ${entities.length} entities from .monitorrc.json`
+    );
+
+    // Log hidden systems for transparency
+    const hiddenCount = config.systems.filter(sys => sys.display === false).length;
+    if (hiddenCount > 0) {
+      console.log(
+        `[docusaurus-plugin-stentorosaur] ${hiddenCount} hidden system(s) excluded from display`
+      );
+    }
+
+    return entities;
+  } catch (error) {
+    console.warn(
+      '[docusaurus-plugin-stentorosaur] Failed to read .monitorrc.json:',
+      error instanceof Error ? error.message : String(error)
+    );
+    return [];
+  }
+}
+
+/**
+ * Merge entities from different sources based on entitiesSource setting
+ *
+ * @param configEntities - Entities from docusaurus.config.js
+ * @param monitorRcEntities - Entities auto-discovered from .monitorrc.json
+ * @param entitiesSource - Source preference: 'config' | 'monitorrc' | 'hybrid'
+ * @returns Merged entity list
+ */
+function mergeEntities(
+  configEntities: Entity[],
+  monitorRcEntities: Entity[],
+  entitiesSource: 'config' | 'monitorrc' | 'hybrid'
+): Entity[] {
+  switch (entitiesSource) {
+    case 'config':
+      // Traditional mode: only use docusaurus.config.js entities
+      return configEntities;
+
+    case 'monitorrc':
+      // Single source of truth: only use .monitorrc.json entities
+      return monitorRcEntities;
+
+    case 'hybrid':
+      // Merge both, with config taking precedence for duplicates
+      const mergedMap = new Map<string, Entity>();
+
+      // Add monitorrc entities first
+      for (const entity of monitorRcEntities) {
+        mergedMap.set(entity.name, entity);
+      }
+
+      // Override with config entities (they take precedence)
+      for (const entity of configEntities) {
+        const existing = mergedMap.get(entity.name);
+        if (existing) {
+          // Deep merge: config overrides monitorrc
+          mergedMap.set(entity.name, { ...existing, ...entity });
+        } else {
+          mergedMap.set(entity.name, entity);
+        }
+      }
+
+      return Array.from(mergedMap.values());
+
+    default:
+      return configEntities;
+  }
+}
+
+/**
+ * Check for entity mismatches and warn (ADR-003)
+ */
+function checkEntityMismatches(
+  configEntities: Entity[],
+  monitorRcEntities: Entity[],
+  entitiesSource: 'config' | 'monitorrc' | 'hybrid'
+): void {
+  // Only warn in config mode when there are monitorrc entities not in config
+  if (entitiesSource === 'config' && monitorRcEntities.length > 0) {
+    const configNames = new Set(configEntities.map(e => e.name));
+    const missingInConfig = monitorRcEntities.filter(e => !configNames.has(e.name));
+
+    if (missingInConfig.length > 0) {
+      console.warn(
+        `\n⚠️  [docusaurus-plugin-stentorosaur] Entity mismatch detected!`
+      );
+      console.warn(
+        `   Found ${missingInConfig.length} system(s) in .monitorrc.json not in docusaurus.config.js:`
+      );
+      for (const entity of missingInConfig) {
+        console.warn(`     - ${entity.name}`);
+      }
+      console.warn(
+        `\n   These systems will be monitored but NOT displayed on the status page.`
+      );
+      console.warn(
+        `   To fix, either:`
+      );
+      console.warn(
+        `     1. Add these to docusaurus.config.js entities array`
+      );
+      console.warn(
+        `     2. Use entitiesSource: 'monitorrc' for auto-discovery`
+      );
+      console.warn(
+        `     3. Add display: false to hide them intentionally\n`
+      );
+    }
+  }
+}
 
 /**
  * Read system status files and calculate metrics
@@ -163,7 +344,8 @@ export default async function pluginStatus(
 
   const {
     statusLabel = 'status',
-    entities = [],
+    entities: configEntities = [],
+    entitiesSource = 'config',
     labelScheme,
     token,
     dataPath = 'status-data',
@@ -181,6 +363,22 @@ export default async function pluginStatus(
   // Build maintenance labels array from config
   const maintenanceLabels = scheduledMaintenance.labels ||
     (scheduledMaintenance.label ? [scheduledMaintenance.label] : ['maintenance']);
+
+  // Load entities based on entitiesSource setting (ADR-003)
+  let entities: Entity[] = configEntities;
+  if (entitiesSource === 'monitorrc' || entitiesSource === 'hybrid') {
+    const monitorRcEntities = await loadEntitiesFromMonitorRc(siteDir);
+    entities = mergeEntities(configEntities, monitorRcEntities, entitiesSource);
+
+    // Check for mismatches and warn
+    checkEntityMismatches(configEntities, monitorRcEntities, entitiesSource);
+  } else if (entitiesSource === 'config') {
+    // Even in config mode, check for mismatches to warn users
+    const monitorRcEntities = await loadEntitiesFromMonitorRc(siteDir);
+    if (monitorRcEntities.length > 0) {
+      checkEntityMismatches(configEntities, monitorRcEntities, entitiesSource);
+    }
+  }
 
   const statusDataDir = path.join(generatedFilesDir, 'docusaurus-plugin-stentorosaur');
   const statusDataPath = path.join(statusDataDir, 'status.json');

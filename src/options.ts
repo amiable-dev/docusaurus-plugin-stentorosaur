@@ -12,6 +12,7 @@ import type {PluginOptions, SiteConfig, DataSource} from './types';
 export const DEFAULT_OPTIONS: Partial<PluginOptions> = {
   statusLabel: 'status',
   entities: [],
+  entitiesSource: 'config',
   labelScheme: {
     separator: ':',
     defaultType: 'system' as const,
@@ -268,6 +269,7 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
   repo: Joi.string(),
   statusLabel: Joi.string().default(DEFAULT_OPTIONS.statusLabel),
   entities: Joi.array().items(entitySchema).default(DEFAULT_OPTIONS.entities),
+  entitiesSource: Joi.string().valid('config', 'monitorrc', 'hybrid').default('config'),
   labelScheme: labelSchemeSchema.default(DEFAULT_OPTIONS.labelScheme),
   token: Joi.string(),
   updateInterval: Joi.number().min(1).default(DEFAULT_OPTIONS.updateInterval),

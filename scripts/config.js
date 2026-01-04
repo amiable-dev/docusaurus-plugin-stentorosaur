@@ -77,10 +77,14 @@ async function addSystem(options) {
   const method = options.method || 'GET';
   const timeout = options.timeout || '10000';
   const expectedCodes = options['expected-codes'] || '200';
+  const hidden = options.hidden === true || options.hidden === 'true';
+  const displayName = options['display-name'];
+  const description = options.description;
 
   if (!name || !url) {
     console.error('\x1b[31mError:\x1b[0m Both --name and --url are required');
     console.log('\nUsage: stentorosaur-config add-system --name api --url https://api.example.com/health');
+    console.log('       stentorosaur-config add-system --name internal-api --url https://... --hidden');
     process.exit(1);
   }
 
@@ -98,6 +102,17 @@ async function addSystem(options) {
     maxResponseTime: 30000
   };
 
+  // Add optional fields only if provided
+  if (hidden) {
+    newSystem.display = false;
+  }
+  if (displayName) {
+    newSystem.displayName = displayName;
+  }
+  if (description) {
+    newSystem.description = description;
+  }
+
   if (existingIndex >= 0) {
     config.systems[existingIndex] = newSystem;
     console.log(`\x1b[33mUpdated:\x1b[0m System '${name}' configuration updated`);
@@ -108,17 +123,114 @@ async function addSystem(options) {
 
   await saveConfig(config);
 
-  // Also add to entities for docusaurus config reference
-  const entities = await loadEntities();
-  if (!entities.systems.find(s => s.name === name)) {
-    entities.systems.push({ name, type: 'system', url });
-    await saveEntities(entities);
-  }
-
   console.log(`\n  URL: ${url}`);
   console.log(`  Method: ${method.toUpperCase()}`);
   console.log(`  Timeout: ${timeout}ms`);
   console.log(`  Expected codes: ${expectedCodes}`);
+  if (hidden) {
+    console.log(`  Display: \x1b[33mhidden\x1b[0m (monitored but not shown on status page)`);
+  }
+  if (displayName) {
+    console.log(`  Display Name: ${displayName}`);
+  }
+  if (description) {
+    console.log(`  Description: ${description}`);
+  }
+}
+
+// Update an existing system
+async function updateSystem(options) {
+  const name = options.name;
+
+  if (!name) {
+    console.error('\x1b[31mError:\x1b[0m --name is required');
+    console.log('\nUsage: stentorosaur-config update-system --name api --url https://new-url.com');
+    console.log('       stentorosaur-config update-system --name api --hidden');
+    console.log('       stentorosaur-config update-system --name api --visible (unhide)');
+    process.exit(1);
+  }
+
+  const config = await loadConfig();
+  const existingIndex = config.systems.findIndex(s => s.system === name);
+
+  if (existingIndex < 0) {
+    console.error(`\x1b[31mError:\x1b[0m System '${name}' not found`);
+    console.log(`\nAvailable systems: ${config.systems.map(s => s.system).join(', ')}`);
+    process.exit(1);
+  }
+
+  const system = config.systems[existingIndex];
+  let changed = false;
+
+  // Update URL if provided
+  if (options.url) {
+    system.url = options.url;
+    changed = true;
+    console.log(`  URL: ${options.url}`);
+  }
+
+  // Update method if provided
+  if (options.method) {
+    system.method = options.method.toUpperCase();
+    changed = true;
+    console.log(`  Method: ${system.method}`);
+  }
+
+  // Update timeout if provided
+  if (options.timeout) {
+    system.timeout = parseInt(options.timeout, 10);
+    changed = true;
+    console.log(`  Timeout: ${system.timeout}ms`);
+  }
+
+  // Update expected codes if provided
+  if (options['expected-codes']) {
+    system.expectedCodes = options['expected-codes'].split(',').map(c => parseInt(c.trim(), 10));
+    changed = true;
+    console.log(`  Expected codes: ${system.expectedCodes.join(', ')}`);
+  }
+
+  // Update display if provided
+  if (options.hidden === true || options.hidden === 'true') {
+    system.display = false;
+    changed = true;
+    console.log(`  Display: \x1b[33mhidden\x1b[0m`);
+  } else if (options.visible === true || options.visible === 'true') {
+    delete system.display; // Remove display: false to show system
+    changed = true;
+    console.log(`  Display: \x1b[32mvisible\x1b[0m`);
+  }
+
+  // Update display name if provided
+  if (options['display-name']) {
+    system.displayName = options['display-name'];
+    changed = true;
+    console.log(`  Display Name: ${system.displayName}`);
+  }
+
+  // Update description if provided
+  if (options.description) {
+    system.description = options.description;
+    changed = true;
+    console.log(`  Description: ${system.description}`);
+  }
+
+  if (!changed) {
+    console.log(`\x1b[33mWarning:\x1b[0m No changes specified for system '${name}'`);
+    console.log('\nAvailable options:');
+    console.log('  --url <url>            Update endpoint URL');
+    console.log('  --method <GET|POST>    Update HTTP method');
+    console.log('  --timeout <ms>         Update timeout');
+    console.log('  --expected-codes <n>   Update expected HTTP codes');
+    console.log('  --hidden               Hide from status page');
+    console.log('  --visible              Show on status page');
+    console.log('  --display-name <name>  Update display name');
+    console.log('  --description <text>   Update description');
+    return;
+  }
+
+  await saveConfig(config);
+  console.log(`\n\x1b[32mUpdated:\x1b[0m System '${name}' has been updated`);
 }
 
 // Add a business process
@@ -196,12 +308,28 @@ async function list() {
     console.log('  No systems configured');
     console.log('  Run: make status-add-system name=api url=https://...');
   } else {
-    for (const system of config.systems) {
-      console.log(`\n  \x1b[36m${system.system}\x1b[0m`);
-      console.log(`    URL: ${system.url}`);
-      console.log(`    Method: ${system.method}`);
-      console.log(`    Timeout: ${system.timeout}ms`);
-      console.log(`    Expected: ${system.expectedCodes.join(', ')}`);
+    const visibleSystems = config.systems.filter(s => s.display !== false);
+    const hiddenSystems = config.systems.filter(s => s.display === false);
+
+    if (visibleSystems.length > 0) {
+      for (const system of visibleSystems) {
+        const displayName = system.displayName ? ` (${system.displayName})` : '';
+        console.log(`\n  \x1b[36m${system.system}\x1b[0m${displayName}`);
+        console.log(`    URL: ${system.url}`);
+        console.log(`    Method: ${system.method}`);
+        console.log(`    Timeout: ${system.timeout}ms`);
+        console.log(`    Expected: ${system.expectedCodes.join(', ')}`);
+        if (system.description) {
+          console.log(`    Description: ${system.description}`);
+        }
+      }
+    }
+
+    if (hiddenSystems.length > 0) {
+      console.log('\n  \x1b[33mHidden Systems (monitored but not displayed):\x1b[0m');
+      for (const system of hiddenSystems) {
+        console.log(`    - ${system.system}: ${system.url}`);
+      }
     }
   }
 
@@ -317,11 +445,15 @@ async function main() {
     console.log('Stentorosaur Configuration Manager\n');
     console.log('Commands:');
     console.log('  add-system     Add a system to monitor');
+    console.log('  update-system  Update an existing system');
     console.log('  add-process    Add a business process');
     console.log('  remove-system  Remove a system');
     console.log('  list           List all configured systems and processes');
     console.log('  validate       Validate configuration files');
     console.log('  generate       Generate docusaurus.config.js snippet');
+    console.log('\nOptions:');
+    console.log('  --hidden       Hide system from status page (monitoring only)');
+    console.log('  --visible      Show system on status page (remove hidden flag)');
     console.log('\nRun with --help for more info');
     process.exit(0);
   }
@@ -331,6 +463,9 @@ async function main() {
   switch (command) {
     case 'add-system':
       await addSystem(options);
+      break;
+    case 'update-system':
+      await updateSystem(options);
       break;
     case 'add-process':
       await addProcess(options);

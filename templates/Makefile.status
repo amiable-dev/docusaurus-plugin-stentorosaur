@@ -14,7 +14,7 @@ YELLOW := \033[0;33m
 RED := \033[0;31m
 NC := \033[0m # No Color
 
-.PHONY: status-help status-init status-add-system status-add-process status-list status-test status-run status-update status-workflows
+.PHONY: status-help status-init status-add-system status-update-system status-add-process status-list status-test status-run status-update status-workflows
 
 ## Show available status monitoring commands
 status-help:
@@ -23,22 +23,27 @@ status-help:
 	@echo "========================================="
 	@echo ""
 	@echo "$(YELLOW)Setup:$(NC)"
-	@echo "  make status-init          Initialize status monitoring configuration"
-	@echo "  make status-workflows     Copy GitHub Actions workflow templates"
+	@echo "  make status-init            Initialize status monitoring configuration"
+	@echo "  make status-workflows       Copy GitHub Actions workflow templates"
 	@echo ""
 	@echo "$(YELLOW)Configuration:$(NC)"
-	@echo "  make status-add-system    Add a new system/endpoint to monitor"
-	@echo "  make status-add-process   Add a new business process to track"
-	@echo "  make status-list          List all configured systems and processes"
-	@echo "  make status-edit          Open monitor config in editor"
+	@echo "  make status-add-system      Add a new system/endpoint to monitor"
+	@echo "  make status-update-system   Update an existing system's settings"
+	@echo "  make status-add-process     Add a new business process to track"
+	@echo "  make status-remove-system   Remove a system from monitoring"
+	@echo "  make status-list            List all configured systems and processes"
+	@echo "  make status-edit            Open monitor config in editor"
 	@echo ""
 	@echo "$(YELLOW)Operations:$(NC)"
-	@echo "  make status-test          Test monitoring configuration (dry run)"
-	@echo "  make status-run           Run monitoring check and update data"
-	@echo "  make status-update        Fetch GitHub issues and update status"
+	@echo "  make status-test            Test monitoring configuration (dry run)"
+	@echo "  make status-run             Run monitoring check and update data"
+	@echo "  make status-update          Fetch GitHub issues and update status"
 	@echo ""
 	@echo "$(YELLOW)Examples:$(NC)"
 	@echo "  make status-add-system name=api url=https://api.example.com/health"
+	@echo "  make status-add-system name=internal url=https://... hidden=true"
+	@echo "  make status-update-system name=api url=https://new-url.com"
+	@echo "  make status-update-system name=api hidden=true"
 	@echo "  make status-add-process name=deployments"
 	@echo ""
 
@@ -78,6 +83,7 @@ status-add-system:
 ifndef name
 	@echo "$(RED)Error: 'name' is required$(NC)"
 	@echo "Usage: make status-add-system name=api url=https://api.example.com/health"
+	@echo "       make status-add-system name=internal url=https://... hidden=true"
 	@exit 1
 endif
 ifndef url
@@ -90,8 +96,31 @@ endif
 		--url "$(url)" \
 		$(if $(method),--method "$(method)",) \
 		$(if $(timeout),--timeout "$(timeout)",) \
-		$(if $(expected),--expected-codes "$(expected)",)
+		$(if $(expected),--expected-codes "$(expected)",) \
+		$(if $(hidden),--hidden,) \
+		$(if $(displayname),--display-name "$(displayname)",) \
+		$(if $(description),--description "$(description)",)
 	@echo "$(GREEN)System '$(name)' added to $(MONITOR_CONFIG)$(NC)"
+
+## Update an existing system (usage: make status-update-system name=api url=https://new-url.com)
+status-update-system:
+ifndef name
+	@echo "$(RED)Error: 'name' is required$(NC)"
+	@echo "Usage: make status-update-system name=api url=https://new-url.com"
+	@echo "       make status-update-system name=api hidden=true"
+	@echo "       make status-update-system name=api visible=true"
+	@exit 1
+endif
+	@$(STENTOROSAUR_BIN)/stentorosaur-config update-system \
+		--name "$(name)" \
+		$(if $(url),--url "$(url)",) \
+		$(if $(method),--method "$(method)",) \
+		$(if $(timeout),--timeout "$(timeout)",) \
+		$(if $(expected),--expected-codes "$(expected)",) \
+		$(if $(hidden),--hidden,) \
+		$(if $(visible),--visible,) \
+		$(if $(displayname),--display-name "$(displayname)",) \
+		$(if $(description),--description "$(description)",)
 
 ## Add a new business process to track (usage: make status-add-process name=deployments)
 status-add-process:
