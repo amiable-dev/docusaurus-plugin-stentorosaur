@@ -1,0 +1,208 @@
+/**
+ * ADR-004: SystemCard Styles
+ *
+ * Collapsible system status card with expand/collapse animation.
+ */
+
+/* CSS Variables */
+:root {
+  --card-border-radius: 8px;
+  --card-padding: 1rem;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Main card container */
+.systemCard {
+  background: var(--ifm-card-background-color, #fff);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: var(--card-border-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  outline: none;
+}
+
+.systemCard:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.systemCard:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+}
+
+/* Expanded state */
+.expanded {
+  border-color: var(--ifm-color-primary-light);
+}
+
+/* Status indicator border */
+.statusUp {
+  border-left: 4px solid var(--status-operational, #22c55e);
+}
+
+.statusDegraded {
+  border-left: 4px solid var(--status-degraded, #eab308);
+}
+
+.statusDown {
+  border-left: 4px solid var(--status-outage, #ef4444);
+}
+
+.statusMaintenance {
+  border-left: 4px solid var(--status-maintenance, #3b82f6);
+}
+
+/* Card header */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ifm-color-content);
+}
+
+/* Expand button */
+.expandButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.expandButton:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.expandIcon {
+  font-size: 0.75rem;
+  color: var(--ifm-color-content-secondary);
+  transition: transform 0.2s ease;
+}
+
+.expandIconOpen {
+  transform: rotate(180deg);
+}
+
+/* Custom header slot */
+.customHeader {
+  margin-top: 0.5rem;
+}
+
+/* UptimeBar wrapper */
+.uptimeBarWrapper {
+  margin-top: 0.75rem;
+}
+
+/* Card details (expandable content) */
+.cardDetails {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.2s ease, margin-top 0.3s ease;
+  margin-top: 0;
+}
+
+.detailsVisible {
+  max-height: 500px;
+  opacity: 1;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+/* Metrics grid */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metricLabel {
+  font-size: 0.75rem;
+  color: var(--ifm-color-content-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metricValue {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ifm-color-content);
+}
+
+/* Charts container */
+.chartsContainer {
+  margin-top: 1rem;
+}
+
+/* Dark mode */
+[data-theme='dark'] .systemCard {
+  background: var(--ifm-card-background-color, #1a1a1a);
+  border-color: var(--ifm-color-emphasis-300);
+}
+
+[data-theme='dark'] .systemCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .systemCard,
+  .expandIcon,
+  .cardDetails {
+    transition: none;
+  }
+
+  .cardDetails {
+    max-height: none;
+  }
+
+  .cardDetails:not(.detailsVisible) {
+    display: none;
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .systemCard {
+    padding: 0.75rem;
+  }
+
+  .cardTitleRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .metricsGrid {
+    grid-template-columns: 1fr;
+  }
+}

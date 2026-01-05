@@ -489,6 +489,16 @@ export interface PluginOptions {
   statusView?: 'default' | 'upptime';
 
   /**
+   * Status card layout style for individual system cards (ADR-004)
+   * - 'minimal': New simplified cards with 90-day uptime bars (default)
+   * - 'detailed': Original detailed status cards with more information
+   *
+   * @default 'minimal'
+   * @since 0.21.0
+   */
+  statusCardLayout?: 'minimal' | 'detailed';
+
+  /**
    * Configuration for Upptime-style status page (only used when statusView is 'upptime')
    */
   uptimeConfig?: UptimeStatusPageConfig;

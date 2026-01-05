@@ -1,0 +1,180 @@
+/**
+ * ADR-004: SystemCardGroup Styles
+ *
+ * Container for grouping multiple SystemCards.
+ */
+
+/* Group container */
+.systemCardGroup {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Group header */
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--ifm-color-emphasis-100);
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.collapsed .groupHeader {
+  border-bottom: none;
+}
+
+/* Toggle button */
+.toggleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--ifm-color-emphasis-200);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.toggleButton:hover {
+  background: var(--ifm-color-emphasis-300);
+}
+
+.toggleButton:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+}
+
+.expandIcon {
+  font-size: 0.625rem;
+  color: var(--ifm-color-content-secondary);
+  transition: transform 0.2s ease;
+  transform: rotate(-90deg);
+}
+
+.expandIconOpen {
+  transform: rotate(0deg);
+}
+
+/* Group info */
+.groupInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+}
+
+.groupTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ifm-color-content);
+}
+
+.groupMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ifm-color-content-secondary);
+}
+
+.serviceCount {
+  color: var(--ifm-color-content-secondary);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-operational, #22c55e);
+}
+
+.groupStatusDegraded .statusDot {
+  background: var(--status-degraded, #eab308);
+}
+
+.groupStatusDown .statusDot {
+  background: var(--status-outage, #ef4444);
+}
+
+.groupStatusMaintenance .statusDot {
+  background: var(--status-maintenance, #3b82f6);
+}
+
+.statusLabel {
+  font-weight: 500;
+}
+
+/* Status colors for labels */
+.groupStatusUp .statusLabel {
+  color: var(--status-operational, #22c55e);
+}
+
+.groupStatusDegraded .statusLabel {
+  color: var(--status-degraded, #eab308);
+}
+
+.groupStatusDown .statusLabel {
+  color: var(--status-outage, #ef4444);
+}
+
+.groupStatusMaintenance .statusLabel {
+  color: var(--status-maintenance, #3b82f6);
+}
+
+/* Group content */
+.groupContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
+}
+
+.contentHidden {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 1rem;
+  overflow: hidden;
+}
+
+/* Dark mode */
+[data-theme='dark'] .groupHeader {
+  background: var(--ifm-color-emphasis-200);
+}
+
+[data-theme='dark'] .toggleButton {
+  background: var(--ifm-color-emphasis-300);
+}
+
+[data-theme='dark'] .toggleButton:hover {
+  background: var(--ifm-color-emphasis-400);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .expandIcon,
+  .groupContent {
+    transition: none;
+  }
+
+  .contentHidden {
+    display: none;
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .groupHeader {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .groupContent {
+    padding: 0.75rem;
+  }
+}

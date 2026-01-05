@@ -285,6 +285,7 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
   defaultSLO: Joi.number().min(0).max(100).default(DEFAULT_OPTIONS.defaultSLO),
   systemSLOs: Joi.object().pattern(Joi.string(), Joi.number().min(0).max(100)).default(DEFAULT_OPTIONS.systemSLOs),
   statusView: Joi.string().valid('default', 'upptime').default('default'),
+  statusCardLayout: Joi.string().valid('minimal', 'detailed').default('minimal'),
   uptimeConfig: Joi.object({
     sections: Joi.array().items(
       Joi.object({

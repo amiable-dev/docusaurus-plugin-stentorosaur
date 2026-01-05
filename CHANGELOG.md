@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-01-05
+
+### Added
+
+- **Simplified Status Cards (ADR-004)** - New minimal layout with 90-day uptime bars
+  - New `statusCardLayout` option: `'minimal'` (default) or `'detailed'`
+  - Minimal layout shows compact cards with horizontal uptime bars
+  - Detailed layout preserves existing behavior for backwards compatibility
+
+- **StatusDataProvider context** - Centralized data management for status components
+  - Fetches `daily-summary.json` and `current.json` in parallel
+  - Provides `getMerged90Days(serviceName)` for hybrid data merge
+  - Handles loading, error, and refresh states
+
+- **New React Components**
+  - `StatusBadge` - Styled status indicator with customizable labels and sizes
+  - `UptimeBar` - 90-day horizontal uptime visualization with roving tabindex accessibility
+  - `SystemCard` - Compound component with expandable details and sub-components
+  - `SystemCardGroup` - Container for grouping cards with collapsible behavior
+
+- **Enhanced Accessibility**
+  - Roving tabindex pattern for UptimeBar (eliminates "90-tab trap")
+  - Proper ARIA attributes on all interactive elements
+  - Keyboard navigation (Arrow keys, Home, End, Escape)
+  - Screen reader friendly descriptions
+
+### Changed
+
+- UptimeBar now uses `role="group"` instead of `role="img"` for keyboard navigation
+- Day cells are now `<button>` elements with proper focus management
+
 ## [0.20.0] - 2026-01-03
 
 ### Added
