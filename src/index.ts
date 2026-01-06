@@ -823,6 +823,16 @@ export default async function pluginStatus(
         );
       }
 
+      // Copy daily-summary.json if it exists (needed for minimal layout UptimeBar)
+      const sourceDailySummary = path.join(sourceDataDir, 'daily-summary.json');
+      if (await fs.pathExists(sourceDailySummary)) {
+        console.log('[docusaurus-plugin-stentorosaur] Copying daily-summary.json for minimal layout');
+        await fs.copy(
+          sourceDailySummary,
+          path.join(buildStatusDir, 'daily-summary.json')
+        );
+      }
+
       // Copy incidents.json if it exists
       const sourceIncidents = path.join(sourceDataDir, 'incidents.json');
       if (await fs.pathExists(sourceIncidents)) {
