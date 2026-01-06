@@ -153,8 +153,12 @@ export function UptimeBar({
   onDayHover,
   className,
 }: UptimeBarProps): React.ReactElement {
-  // Get data from context or use provided data
-  const { getMerged90Days } = useStatusData();
+  // Get data and loading state from context
+  const { getMerged90Days, loading: contextLoading, error: contextError } = useStatusData();
+
+  // Use context loading/error if no data is provided (not using override props)
+  const isLoading = loading || (!providedData && contextLoading);
+  const displayError = error || (!providedData && contextError);
 
   // Roving tabindex state - track which day has focus
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -253,7 +257,7 @@ export function UptimeBar({
   );
 
   // Loading state
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={`${styles.uptimeBarContainer} ${styles.loading} ${className || ''}`}>
         <div className={styles.skeleton} style={{ height: `${height}px` }} />
@@ -262,7 +266,7 @@ export function UptimeBar({
   }
 
   // Error state
-  if (error) {
+  if (displayError) {
     return (
       <div className={`${styles.uptimeBarContainer} ${styles.error} ${className || ''}`}>
         <span className={styles.errorMessage}>Failed to load uptime data</span>

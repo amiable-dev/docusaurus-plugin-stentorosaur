@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.5] - 2026-01-06
+
+### Fixed
+
+- **UptimeBar now waits for context data to load** - Uses context loading/error states
+  - Shows loading skeleton while StatusDataProvider fetches data
+  - Fixes "No data available" showing before data loads
+
 ## [0.21.4] - 2026-01-06
 
 ### Fixed
