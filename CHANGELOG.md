@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.8] - 2026-01-06
+
+### Fixed
+
+- **UptimeBar keeps loading state until data is actually available** - Prevents "No data available" flicker
+  - Now checks if dailySummary is populated, not just if contextLoading is false
+  - Shows loading skeleton until data fetch completes AND data is parsed
+
+## [0.21.7] - 2026-01-06
+
+### Added
+
+- **More debug logging** - Added UptimeBar empty state logging and useEffect trigger log
+  - Logs contextLoading, contextError, loading, isLoading when empty state is rendered
+  - Helps identify why data isn't loading after fetch
+
 ## [0.21.6] - 2026-01-06
 
 ### Added

@@ -337,6 +337,7 @@ export function StatusDataProvider({
 
   // Fetch data on mount
   useEffect(() => {
+    console.log('[StatusDataProvider] useEffect triggered, calling fetchData');
     fetchData();
   }, [fetchData]);
 

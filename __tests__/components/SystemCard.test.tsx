@@ -29,7 +29,8 @@ jest.mock('../../src/context/StatusDataProvider', () => {
   return {
     ...actual,
     useStatusData: () => ({
-      dailySummary: null,
+      // Mock non-null dailySummary to indicate data has loaded
+      dailySummary: { version: 1, lastUpdated: new Date().toISOString(), windowDays: 90, services: {} },
       currentStatus: null,
       loading: false,
       error: null,

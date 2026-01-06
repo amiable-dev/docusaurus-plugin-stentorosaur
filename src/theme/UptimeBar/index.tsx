@@ -154,10 +154,12 @@ export function UptimeBar({
   className,
 }: UptimeBarProps): React.ReactElement {
   // Get data and loading state from context
-  const { getMerged90Days, loading: contextLoading, error: contextError } = useStatusData();
+  const { getMerged90Days, loading: contextLoading, error: contextError, dailySummary } = useStatusData();
 
   // Use context loading/error if no data is provided (not using override props)
-  const isLoading = loading || (!providedData && contextLoading);
+  // Also consider loading if dailySummary hasn't been fetched yet (even if contextLoading is false)
+  const dataNotYetAvailable = !providedData && !dailySummary;
+  const isLoading = loading || contextLoading || dataNotYetAvailable;
   const displayError = error || (!providedData && contextError);
 
   // Roving tabindex state - track which day has focus
@@ -284,8 +286,15 @@ export function UptimeBar({
     );
   }
 
-  // Empty state
+  // Empty state - add debug info
   if (dayData.length === 0) {
+    // Log debug info
+    console.log('[UptimeBar] Empty state for', serviceName, {
+      contextLoading,
+      contextError: contextError?.message,
+      loading,
+      isLoading,
+    });
     return (
       <div
         className={`${styles.uptimeBarContainer} ${styles.empty} ${className || ''}`}
