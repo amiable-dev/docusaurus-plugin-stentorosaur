@@ -418,6 +418,7 @@ export default async function pluginStatus(
           showPerformanceMetrics,
           useDemoData: true,
           fetchUrl: options.fetchUrl,
+          statusCardLayout: options.statusCardLayout,
         };
 
         // Ensure directory exists
@@ -705,6 +706,7 @@ export default async function pluginStatus(
         showPerformanceMetrics,
         useDemoData: shouldUseDemoData,
         fetchUrl: options.fetchUrl,
+        statusCardLayout: options.statusCardLayout,
       };
 
       // Ensure directory exists

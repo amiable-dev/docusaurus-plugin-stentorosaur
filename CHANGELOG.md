@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.3] - 2026-01-06
+
+### Fixed
+
+- **Pass statusCardLayout to StatusData** - Plugin options now correctly passed to StatusPage
+  - Added `statusCardLayout` to both demo and production StatusData objects
+  - Fixes minimal layout not rendering when configured in docusaurus.config.js
+
 ## [0.21.2] - 2026-01-06
 
 ### Fixed
