@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.6] - 2026-01-06
+
+### Added
+
+- **Debug logging in StatusDataProvider** - Traces data fetching for troubleshooting
+  - Logs baseUrl, fetch responses, and parsed data structure
+  - Helps identify why "No data available" appears
+
 ## [0.21.5] - 2026-01-06
 
 ### Fixed

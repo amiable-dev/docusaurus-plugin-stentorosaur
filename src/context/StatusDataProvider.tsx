@@ -251,6 +251,7 @@ export function StatusDataProvider({
    * Fetch both data files in parallel
    */
   const fetchData = useCallback(async () => {
+    console.log('[StatusDataProvider] Starting fetch from baseUrl:', baseUrl);
     setLoading(true);
     setError(null);
     setSummaryFailed(false);
@@ -261,15 +262,25 @@ export function StatusDataProvider({
 
     try {
       // Fetch both files in parallel
+      const summaryUrl = `${baseUrl}/daily-summary.json`;
+      const currentUrl = `${baseUrl}/current.json`;
+      console.log('[StatusDataProvider] Fetching:', summaryUrl, currentUrl);
+
       const [summaryResponse, currentResponse] = await Promise.all([
-        fetch(`${baseUrl}/daily-summary.json`).catch(() => null),
-        fetch(`${baseUrl}/current.json`).catch(() => null),
+        fetch(summaryUrl).catch((e) => { console.error('[StatusDataProvider] Summary fetch error:', e); return null; }),
+        fetch(currentUrl).catch((e) => { console.error('[StatusDataProvider] Current fetch error:', e); return null; }),
       ]);
 
       // Handle summary response
+      console.log('[StatusDataProvider] Summary response:', summaryResponse?.ok, summaryResponse?.status);
       if (summaryResponse?.ok) {
         try {
           const data = await summaryResponse.json();
+          console.log('[StatusDataProvider] Parsed daily-summary:', {
+            version: data.version,
+            lastUpdated: data.lastUpdated,
+            serviceKeys: data.services ? Object.keys(data.services) : 'no services',
+          });
           setDailySummary(data);
           summaryOk = true;
 
@@ -283,10 +294,12 @@ export function StatusDataProvider({
               );
             }
           }
-        } catch {
+        } catch (e) {
+          console.error('[StatusDataProvider] JSON parse error for summary:', e);
           setSummaryFailed(true);
         }
       } else {
+        console.warn('[StatusDataProvider] Summary fetch not ok:', summaryResponse?.status);
         setSummaryFailed(true);
       }
 
@@ -307,11 +320,14 @@ export function StatusDataProvider({
 
       // Only set error if both files failed
       if (!summaryOk && !currentOk) {
+        console.error('[StatusDataProvider] Both fetches failed');
         setError(new Error('No data available'));
       }
 
+      console.log('[StatusDataProvider] Fetch complete:', { summaryOk, currentOk });
       setLoading(false);
     } catch (err) {
+      console.error('[StatusDataProvider] Unexpected error:', err);
       setError(
         err instanceof Error ? err : new Error('Network error')
       );
@@ -332,6 +348,12 @@ export function StatusDataProvider({
       // Return empty array if no data or unknown service
       const lowerServiceName = serviceName.toLowerCase();
 
+      console.log('[getMerged90Days] Called for:', serviceName, {
+        hasDailySummary: !!dailySummary,
+        hasServices: !!dailySummary?.services,
+        availableServices: dailySummary?.services ? Object.keys(dailySummary.services) : [],
+      });
+
       const entries: DayStatus[] = [];
       const today = new Date().toISOString().split('T')[0];
 
@@ -340,6 +362,8 @@ export function StatusDataProvider({
         dailySummary?.services?.[lowerServiceName] ||
         dailySummary?.services?.[serviceName] ||
         [];
+
+      console.log('[getMerged90Days] Historical entries:', historicalEntries.length);
 
       // Get today's readings from current.json
       const todayReadings = currentStatus?.readings
