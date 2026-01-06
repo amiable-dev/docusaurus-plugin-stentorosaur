@@ -574,6 +574,13 @@ export interface StatusData {
    * Theme components use this to determine how to fetch live data
    */
   dataSource?: DataSource;
+
+  /**
+   * Status card layout style (ADR-004)
+   * - 'minimal': Simplified cards with 90-day uptime bars (default)
+   * - 'detailed': Original detailed cards with more information
+   */
+  statusCardLayout?: 'minimal' | 'detailed';
 }
 
 export interface UptimeStatusSection {

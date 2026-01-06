@@ -11,6 +11,8 @@ import StatusBoard from '../StatusBoard';
 import IncidentHistory from '../IncidentHistory';
 import MaintenanceList from '../Maintenance/MaintenanceList';
 import PerformanceMetrics from '../PerformanceMetrics';
+import { SystemCard, SystemCardDetails, SystemCardUptimeBar } from '../SystemCard';
+import { StatusDataProvider } from '../../context/StatusDataProvider';
 import type {StatusData, SystemStatusFile, DataSource} from '../../types';
 import {PLUGIN_VERSION} from '../../version';
 import { buildFetchUrl } from '../../data-source-resolver.client';
@@ -32,6 +34,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     useDemoData = false,
     fetchUrl,
     dataSource,
+    statusCardLayout = 'minimal',
   } = statusData || {};
   const [systemFiles, setSystemFiles] = useState<SystemStatusFile[]>([]);
   const [activeSystemIndex, setActiveSystemIndex] = useState<number | null>(null);
@@ -210,19 +213,81 @@ export default function StatusPage({statusData}: Props): JSX.Element {
   );
   const pastMaintenance = maintenance.filter(m => m.status === 'completed');
 
+  // Determine overall status for minimal layout header
+  const allOperational = items.every((item) => item.status === 'up');
+
+  // Render minimal layout with SystemCard components
+  const renderMinimalLayout = () => (
+    <StatusDataProvider baseUrl={dataBaseUrl}>
+      <div className={styles.statusBoard}>
+        <div className={styles.header}>
+          <h1>{title}</h1>
+          {description && <p className={styles.description}>{description}</p>}
+
+          <div className={styles.overallStatus}>
+            {allOperational ? (
+              <div className={styles.statusGood}>
+                <span className={styles.statusDot} />
+                All Systems Operational
+              </div>
+            ) : (
+              <div className={styles.statusIssue}>
+                <span className={styles.statusDot} />
+                Some Systems Experiencing Issues
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.systemCards}>
+          {items.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p>No systems configured for monitoring.</p>
+            </div>
+          ) : (
+            items.map((item) => (
+              <SystemCard
+                key={item.name}
+                name={item.name}
+                status={item.status}
+                expandable
+                onExpandChange={showPerformanceMetrics && hasSystemData(item.name)
+                  ? (expanded) => expanded && handleSystemClick(item.name)
+                  : undefined
+                }
+              >
+                <SystemCardUptimeBar serviceName={item.name} />
+                {item.description && (
+                  <SystemCardDetails>
+                    <p>{item.description}</p>
+                  </SystemCardDetails>
+                )}
+              </SystemCard>
+            ))
+          )}
+        </div>
+      </div>
+    </StatusDataProvider>
+  );
+
+  // Render detailed layout with StatusBoard (legacy)
+  const renderDetailedLayout = () => (
+    <StatusBoard
+      items={items}
+      incidents={incidents}
+      maintenance={maintenance}
+      title={title}
+      description={description}
+      onSystemClick={showPerformanceMetrics && systemFiles.length > 0 ? handleSystemClick : undefined}
+      hasSystemData={showPerformanceMetrics ? hasSystemData : undefined}
+    />
+  );
+
   return (
     <Layout title={title} description={description}>
       <main className={styles.statusPage}>
         {showServices && (
-          <StatusBoard
-            items={items}
-            incidents={incidents}
-            maintenance={maintenance}
-            title={title}
-            description={description}
-            onSystemClick={showPerformanceMetrics && systemFiles.length > 0 ? handleSystemClick : undefined}
-            hasSystemData={showPerformanceMetrics ? hasSystemData : undefined}
-          />
+          statusCardLayout === 'minimal' ? renderMinimalLayout() : renderDetailedLayout()
         )}
         
         {showPerformanceMetrics && activeSystemIndex !== null && systemFiles[activeSystemIndex] && (

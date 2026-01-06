@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-01-05
+
+### Fixed
+
+- **StatusPage now renders minimal layout** - Fixed missing integration between `statusCardLayout` option and StatusPage component
+  - StatusPage now properly renders SystemCard components when `statusCardLayout: 'minimal'`
+  - Added `statusCardLayout` property to StatusData interface
+  - Added required CSS for minimal layout styles
+
 ## [0.21.0] - 2026-01-05
 
 ### Added
