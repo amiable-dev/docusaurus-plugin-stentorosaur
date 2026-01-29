@@ -808,8 +808,18 @@ export default async function pluginStatus(
           const currentData = await fs.readJson(sourceCurrentJson);
           if (Array.isArray(currentData) && currentData.length > 0) {
             console.log('[docusaurus-plugin-stentorosaur] Generating system files from current.json');
-            const systemFiles = convertReadingsToSystemFiles(currentData);
-            
+            let systemFiles = convertReadingsToSystemFiles(currentData);
+
+            // Filter to only include configured entities (Issue #62)
+            if (entities.length > 0) {
+              const configuredSystemNames = new Set(
+                entities.map(e => e.name.toLowerCase())
+              );
+              systemFiles = systemFiles.filter(sf =>
+                configuredSystemNames.has(sf.name.toLowerCase())
+              );
+            }
+
             for (const systemFile of systemFiles) {
               const fileName = systemFile.name
                 .toLowerCase()

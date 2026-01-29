@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.10] - 2026-01-29
+
+### Fixed
+
+- **Entity filtering in postBuild** - System files generated from `current.json` are now also filtered ([#62](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues/62))
+  - The v0.21.9 fix only filtered items in `loadContent()` but `postBuild()` was still generating files for all systems
+  - Now both `loadContent()` and `postBuild()` respect the entities configuration
+
 ## [0.21.9] - 2026-01-29
 
 ### Fixed
