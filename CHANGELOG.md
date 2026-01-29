@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.9] - 2026-01-29
+
+### Fixed
+
+- **Entity filtering for status data** - Systems removed from `.monitorrc.json` are now properly excluded from display ([#62](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues/62))
+  - When using `entitiesSource: 'monitorrc'`, only systems configured in `.monitorrc.json` are displayed
+  - Historical data in `current.json` for removed systems is preserved but not shown on status page
+  - Filtering is case-insensitive and respects `display: false` setting
+  - Works for all entity sources: `config`, `monitorrc`, and `hybrid`
+
 ## [0.21.8] - 2026-01-06
 
 ### Fixed

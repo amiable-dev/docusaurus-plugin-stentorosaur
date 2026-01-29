@@ -454,8 +454,18 @@ export default async function pluginStatus(
             }
             
             // Calculate stats for each system
+            // Filter to only include systems that are in the entities configuration (Issue #62)
+            const configuredSystemNames = new Set(
+              entities.map(e => e.name.toLowerCase())
+            );
+
             items = [];
             for (const [systemName, readings] of systemMap.entries()) {
+              // Skip systems not in the entities configuration
+              if (configuredSystemNames.size > 0 && !configuredSystemNames.has(systemName.toLowerCase())) {
+                continue;
+              }
+
               // Sort by timestamp (most recent first)
               readings.sort((a, b) => b.t - a.t);
               
