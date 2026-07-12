@@ -43,6 +43,21 @@ describe('entitySlug', () => {
   });
 });
 
+describe('write-site slug collision enforcement', () => {
+  it('refuses to overwrite a DIFFERENT entity sharing the slug', () => {
+    writeEntityDetail(tmp, 'API v1', [reading({svc: 'API v1'})], '2026-07-12T18:00:00.000Z');
+    expect(() =>
+      writeEntityDetail(tmp, 'API-v1', [reading({svc: 'API-v1'})], '2026-07-12T18:00:00.000Z')
+    ).toThrow(/slug collision/);
+  });
+  it('allows re-writing the SAME entity', () => {
+    writeEntityDetail(tmp, 'api', [reading()], '2026-07-12T18:00:00.000Z');
+    expect(() =>
+      writeEntityDetail(tmp, 'api', [reading({lat: 99})], '2026-07-12T18:00:00.000Z')
+    ).not.toThrow();
+  });
+});
+
 describe('assertUniqueSlugs', () => {
   it('throws listing colliding names (silent-overwrite guard)', () => {
     expect(() => assertUniqueSlugs(['API v1', 'API-v1', 'web'])).toThrow(/API v1.*API-v1.*api-v1/s);

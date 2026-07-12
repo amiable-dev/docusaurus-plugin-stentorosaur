@@ -66,6 +66,24 @@ export function writeEntityDetail(
   const dir = path.join(rootDir, 'status', 'v1', 'entities');
   fs.mkdirSync(dir, {recursive: true});
   const file = path.join(dir, `${entitySlug(name)}.json`);
+
+  // Write-site collision enforcement (not just the assertUniqueSlugs
+  // pre-flight): never overwrite a DIFFERENT entity's file that happens
+  // to share this slug.
+  if (fs.existsSync(file)) {
+    try {
+      const existing = JSON.parse(fs.readFileSync(file, 'utf8')) as {name?: unknown};
+      if (typeof existing.name === 'string' && existing.name !== name) {
+        throw new Error(
+          `slug collision: '${name}' and '${existing.name}' both map to ${path.basename(file)}`
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && /slug collision/.test(err.message)) throw err;
+      // Unreadable/corrupt existing file: overwriting with valid data is fine.
+    }
+  }
+
   fs.writeFileSync(file, JSON.stringify(detail));
   return file;
 }

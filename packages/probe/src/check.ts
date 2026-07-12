@@ -26,6 +26,10 @@ export const CHECK_DEFAULTS = {
   maxResponseTime: 30_000,
 };
 
+function sanitizePositive(value: number | undefined, fallback: number): number {
+  return Number.isFinite(value) && (value as number) > 0 ? (value as number) : fallback;
+}
+
 /** monitor.js parity. */
 export function determineStatus(
   statusCode: number,
@@ -52,9 +56,14 @@ export async function checkEndpoint(
   fetchImpl: typeof fetch = fetch
 ): Promise<CompactReading> {
   const method = target.method ?? CHECK_DEFAULTS.method;
-  const timeout = target.timeout ?? CHECK_DEFAULTS.timeout;
+  // Bounds-check numeric knobs: NaN/zero/negative fall back to defaults
+  // rather than producing instant timeouts or spurious degraded states.
+  const timeout = sanitizePositive(target.timeout, CHECK_DEFAULTS.timeout);
   const expectedCodes = target.expectedCodes ?? CHECK_DEFAULTS.expectedCodes;
-  const maxResponseTime = target.maxResponseTime ?? CHECK_DEFAULTS.maxResponseTime;
+  const maxResponseTime = sanitizePositive(
+    target.maxResponseTime,
+    CHECK_DEFAULTS.maxResponseTime
+  );
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -70,8 +79,9 @@ export async function checkEndpoint(
       headers: {'user-agent': 'stentorosaur-probe/1.0'},
     });
     statusCode = response.status;
-    // Drain the body so sockets are freed.
-    await response.arrayBuffer().catch(() => undefined);
+    // Discard the body WITHOUT buffering it (a misconfigured target could
+    // return gigabytes); cancel frees the socket immediately.
+    await response.body?.cancel().catch(() => undefined);
   } catch (err) {
     statusCode = 0;
     error = controller.signal.aborted
