@@ -332,3 +332,21 @@ describe('incidentsToAtom', () => {
     );
   });
 });
+
+describe('buildDailyRollups', () => {
+  it('groups by entity and UTC day, oldest first, with worst-state per day', () => {
+    const d1 = Date.UTC(2026, 6, 11, 10);
+    const d2 = Date.UTC(2026, 6, 12, 10);
+    const rollups = require('../src/build-summary').buildDailyRollups([
+      {t: d2, svc: 'api', state: 'up', code: 200, lat: 100},
+      {t: d1, svc: 'api', state: 'down', code: 500, lat: 0},
+      {t: d1 + 1000, svc: 'api', state: 'up', code: 200, lat: 80},
+      {t: d1, svc: 'web', state: 'up', code: 200, lat: 20},
+    ]);
+    expect(rollups.api.map((r: any) => r.date)).toEqual(['2026-07-11', '2026-07-12']);
+    expect(rollups.api[0].worst).toBe('down');
+    expect(rollups.api[0].uptime).toBe(50);
+    expect(rollups.api[1].worst).toBe('up');
+    expect(rollups.web).toHaveLength(1);
+  });
+});

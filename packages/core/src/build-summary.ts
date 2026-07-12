@@ -9,7 +9,13 @@
  * inputs (entity order is config-owned; readings are sorted internally).
  */
 
-import {aggregateSystem, calculateUptimePercent, groupReadingsBySystem} from './aggregate';
+import {
+  aggregateDayReadings,
+  aggregateSystem,
+  calculateUptimePercent,
+  groupReadingsByDate,
+  groupReadingsBySystem,
+} from './aggregate';
 import {encodeDayRollups} from './status-v1';
 import type {DayRollup, StatusIncidentV1, MaintenanceWindowV1, StatusSummary, SummaryEntity} from './status-v1';
 import type {EntityRef} from './labels';
@@ -36,6 +42,41 @@ export interface BuildSummaryInputs {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Derive per-entity daily rollups from raw readings (typically the
+ * archive window). Days are UTC; rollups are oldest→newest. The
+ * DayAggregate→DayRollup mapping mirrors the summary encoding:
+ * uptime% = fraction×100, worst = the worst state observed that day.
+ */
+export function buildDailyRollups(
+  readings: CompactReading[]
+): Record<string, DayRollup[]> {
+  const rollups: Record<string, DayRollup[]> = {};
+  const severity = {up: 0, maintenance: 1, degraded: 2, down: 3} as const;
+
+  for (const [svc, svcReadings] of groupReadingsBySystem(readings)) {
+    const byDate = groupReadingsByDate(svcReadings);
+    const days: DayRollup[] = [...byDate.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, dayReadings]) => {
+        const sorted = [...dayReadings].sort((a, b) => a.t - b.t);
+        const day = aggregateDayReadings(date, sorted);
+        const worst = sorted.reduce<CompactReading['state']>(
+          (acc, r) => (severity[r.state] > severity[acc] ? r.state : acc),
+          'up'
+        );
+        return {
+          date,
+          uptime: day.uptimeFraction * 100,
+          avgMs: day.avgLatencyMs,
+          worst,
+        };
+      });
+    rollups[svc] = days;
+  }
+  return rollups;
+}
 
 function windowUptime(rollups: DayRollup[], days: number): number | null {
   const window = rollups.slice(-days);
