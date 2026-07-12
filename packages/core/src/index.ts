@@ -8,4 +8,6 @@
 
 export * from './types';
 export * from './aggregate';
+export * from './labels';
+export * from './issues';
 export * from './status-v1';
