@@ -155,7 +155,7 @@ describe('fetchStatusIssues', () => {
     const calls: string[] = [];
     const fetchImpl = (async (url: any, init: any) => {
       calls.push(String(url));
-      expect(init.headers.authorization).toBe('Bearer ' + 'tok');
+      expect(init.headers.authorization).toBe('Bearer tok');
       const page = new URL(String(url)).searchParams.get('page');
       const label = new URL(String(url)).searchParams.get('labels');
       const pageNumber = Number(page);
