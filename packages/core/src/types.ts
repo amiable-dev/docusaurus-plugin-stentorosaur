@@ -43,8 +43,11 @@ export interface SystemAggregate {
   name: string;
   /** Readings sorted most-recent-first */
   readingsDesc: CompactReading[];
-  /** Most recent reading */
-  latest: CompactReading;
+  /**
+   * Most recent reading.  `undefined` when `readingsDesc` is empty (i.e.
+   * `aggregateSystem` was called with an empty `readings` array).
+   */
+  latest: CompactReading | undefined;
   /** Percentage of readings with state 'up' (0-100, unrounded) */
   uptimePercent: number;
   /** uptimePercent formatted as e.g. "99.98%" */

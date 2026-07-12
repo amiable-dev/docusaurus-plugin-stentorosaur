@@ -271,6 +271,9 @@ function convertReadingsToSystemFiles(readings: CompactReading[]): SystemStatusF
 
   for (const [systemName, systemReadings] of groupReadingsBySystem(readings)) {
     const agg = aggregateSystem(systemName, systemReadings);
+    // groupReadingsBySystem only creates entries when a reading exists, so
+    // agg.latest is always defined here.  The guard keeps TypeScript happy.
+    if (!agg.latest) continue;
 
     // Convert to StatusCheckHistory format (non-successful checks report 0ms)
     const history = agg.readingsDesc.map(r => ({
@@ -449,6 +452,9 @@ export default async function pluginStatus(
               }
 
               const agg = aggregateSystem(systemName, readings);
+              // groupReadingsBySystem only creates entries when a reading
+              // exists, so agg.latest is always defined here.
+              if (!agg.latest) continue;
 
               items.push({
                 name: systemName,

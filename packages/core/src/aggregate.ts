@@ -126,7 +126,12 @@ export function calculateP95(latencies: number[]): number | null {
   return sorted[Math.max(0, index)];
 }
 
-/** Count up→down transitions in reading order. */
+/**
+ * Count up→down transitions in reading order.
+ *
+ * @param readings Must be in **chronological** order (oldest first).
+ *   Passing unsorted readings will produce an inaccurate count.
+ */
 export function countIncidentTransitions(
   readings: CompactReading[]
 ): number {
@@ -142,6 +147,10 @@ export function countIncidentTransitions(
 /**
  * Aggregate one day's readings for one service. 'maintenance' counts as
  * passed; latency statistics consider only 'up' readings.
+ *
+ * @param readings Should be in **chronological** order (oldest first) for an
+ *   accurate `incidentCount`.  The function does not sort internally so that
+ *   callers can avoid unnecessary copies when they already have sorted data.
  */
 export function aggregateDayReadings(
   date: string,
