@@ -40,7 +40,9 @@ export async function fetchStatusIssues(
   const byNumber = new Map<number, IssuePayload>();
   const labelSets = [statusLabel, ...maintenanceLabels];
   for (const label of labelSets) {
-    for (let page = 1; ; page++) {
+    let page = 1;
+    let hasMorePages = true;
+    while (hasMorePages) {
       const url = `${apiBase}/repos/${owner}/${repo}/issues?labels=${encodeURIComponent(label)}&state=all&per_page=100&page=${page}`;
       const res = await fetchImpl(url, {
         headers: {
@@ -57,7 +59,8 @@ export async function fetchStatusIssues(
         if (issue.pull_request) continue; // PRs surface in the issues API
         byNumber.set(issue.number, issue);
       }
-      if (batch.length < 100) break;
+      hasMorePages = batch.length === 100;
+      page++;
     }
   }
   return [...byNumber.values()].sort((a, b) => a.number - b.number);
