@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {appendArchive, entitySlug, readAllEntityDetails, writeEntityDetail} from '../src/files';
+import {appendArchive, assertUniqueSlugs, entitySlug, readAllEntityDetails, writeEntityDetail} from '../src/files';
 import type {CompactReading} from '@stentorosaur/core';
 
 let tmp: string;
@@ -31,6 +31,25 @@ describe('entitySlug', () => {
     expect(entitySlug('My API (v2)')).toBe('my-api-v2');
     expect(entitySlug('api')).toBe('api');
   });
+  it('trims leading/trailing hyphens (Council PR #84 r=1)', () => {
+    expect(entitySlug('-api-')).toBe('api');
+    expect(entitySlug('  api  ')).toBe('api');
+  });
+  it('never returns empty: symbol-only names get a deterministic hex slug', () => {
+    const slug = entitySlug('!!!');
+    expect(slug).toMatch(/^entity-[0-9a-f]+$/);
+    expect(entitySlug('!!!')).toBe(slug); // deterministic
+    expect(entitySlug('???')).not.toBe(slug); // distinct inputs stay distinct
+  });
+});
+
+describe('assertUniqueSlugs', () => {
+  it('throws listing colliding names (silent-overwrite guard)', () => {
+    expect(() => assertUniqueSlugs(['API v1', 'API-v1', 'web'])).toThrow(/API v1.*API-v1.*api-v1/s);
+  });
+  it('passes for distinct slugs', () => {
+    expect(() => assertUniqueSlugs(['api', 'web', 'My API (v2)'])).not.toThrow();
+  });
 });
 
 describe('writeEntityDetail / readAllEntityDetails', () => {
@@ -47,6 +66,17 @@ describe('writeEntityDetail / readAllEntityDetails', () => {
       writeEntityDetail(tmp, 'api', [{...reading(), state: 'sideways' as any}], '2026-07-12T18:00:00.000Z')
     ).toThrow();
     expect(readAllEntityDetails(tmp)).toEqual([]);
+  });
+
+  it('skips malformed files instead of aborting the run (Council PR #84 r=1)', () => {
+    writeEntityDetail(tmp, 'api', [reading()], '2026-07-12T18:00:00.000Z');
+    const dir = path.join(tmp, 'status', 'v1', 'entities');
+    fs.writeFileSync(path.join(dir, 'corrupt.json'), '{not json');
+    fs.writeFileSync(path.join(dir, 'wrong-shape.json'), '{"schemaVersion":1}');
+    const errors: string[] = [];
+    const details = readAllEntityDetails(tmp, file => errors.push(path.basename(file)));
+    expect(details.map(d => d.name)).toEqual(['api']);
+    expect(errors.sort()).toEqual(['corrupt.json', 'wrong-shape.json']);
   });
 });
 

@@ -59,6 +59,32 @@ function writerOps(entity: string, value: string) {
 const noJitter = {sleep: async () => {}, jitterMs: () => 0};
 
 describe('pushWithRegenerateRetry', () => {
+  it('commits WITHOUT any ambient git identity (stateless CI runners)', async () => {
+    // Council PR #84 r=1 critical: commit must not depend on global config.
+    const dir = path.join(tmp, 'bare-identity');
+    execFileSync('git', ['clone', origin, dir], {stdio: 'pipe'});
+    // Deliberately NO git config user.* here; also hide global/system config.
+    const saved = {...process.env};
+    process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+    process.env.GIT_CONFIG_SYSTEM = '/dev/null';
+    try {
+      await pushWithRegenerateRetry({
+        workdir: dir,
+        branch: 'status-data',
+        commitMessage: 'probe: identityless',
+        ...writerOps('alpha', 'v1'),
+        ...noJitter,
+      });
+    } finally {
+      process.env.GIT_CONFIG_GLOBAL = saved.GIT_CONFIG_GLOBAL;
+      process.env.GIT_CONFIG_SYSTEM = saved.GIT_CONFIG_SYSTEM;
+      if (saved.GIT_CONFIG_GLOBAL === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+      if (saved.GIT_CONFIG_SYSTEM === undefined) delete process.env.GIT_CONFIG_SYSTEM;
+    }
+    const verify = makeClone('verify-identity');
+    expect(fs.existsSync(path.join(verify, 'status', 'v1', 'entities', 'alpha.json'))).toBe(true);
+  });
+
   it('first write initializes the branch', async () => {
     const clone = makeClone('a');
     await pushWithRegenerateRetry({

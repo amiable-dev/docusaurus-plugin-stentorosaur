@@ -166,4 +166,12 @@ describe('runChecks', () => {
     const readings = await runChecks(targets, {concurrency: 3});
     expect(readings.map(r => r.svc)).toEqual(['alpha', 'beta', 'gamma']);
   });
+
+  it('sanitizes pathological concurrency values (Council PR #84 r=1: NaN → zero workers)', async () => {
+    for (const concurrency of [NaN, 0, -1, 2.7] as number[]) {
+      const readings = await runChecks(targets, {concurrency});
+      expect(readings.map(r => r.svc)).toEqual(['alpha', 'beta', 'gamma']);
+      expect(readings.every(r => r !== undefined)).toBe(true);
+    }
+  });
 });

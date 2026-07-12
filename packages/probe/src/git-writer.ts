@@ -26,6 +26,9 @@ export interface PushWithRetryOptions {
   regenerate: (workdir: string) => Promise<void>;
   /** Push attempts before giving up (default 3) */
   maxRetries?: number;
+  /** Commit identity — CI runners have no global git config (default: probe bot) */
+  authorName?: string;
+  authorEmail?: string;
   /** Injected for deterministic tests */
   sleep?: (ms: number) => Promise<void>;
   jitterMs?: (attempt: number) => number;
@@ -63,6 +66,8 @@ export async function pushWithRegenerateRetry(
     writeInputs,
     regenerate,
     maxRetries = 3,
+    authorName = 'stentorosaur-probe',
+    authorEmail = 'probe@stentorosaur.invalid',
     sleep = defaultSleep,
     jitterMs = defaultJitter,
     beforePush,
@@ -86,7 +91,13 @@ export async function pushWithRegenerateRetry(
     await git(workdir, 'add', '-A');
     const dirty = await git(workdir, 'status', '--porcelain');
     if (dirty !== '') {
-      await git(workdir, 'commit', '-m', commitMessage);
+      // Inline identity: stateless CI runners have no global git config.
+      await git(
+        workdir,
+        '-c', `user.name=${authorName}`,
+        '-c', `user.email=${authorEmail}`,
+        'commit', '-m', commitMessage
+      );
     }
 
     if (beforePush) {

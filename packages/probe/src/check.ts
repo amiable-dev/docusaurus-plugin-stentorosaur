@@ -119,7 +119,14 @@ export async function runChecks(
   targets: CheckTarget[],
   options: RunChecksOptions = {}
 ): Promise<CompactReading[]> {
-  const {concurrency = targets.length || 1, now = Date.now(), fetchImpl} = options;
+  const {concurrency, now = Date.now(), fetchImpl} = options;
+  // Sanitize: NaN/0/negative concurrency must never yield zero workers
+  // (Array.from with NaN length resolves instantly with no checks run).
+  const requested = Number.isFinite(concurrency) && (concurrency as number) >= 1
+    ? Math.floor(concurrency as number)
+    : targets.length || 1;
+  const workers = Math.max(1, Math.min(requested, targets.length || 1));
+
   const results = new Array<CompactReading>(targets.length);
   let nextIndex = 0;
 
@@ -131,8 +138,6 @@ export async function runChecks(
     }
   }
 
-  await Promise.all(
-    Array.from({length: Math.max(1, Math.min(concurrency, targets.length))}, worker)
-  );
+  await Promise.all(Array.from({length: workers}, worker));
   return results;
 }

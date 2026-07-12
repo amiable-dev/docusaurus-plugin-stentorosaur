@@ -9,13 +9,44 @@ import path from 'node:path';
 import {entityDetailSchema} from '@stentorosaur/core';
 import type {CompactReading, EntityDetail} from '@stentorosaur/core';
 
-/** Same slug rules the plugin uses for system file names. */
+/**
+ * Same slug rules the plugin uses for system file names, hardened:
+ * leading/trailing hyphens trimmed, and a deterministic hex fallback for
+ * names that slug to nothing (e.g. all-symbol names) so we never write
+ * a bare '.json'.
+ */
 export function entitySlug(name: string): string {
-  return name
+  const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (slug === '') {
+    return `entity-${Buffer.from(name, 'utf8').toString('hex').slice(0, 16)}`;
+  }
+  return slug;
+}
+
+/**
+ * Distinct entity names may collide after slugging ('API v1' and
+ * 'API-v1' both become 'api-v1'), which would silently overwrite files
+ * and break the one-file-per-entity parallel-safety invariant. Callers
+ * run this over the configured entity list before any writes.
+ */
+export function assertUniqueSlugs(names: string[]): void {
+  const bySlug = new Map<string, string[]>();
+  for (const name of names) {
+    const slug = entitySlug(name);
+    bySlug.set(slug, [...(bySlug.get(slug) ?? []), name]);
+  }
+  const collisions = [...bySlug.entries()].filter(([, ns]) => ns.length > 1);
+  if (collisions.length > 0) {
+    throw new Error(
+      'entity names collide after slugging: ' +
+        collisions.map(([slug, ns]) => `${ns.join(' / ')} → ${slug}`).join('; ')
+    );
+  }
 }
 
 /** status/v1/entities/<slug>.json — validated on WRITE (ADR-005 §2). */
@@ -54,16 +85,25 @@ export function appendArchive(rootDir: string, reading: CompactReading): string 
 
 /**
  * Read every entity detail file back (the merged-inputs view a writer
- * regenerates the summary from after a rebase).
+ * regenerates the summary from after a rebase). A malformed file must
+ * not abort the run: it is skipped and reported via onError so one
+ * corrupted input can't take the whole data branch down.
  */
-export function readAllEntityDetails(rootDir: string): EntityDetail[] {
+export function readAllEntityDetails(
+  rootDir: string,
+  onError: (file: string, error: unknown) => void = (file, error) =>
+    console.warn(`[probe] skipping malformed entity detail ${file}:`, error)
+): EntityDetail[] {
   const dir = path.join(rootDir, 'status', 'v1', 'entities');
   if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter(f => f.endsWith('.json'))
-    .sort()
-    .map(f =>
-      entityDetailSchema.parse(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
-    );
+  const details: EntityDetail[] = [];
+  for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort()) {
+    const file = path.join(dir, f);
+    try {
+      details.push(entityDetailSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8'))));
+    } catch (error) {
+      onError(file, error);
+    }
+  }
+  return details;
 }
