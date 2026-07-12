@@ -53,13 +53,17 @@ async function runPipeline() {
     await new Promise(resolve => server.close(resolve));
   }
 
+  // Single read of current.json: sanity-check, then seed onto the same array.
+  const currentPath = path.join(DATA, 'current.json');
+  const readings = JSON.parse(fs.readFileSync(currentPath, 'utf8'));
+  if (!Array.isArray(readings) || readings.length === 0) {
+    throw new Error('monitor.js produced no readings — pipeline broken before seed step');
+  }
+
   // The mock returns 200 for alpha and 500 for beta: the harness must see
   // BOTH states, otherwise it cannot catch up/down regressions.
-  const seeded = JSON.parse(
-    fs.readFileSync(path.join(DATA, 'current.json'), 'utf8')
-  );
   const stateOf = svc =>
-    seeded.filter(r => r.svc === svc).map(r => r.state);
+    readings.filter(r => r.svc === svc).map(r => r.state);
   if (!stateOf('alpha').every(s => s === 'up')) {
     throw new Error(`pipeline sanity: alpha should be up, got ${stateOf('alpha')}`);
   }
@@ -68,11 +72,6 @@ async function runPipeline() {
   }
 
   // Seed the #62 shape: readings for a system that is NOT configured.
-  const currentPath = path.join(DATA, 'current.json');
-  const readings = JSON.parse(fs.readFileSync(currentPath, 'utf8'));
-  if (!Array.isArray(readings) || readings.length === 0) {
-    throw new Error('monitor.js produced no readings — pipeline broken before seed step');
-  }
   const now = Date.now();
   readings.push(
     {t: now - 60_000, svc: 'ghost', state: 'up', code: 200, lat: 42},

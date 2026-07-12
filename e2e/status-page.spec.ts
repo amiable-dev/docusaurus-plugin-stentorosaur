@@ -26,10 +26,15 @@ test.describe('status page renders pipeline output', () => {
   test('does NOT render systems absent from .monitorrc.json (issue #62)', async ({page}) => {
     // 'ghost' has readings in current.json but is not a configured entity;
     // v0.21.8 and earlier rendered it (#62 — the bug fixed twice).
+    // Scoped to visible main-content text (not raw HTML) so a class name
+    // or script chunk containing 'ghost' can't false-positive.
     await page.goto('/status');
     await page.waitForLoadState('networkidle');
-    const content = await page.content();
-    expect(content).not.toContain('ghost');
+    await expect(page.locator('main')).toBeVisible();
+    await expect(page.locator('main')).not.toContainText('ghost');
+    // And the configured systems ARE in the same scope, proving the
+    // negative assertion is looking at real content.
+    await expect(page.locator('main')).toContainText('alpha');
   });
 
   test('renders the plugin footer with an injected version (no version.ts)', async ({page}) => {

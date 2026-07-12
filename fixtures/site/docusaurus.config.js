@@ -1,6 +1,6 @@
 // Fixture site for the ADR-005 pipeline e2e harness (ticket #66).
 // Deliberately minimal: one page + the status plugin reading the
-// committed-data path produced by monitor.js in e2e/global-setup.mjs.
+// committed-data path produced by monitor.js in e2e/run-pipeline.mjs.
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
