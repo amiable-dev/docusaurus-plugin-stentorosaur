@@ -581,6 +581,12 @@ export interface StatusData {
    * - 'detailed': Original detailed cards with more information
    */
   statusCardLayout?: 'minimal' | 'detailed';
+
+  /**
+   * Plugin version, injected from package.json at load time so theme
+   * components never need a generated version module (ADR-005 §11)
+   */
+  pluginVersion?: string;
 }
 
 export interface UptimeStatusSection {

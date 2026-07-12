@@ -12,3 +12,5 @@ dist/
 build/
 .cache/
 status-data/
+.council/logs/
+.epic-loop/reviews/

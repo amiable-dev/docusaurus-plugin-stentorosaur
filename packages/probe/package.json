@@ -1,0 +1,11 @@
+{
+  "name": "@stentorosaur/probe",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Monitoring engine and I/O for Stentorosaur (ADR-005). Shell package — populated by epic #63; no entry point until the build tooling lands with the first real module.",
+  "license": "MIT",
+  "author": "Amiable Development <dev@amiable.dev>",
+  "engines": {
+    "node": ">=20.0"
+  }
+}
