@@ -23,19 +23,18 @@ import React, {
   useMemo,
   type ReactNode,
 } from 'react';
+import {
+  aggregateDayReadings,
+  calculateStatusFromUptime,
+  groupReadingsByDate,
+} from '@stentorosaur/core';
+import type { CompactReading } from '@stentorosaur/core';
 import type { DailySummaryFile, DailySummaryEntry } from '../types';
 
 /**
- * Compact reading format from current.json
+ * Compact reading format from current.json (shared core type, ADR-005)
  */
-interface CurrentReading {
-  t: number;
-  svc: string;
-  state: 'up' | 'down' | 'degraded' | 'maintenance';
-  code: number;
-  lat: number;
-  err?: string;
-}
+type CurrentReading = CompactReading;
 
 /**
  * Current status file structure
@@ -103,106 +102,28 @@ const StatusDataContext = createContext<StatusDataContextValue | undefined>(
 );
 
 /**
- * Uptime thresholds for status calculation (from ADR-004)
- */
-const THRESHOLDS = {
-  OPERATIONAL: 99, // >= 99% = operational
-  DEGRADED: 95, // >= 95% = degraded, < 95% = outage
-};
-
-/**
  * Stale data threshold (24 hours in milliseconds)
  */
 const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Calculate status from uptime percentage
- */
-function calculateStatus(
-  uptimePercent: number,
-  checksTotal: number
-): DayStatus['status'] {
-  if (checksTotal === 0) return 'no-data';
-  if (uptimePercent >= THRESHOLDS.OPERATIONAL) return 'operational';
-  if (uptimePercent >= THRESHOLDS.DEGRADED) return 'degraded';
-  return 'outage';
-}
-
-/**
- * Calculate p95 latency from an array of latency values
- */
-function calculateP95(latencies: number[]): number | null {
-  if (latencies.length === 0) return null;
-  const sorted = [...latencies].sort((a, b) => a - b);
-  const index = Math.ceil(sorted.length * 0.95) - 1;
-  return sorted[Math.max(0, index)];
-}
-
-/**
- * Group readings by date for a specific service
- */
-function groupReadingsByDate(
-  readings: CurrentReading[],
-  serviceName: string
-): Map<string, CurrentReading[]> {
-  const groups = new Map<string, CurrentReading[]>();
-  const lowerServiceName = serviceName.toLowerCase();
-
-  for (const reading of readings) {
-    if (reading.svc.toLowerCase() !== lowerServiceName) continue;
-
-    const date = new Date(reading.t).toISOString().split('T')[0];
-    if (!groups.has(date)) {
-      groups.set(date, []);
-    }
-    groups.get(date)!.push(reading);
-  }
-
-  return groups;
-}
-
-/**
  * Aggregate readings for a specific day into a DayStatus
+ * (math lives in @stentorosaur/core, ADR-005)
  */
-function aggregateDayReadings(
+function dayReadingsToDayStatus(
   date: string,
   readings: CurrentReading[]
 ): DayStatus {
-  const checksTotal = readings.length;
-  const checksPassed = readings.filter(
-    (r) => r.state === 'up' || r.state === 'maintenance'
-  ).length;
-  const uptimePercent =
-    checksTotal > 0 ? (checksPassed / checksTotal) * 100 : 0;
-
-  const latencies = readings.filter((r) => r.state === 'up').map((r) => r.lat);
-
-  const avgLatencyMs =
-    latencies.length > 0
-      ? Math.round(
-          latencies.reduce((sum, lat) => sum + lat, 0) / latencies.length
-        )
-      : null;
-
-  const p95LatencyMs = calculateP95(latencies);
-
-  // Count incidents (transitions from up to down)
-  let incidentCount = 0;
-  for (let i = 1; i < readings.length; i++) {
-    if (readings[i - 1].state === 'up' && readings[i].state === 'down') {
-      incidentCount++;
-    }
-  }
-
+  const day = aggregateDayReadings(date, readings);
   return {
-    date,
-    uptimePercent,
-    incidents: incidentCount,
-    checksTotal,
-    checksPassed,
-    status: calculateStatus(uptimePercent, checksTotal),
-    avgLatencyMs,
-    p95LatencyMs,
+    date: day.date,
+    uptimePercent: day.uptimeFraction * 100,
+    incidents: day.incidentCount,
+    checksTotal: day.checksTotal,
+    checksPassed: day.checksPassed,
+    status: day.status,
+    avgLatencyMs: day.avgLatencyMs,
+    p95LatencyMs: day.p95LatencyMs,
   };
 }
 
@@ -217,7 +138,7 @@ function summaryEntryToDayStatus(entry: DailySummaryEntry): DayStatus {
     incidents: entry.incidentCount,
     checksTotal: entry.checksTotal,
     checksPassed: entry.checksPassed,
-    status: calculateStatus(uptimePercent, entry.checksTotal),
+    status: calculateStatusFromUptime(uptimePercent, entry.checksTotal),
     avgLatencyMs: entry.avgLatencyMs,
     p95LatencyMs: entry.p95LatencyMs,
   };
@@ -376,7 +297,7 @@ export function StatusDataProvider({
       if (todayReadings.length > 0) {
         // Sort by timestamp for accurate incident counting
         todayReadings.sort((a, b) => a.t - b.t);
-        entries.push(aggregateDayReadings(today, todayReadings));
+        entries.push(dayReadingsToDayStatus(today, todayReadings));
       }
 
       // Add historical entries (filter out today if it exists in summary)
