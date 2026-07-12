@@ -23,7 +23,12 @@ export const entityStateSchema = z.enum(['up', 'degraded', 'down', 'maintenance'
 const isoDateTime = z.string().refine(s => !Number.isNaN(Date.parse(s)), {
   message: 'must be an ISO 8601 datetime',
 });
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD');
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD')
+  .refine(s => !Number.isNaN(Date.parse(`${s}T00:00:00Z`)), {
+    message: 'must be a valid calendar date',
+  });
 
 /**
  * One-character worst-state codes for the compact day encoding.

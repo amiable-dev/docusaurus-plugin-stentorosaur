@@ -148,6 +148,12 @@ describe('summary round-trip', () => {
     expect(() => parseSummary(bad)).toThrow(/status/);
   });
 
+  it('rejects a semantically invalid daysEnd (e.g. month 13)', () => {
+    const bad = buildFixtureSummary() as any;
+    bad.entities[0].daysEnd = '2026-13-45';
+    expect(() => parseSummary(bad)).toThrow();
+  });
+
   it('rejects a missing schemaVersion with an actionable error', () => {
     const {schemaVersion: _drop, ...rest} = buildFixtureSummary() as any;
     expect(() => parseSummary(rest)).toThrow(/schemaVersion/);
