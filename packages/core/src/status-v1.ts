@@ -140,6 +140,10 @@ export const rawIncidentBodySchema = z.object({
 
 export type StatusSummary = z.infer<typeof summarySchema>;
 export type SummaryEntity = z.infer<typeof summaryEntitySchema>;
+export type StatusIncidentV1 = z.infer<typeof incidentSchema>;
+export type MaintenanceWindowV1 = z.infer<typeof maintenanceWindowSchema>;
+export type EntityDetail = z.infer<typeof entityDetailSchema>;
+export type RawIncidentBody = z.infer<typeof rawIncidentBodySchema>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CODE_BY_STATE = Object.fromEntries(
@@ -179,10 +183,6 @@ export function decodeDayRollups(
     worst: WORST_CODES[code],
   }));
 }
-export type StatusIncidentV1 = z.infer<typeof incidentSchema>;
-export type MaintenanceWindowV1 = z.infer<typeof maintenanceWindowSchema>;
-export type EntityDetail = z.infer<typeof entityDetailSchema>;
-export type RawIncidentBody = z.infer<typeof rawIncidentBodySchema>;
 
 /**
  * Gate on schemaVersion BEFORE full validation so version skew produces
