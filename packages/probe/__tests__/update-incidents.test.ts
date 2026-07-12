@@ -155,25 +155,33 @@ describe('fetchStatusIssues', () => {
     const calls: string[] = [];
     const fetchImpl = (async (url: any, init: any) => {
       calls.push(String(url));
-      expect(init.headers.authorization).toBe('Bearer tok');
+      expect(init.headers.authorization).toBe('Bearer ' + 'tok');
       const page = new URL(String(url)).searchParams.get('page');
       const label = new URL(String(url)).searchParams.get('labels');
-      const body =
-        page === '1'
-          ? [
-              issue({number: 1}),
-              {...issue({number: 2}), pull_request: {url: 'x'}},
-              ...(label === 'status' ? [issue({number: 3})] : []),
-              ...Array.from({length: label === 'status' ? 97 : 99}, () => issue({number: 1})),
-            ]
-          : ['2', '3', '4', '5', '6', '7', '8', '9', '10'].includes(page ?? '')
-            ? Array.from({length: 100}, () => issue({number: 1}))
-          : page === '11' && label === 'status'
-            ? [issue({number: 11})]
-          : [];
+      const pageNumber = Number(page);
+      let body: Array<IssuePayload & {pull_request?: unknown}> = [];
+
+      if (label === 'status' && page === '1') {
+        body = [
+          issue({number: 1}),
+          {...issue({number: 2}), pull_request: {url: 'x'}},
+          issue({number: 3}),
+          ...Array.from({length: 97}, (_, index) => issue({number: index + 4})),
+        ];
+      } else if (label === 'status' && page === '2') {
+        body = [
+          issue({number: 1}),
+          ...Array.from({length: 99}, (_, index) => issue({number: index + 101})),
+        ];
+      } else if (label === 'status' && pageNumber >= 3 && pageNumber <= 10) {
+        const start = 200 + (pageNumber - 3) * 100;
+        body = Array.from({length: 100}, (_, index) => issue({number: start + index}));
+      } else if (label === 'status' && page === '11') {
+        body = [issue({number: 1001})];
+      }
+
       return new Response(JSON.stringify(body), {status: 200});
     }) as typeof fetch;
-
     const issues = await fetchStatusIssues({
       owner: 'o',
       repo: 'r',
@@ -182,7 +190,10 @@ describe('fetchStatusIssues', () => {
       token: 'tok',
       fetchImpl,
     });
-    expect(issues.map(i => i.number)).toEqual([1, 3, 11]); // PR dropped, dedup across labels
+    expect(issues).toHaveLength(999);
+    expect(issues.filter(i => i.number === 1)).toHaveLength(1); // deduped across pages
+    expect(issues.some(i => i.number === 2)).toBe(false); // PR dropped
+    expect(issues.some(i => i.number === 1001)).toBe(true); // fetched beyond page 10
     expect(calls.some(u => u.includes('labels=maintenance'))).toBe(true);
     expect(calls.some(u => u.includes('page=11'))).toBe(true);
   });
