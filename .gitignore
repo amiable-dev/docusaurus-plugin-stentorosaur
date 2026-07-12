@@ -14,3 +14,11 @@ build/
 status-data/
 .council/logs/
 .epic-loop/reviews/
+
+# e2e harness artifacts (ticket #66)
+fixtures/site/build/
+fixtures/site/status-data/
+fixtures/site/.docusaurus/
+playwright-report/
+test-results/
+.epic-loop/

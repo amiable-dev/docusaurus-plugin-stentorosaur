@@ -1,0 +1,20 @@
+{
+  "systems": [
+    {
+      "system": "alpha",
+      "url": "http://127.0.0.1:39990/alpha",
+      "method": "GET",
+      "timeout": 5000,
+      "expectedCodes": [200],
+      "maxResponseTime": 5000
+    },
+    {
+      "system": "beta",
+      "url": "http://127.0.0.1:39990/beta",
+      "method": "GET",
+      "timeout": 5000,
+      "expectedCodes": [200],
+      "maxResponseTime": 5000
+    }
+  ]
+}

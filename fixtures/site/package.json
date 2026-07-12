@@ -1,0 +1,21 @@
+{
+  "name": "stentorosaur-fixture-site",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Fixture Docusaurus site for the ADR-005 pipeline e2e harness (ticket #66). Never published.",
+  "scripts": {
+    "build": "docusaurus build"
+  },
+  "dependencies": {
+    "@amiable-dev/docusaurus-plugin-stentorosaur": "*",
+    "@docusaurus/core": "^3.5.0",
+    "@docusaurus/preset-classic": "^3.5.0",
+    "@mdx-js/react": "^3.0.0",
+    "prism-react-renderer": "^2.3.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "engines": {
+    "node": ">=20.0"
+  }
+}
