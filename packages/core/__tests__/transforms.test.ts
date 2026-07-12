@@ -173,6 +173,26 @@ describe('maintenance parsing (deterministic: now injected)', () => {
       bodyHtml: '<p>Read-only mode.</p>',
     });
   });
+  it('accepts frontmatter-only maintenance bodies', () => {
+    const win = issueToMaintenanceV1(
+      issue({
+        number: 103,
+        title: 'API maintenance',
+        labels: [{name: 'maintenance'}, {name: 'system:api'}],
+        body: '---\nstart: 2026-07-14T02:00:00Z\nend: 2026-07-14T04:00:00Z\n---',
+      }),
+      {entities: ENTITIES, labelParser: parser, renderHtml: md => `<p>${md}</p>`, now: new Date(NOW)}
+    );
+    expect(win).toEqual({
+      issueNumber: 103,
+      title: 'API maintenance',
+      start: '2026-07-14T02:00:00Z',
+      end: '2026-07-14T04:00:00Z',
+      status: 'upcoming',
+      entities: ['api'],
+      bodyHtml: '<p></p>',
+    });
+  });
 });
 
 describe('buildSummary', () => {

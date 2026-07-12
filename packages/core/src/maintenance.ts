@@ -71,12 +71,17 @@ export function extractFrontmatter(
   }
 
   const cleanedBody = lines.slice(contentStart).join('\n');
-  const match = cleanedBody.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
-  if (!match) {
+  const cleanedLines = cleanedBody.split('\n');
+  if (cleanedLines[0]?.trim() !== '---') {
+    return {frontmatter: {}, content: cleanedBody};
+  }
+  const closingDelimiterIndex = cleanedLines.findIndex((line, index) => index > 0 && line.trim() === '---');
+  if (closingDelimiterIndex === -1) {
     return {frontmatter: {}, content: cleanedBody};
   }
 
-  const [, frontmatterText, content] = match;
+  const frontmatterText = cleanedLines.slice(1, closingDelimiterIndex).join('\n');
+  const content = cleanedLines.slice(closingDelimiterIndex + 1).join('\n');
   const frontmatter: MaintenanceFrontmatter = {};
   const frontmatterLines = frontmatterText.split('\n');
 
