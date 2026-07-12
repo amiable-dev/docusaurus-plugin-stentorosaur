@@ -1,0 +1,13 @@
+{
+  "pr": 78,
+  "head_sha": "e5ecb580f61e82fd80360926a3cf4c80b20db10a",
+  "ts": "2026-07-12T15:40:52.904Z",
+  "reviewers_run": [],
+  "bundle": [],
+  "drops": [],
+  "council": {
+    "verdict": "fail",
+    "confidence": 0.27,
+    "verification_id": "be53c199"
+  }
+}

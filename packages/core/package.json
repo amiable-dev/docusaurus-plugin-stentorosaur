@@ -2,10 +2,9 @@
   "name": "@stentorosaur/core",
   "private": true,
   "version": "0.0.0",
-  "description": "Pure schemas and aggregation logic for Stentorosaur (ADR-005). Shell package — populated by epic #63.",
+  "description": "Pure schemas and aggregation logic for Stentorosaur (ADR-005). Shell package — populated by epic #63; no entry point until the build tooling lands with the first real module.",
   "license": "MIT",
   "author": "Amiable Development <dev@amiable.dev>",
-  "main": "src/index.ts",
   "engines": {
     "node": ">=20.0"
   }

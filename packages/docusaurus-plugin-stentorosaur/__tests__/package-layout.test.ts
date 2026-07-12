@@ -42,6 +42,22 @@ describe('version injection (no generated version.ts)', () => {
     expect(content.pluginVersion).toBe(pkg.version);
   });
 
+  it('resolves the PACKAGE version, not the monorepo root version', async () => {
+    // Guards the resolution of require('../package.json') from src/ and
+    // lib/: both must land on the plugin package manifest, never the
+    // private workspace root (version 0.0.0).
+    const rootPkg = JSON.parse(
+      realFs.readFileSync(
+        path.join(pkgDir, '..', '..', 'package.json'),
+        'utf8'
+      )
+    );
+    const plugin = await pluginStatusPage(mockContext, {useDemoData: true, owner: 'o', repo: 'r'});
+    const content = await plugin.loadContent!();
+    expect(content.pluginVersion).not.toBe(rootPkg.version);
+    expect(content.pluginVersion).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
   it('generated version artifacts are gone', () => {
     expect(realFs.existsSync(path.join(pkgDir, 'src', 'version.ts'))).toBe(false);
     expect(
@@ -80,5 +96,22 @@ describe('package layout resolves from workspace location', () => {
   it('README and LICENSE ship with the package', () => {
     expect(realFs.existsSync(path.join(pkgDir, 'README.md'))).toBe(true);
     expect(realFs.existsSync(path.join(pkgDir, 'LICENSE'))).toBe(true);
+  });
+
+  it('postinstall script exists, is self-contained, and its Makefile template ships', () => {
+    // Council finding (PR #78 r=1): postinstall must not depend on the
+    // removed generate-version script, and everything it references at
+    // consumer-install time must be inside the published tarball.
+    const postinstallRel = (pkg.scripts.postinstall as string).replace(/^node\s+/, '');
+    const postinstallPath = path.join(pkgDir, postinstallRel);
+    expect(realFs.existsSync(postinstallPath)).toBe(true);
+    const src = realFs.readFileSync(postinstallPath, 'utf8');
+    expect(src).not.toMatch(/generate-version/);
+    expect(src).not.toMatch(/src\/version/);
+    // The only package-internal asset it references:
+    expect(realFs.existsSync(path.join(pkgDir, 'templates', 'Makefile.status'))).toBe(true);
+    // And templates/ is in the publish whitelist:
+    expect(pkg.files).toContain('templates');
+    expect(pkg.files).toContain('scripts');
   });
 });

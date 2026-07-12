@@ -1,0 +1,22 @@
+{
+  "evidence_present": true,
+  "tier_max_chars": 30000,
+  "max_evidence_chars": 6000,
+  "items": [
+    {
+      "request_index": 0,
+      "evidence_id": "auto-0",
+      "source": "epic-loop/move-purity-bundle@pr78-ticket64",
+      "strength": "informational",
+      "format": "markdown",
+      "content_chars_submitted": 2744,
+      "content_chars_rendered": 2744,
+      "kept": true,
+      "rendered_position": 1,
+      "drop_reason": null,
+      "content": "## Move-purity verification (mechanical facts)\n- 145 files are pure renames (R100, byte-identical) under git rename detection (`git diff -M --name-status`)\n- package-lock.json regenerated for workspace layout (not hand-edited)\n- Only 3 moved files carry edits (R098/R099). COMPLETE edit hunks:\n### src/index.ts\n```diff\n@@ -15,6 +15,14 @@\n \n export {validateOptions} from './options';\n \n+/**\n+ * Plugin version read from package.json at load time (server-side only).\n+ * Threaded to theme components via StatusData.pluginVersion \u2014 replaces\n+ * the generated src/version.ts (ADR-005 \u00a711).\n+ */\n+// eslint-disable-next-line @typescript-eslint/no-var-requires\n+const PLUGIN_VERSION: string = require('../package.json').version;\n+\n /**\n  * System entry in .monitorrc.json\n  */\n@@ -419,6 +427,7 @@\n           useDemoData: true,\n           fetchUrl: options.fetchUrl,\n           statusCardLayout: options.statusCardLayout,\n+          pluginVersion: PLUGIN_VERSION,\n         };\n \n@@ -717,6 +726,7 @@\n         useDemoData: shouldUseDemoData,\n         fetchUrl: options.fetchUrl,\n         statusCardLayout: options.statusCardLayout,\n+        pluginVersion: PLUGIN_VERSION,\n       };\n```\n### src/types.ts\n```diff\n@@ -581,6 +581,12 @@ export interface StatusData {\n    */\n   statusCardLayout?: 'minimal' | 'detailed';\n+\n+  /**\n+   * Plugin version, injected from package.json at load time so theme\n+   * components never need a generated version module (ADR-005 \u00a711)\n+   */\n+  pluginVersion?: string;\n }\n```\n### src/theme/StatusPage/index.tsx\n```diff\n@@ -14,7 +14,6 @@\n import type {StatusData, SystemStatusFile, DataSource} from '../../types';\n-import {PLUGIN_VERSION} from '../../version';\n import { buildFetchUrl } from '../../data-source-resolver.client';\n@@ -35,6 +34,7 @@\n     statusCardLayout = 'minimal',\n+    pluginVersion,\n   } = statusData || {};\n@@ -342,7 +342,7 @@\n-              Docusaurus Stentorosaur Plugin v{PLUGIN_VERSION}\n+              Docusaurus Stentorosaur Plugin{pluginVersion ? ` v${pluginVersion}` : ''}\n```\n## Deleted files\n- scripts/generate-version.js and src/version.ts (the codegen hack this PR removes)\n## Gate results\n- typecheck clean; 40 suites / 730 tests pass; workspace build emits lib/ + 19 copied CSS files\n- New TDD test __tests__/package-layout.test.ts written failing first (pluginVersion + artifact removal + layout smoke)\n- Copilot bypassed after 21 min non-engagement (B3); Council is sole reviewer gate\n\n## Reviewer note on target_paths scoping\nThe three edited-during-move source files (index.ts/types.ts/StatusPage) are EXCLUDED from target_paths because their full content is pre-existing code that merely moved; their complete edit hunks are reproduced above. All other changed files are in target_paths."
+    }
+  ],
+  "warnings": [],
+  "ordering_rule": "strength_then_source_then_id"
+}
