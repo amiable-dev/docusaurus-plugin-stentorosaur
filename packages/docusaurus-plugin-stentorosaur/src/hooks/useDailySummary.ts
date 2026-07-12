@@ -17,19 +17,17 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import {
+  aggregateDayReadings as coreAggregateDayReadings,
+  groupReadingsByDate,
+} from '@stentorosaur/core';
+import type { CompactReading } from '@stentorosaur/core';
 import type { DailySummaryFile, DailySummaryEntry } from '../types';
 
 /**
- * Compact reading format from current.json
+ * Compact reading format from current.json (shared core type, ADR-005)
  */
-interface CurrentReading {
-  t: number;
-  svc: string;
-  state: 'up' | 'down' | 'degraded' | 'maintenance';
-  code: number;
-  lat: number;
-  err?: string;
-}
+type CurrentReading = CompactReading;
 
 /**
  * Options for useDailySummary hook
@@ -60,73 +58,20 @@ export interface UseDailySummaryResult {
 }
 
 /**
- * Calculate p95 latency from an array of latency values
- */
-function calculateP95(latencies: number[]): number | null {
-  if (latencies.length === 0) return null;
-  const sorted = [...latencies].sort((a, b) => a - b);
-  const index = Math.ceil(sorted.length * 0.95) - 1;
-  return sorted[Math.max(0, index)];
-}
-
-/**
  * Aggregate readings for a specific day into a DailySummaryEntry
+ * (math lives in @stentorosaur/core, ADR-005)
  */
 function aggregateDayReadings(date: string, readings: CurrentReading[]): DailySummaryEntry {
-  const checksTotal = readings.length;
-  const checksPassed = readings.filter(r => r.state === 'up' || r.state === 'maintenance').length;
-  const uptimePct = checksTotal > 0 ? checksPassed / checksTotal : 0;
-
-  const latencies = readings
-    .filter(r => r.state === 'up')
-    .map(r => r.lat);
-
-  const avgLatencyMs = latencies.length > 0
-    ? Math.round(latencies.reduce((sum, lat) => sum + lat, 0) / latencies.length)
-    : null;
-
-  const p95LatencyMs = calculateP95(latencies);
-
-  // Count incidents (transitions from up to down)
-  let incidentCount = 0;
-  for (let i = 1; i < readings.length; i++) {
-    if (readings[i - 1].state === 'up' && readings[i].state === 'down') {
-      incidentCount++;
-    }
-  }
-
+  const day = coreAggregateDayReadings(date, readings);
   return {
-    date,
-    uptimePct,
-    avgLatencyMs,
-    p95LatencyMs,
-    checksTotal,
-    checksPassed,
-    incidentCount,
+    date: day.date,
+    uptimePct: day.uptimeFraction,
+    avgLatencyMs: day.avgLatencyMs,
+    p95LatencyMs: day.p95LatencyMs,
+    checksTotal: day.checksTotal,
+    checksPassed: day.checksPassed,
+    incidentCount: day.incidentCount,
   };
-}
-
-/**
- * Group readings by date (for aggregating current.json)
- */
-function groupReadingsByDate(
-  readings: CurrentReading[],
-  serviceName: string
-): Map<string, CurrentReading[]> {
-  const groups = new Map<string, CurrentReading[]>();
-  const lowerServiceName = serviceName.toLowerCase();
-
-  for (const reading of readings) {
-    if (reading.svc.toLowerCase() !== lowerServiceName) continue;
-
-    const date = new Date(reading.t).toISOString().split('T')[0];
-    if (!groups.has(date)) {
-      groups.set(date, []);
-    }
-    groups.get(date)!.push(reading);
-  }
-
-  return groups;
 }
 
 /**

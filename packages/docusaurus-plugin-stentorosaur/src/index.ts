@@ -8,6 +8,12 @@
 import path from 'path';
 import fs from 'fs-extra';
 import {normalizeUrl} from '@docusaurus/utils';
+import {
+  aggregateSystem,
+  averageRecentResponseTime,
+  groupReadingsBySystem,
+} from '@stentorosaur/core';
+import type {CompactReading} from '@stentorosaur/core';
 import type {LoadContext, Plugin} from '@docusaurus/types';
 import type {PluginOptions, StatusData, StatusItem, SystemStatusFile, StatusIncident, ScheduledMaintenance, Entity} from './types';
 import {GitHubStatusService} from './github-service';
@@ -229,15 +235,12 @@ async function readSystemFiles(systemsDir: string): Promise<Partial<StatusItem>[
         
         // Calculate average response time from recent history (fallback if timeDay not set)
         let avgResponseTime: number | undefined;
-        
+
         // Prefer calculated time-window averages
         if (data.timeDay !== undefined && data.timeDay > 0) {
           avgResponseTime = data.timeDay;
         } else if (data.history && data.history.length > 0) {
-          // Fallback: calculate from recent history
-          const recentChecks = data.history.slice(0, 10); // Last 10 checks
-          const sum = recentChecks.reduce((acc, check) => acc + check.responseTime, 0);
-          avgResponseTime = Math.round(sum / recentChecks.length);
+          avgResponseTime = averageRecentResponseTime(data.history);
         }
         
         systemData.push({
@@ -263,54 +266,35 @@ async function readSystemFiles(systemsDir: string): Promise<Partial<StatusItem>[
 /**
  * Convert compact readings from current.json to SystemStatusFile format
  */
-function convertReadingsToSystemFiles(readings: any[]): SystemStatusFile[] {
-  // Group readings by system
-  const systemMap = new Map<string, any[]>();
-  for (const reading of readings) {
-    if (!systemMap.has(reading.svc)) {
-      systemMap.set(reading.svc, []);
-    }
-    systemMap.get(reading.svc)!.push(reading);
-  }
-  
+function convertReadingsToSystemFiles(readings: CompactReading[]): SystemStatusFile[] {
   const systemFiles: SystemStatusFile[] = [];
-  
-  for (const [systemName, systemReadings] of systemMap.entries()) {
-    // Sort by timestamp (most recent first)
-    systemReadings.sort((a, b) => b.t - a.t);
-    
-    const latest = systemReadings[0];
-    
-    // Convert to StatusCheckHistory format
-    const history = systemReadings.map(r => ({
+
+  for (const [systemName, systemReadings] of groupReadingsBySystem(readings)) {
+    const agg = aggregateSystem(systemName, systemReadings);
+    // groupReadingsBySystem only creates entries when a reading exists, so
+    // agg.latest is always defined here.  The guard keeps TypeScript happy.
+    if (!agg.latest) continue;
+
+    // Convert to StatusCheckHistory format (non-successful checks report 0ms)
+    const history = agg.readingsDesc.map(r => ({
       timestamp: new Date(r.t).toISOString(),
       status: r.state,
       responseTime: r.state === 'up' && r.code >= 200 && r.code < 300 ? r.lat : 0,
       code: r.code,
     }));
-    
-    // Calculate uptime percentage
-    const upReadings = systemReadings.filter(r => r.state === 'up').length;
-    const uptime = systemReadings.length > 0 ? (upReadings / systemReadings.length) * 100 : 0;
-    
-    // Calculate average response time from successful readings only
-    const successfulReadings = systemReadings.filter(r => r.state === 'up' && r.code >= 200 && r.code < 300);
-    const avgResponseTime = successfulReadings.length > 0
-      ? Math.round(successfulReadings.reduce((sum: number, r: any) => sum + r.lat, 0) / successfulReadings.length)
-      : undefined;
-    
+
     systemFiles.push({
       name: systemName,
       url: '', // URL not stored in compact format
-      currentStatus: latest.state,
-      lastChecked: new Date(latest.t).toISOString(),
+      currentStatus: agg.latest.state,
+      lastChecked: new Date(agg.latest.t).toISOString(),
       history,
-      uptime: `${(Math.round(uptime * 100) / 100).toFixed(2)}%`,
-      uptimeDay: `${(Math.round(uptime * 100) / 100).toFixed(2)}%`,
-      timeDay: avgResponseTime,
+      uptime: agg.uptimeFormatted,
+      uptimeDay: agg.uptimeFormatted,
+      timeDay: agg.avgResponseTime,
     });
   }
-  
+
   return systemFiles;
 }
 
@@ -453,51 +437,33 @@ export default async function pluginStatus(
               `[docusaurus-plugin-stentorosaur] Found current.json with ${currentData.length} readings, aggregating...`
             );
             
-            // Group readings by system
-            const systemMap = new Map<string, any[]>();
-            for (const reading of currentData) {
-              if (!systemMap.has(reading.svc)) {
-                systemMap.set(reading.svc, []);
-              }
-              systemMap.get(reading.svc)!.push(reading);
-            }
-            
-            // Calculate stats for each system
             // Filter to only include systems that are in the entities configuration (Issue #62)
             const configuredSystemNames = new Set(
               entities.map(e => e.name.toLowerCase())
             );
 
             items = [];
-            for (const [systemName, readings] of systemMap.entries()) {
+            for (const [systemName, readings] of groupReadingsBySystem(
+              currentData as CompactReading[]
+            )) {
               // Skip systems not in the entities configuration
               if (configuredSystemNames.size > 0 && !configuredSystemNames.has(systemName.toLowerCase())) {
                 continue;
               }
 
-              // Sort by timestamp (most recent first)
-              readings.sort((a, b) => b.t - a.t);
-              
-              const latest = readings[0];
-              
-              // Calculate uptime (percentage of 'up' readings)
-              const upReadings = readings.filter(r => r.state === 'up').length;
-              const uptime = readings.length > 0 ? (upReadings / readings.length) * 100 : 0;
-              
-              // Calculate average response time (ONLY from successful 'up' readings)
-              const successfulReadings = readings.filter(r => r.state === 'up' && r.code >= 200 && r.code < 300);
-              const avgResponseTime = successfulReadings.length > 0
-                ? Math.round(successfulReadings.reduce((sum: number, r: any) => sum + r.lat, 0) / successfulReadings.length)
-                : undefined;
-              
+              const agg = aggregateSystem(systemName, readings);
+              // groupReadingsBySystem only creates entries when a reading
+              // exists, so agg.latest is always defined here.
+              if (!agg.latest) continue;
+
               items.push({
                 name: systemName,
-                status: latest.state,
-                lastChecked: new Date(latest.t).toISOString(),
-                responseTime: avgResponseTime,
-                uptime: `${(Math.round(uptime * 100) / 100).toFixed(2)}%`,
+                status: agg.latest.state,
+                lastChecked: new Date(agg.latest.t).toISOString(),
+                responseTime: agg.avgResponseTime,
+                uptime: agg.uptimeFormatted,
                 incidentCount: 0,
-                history: readings.map(r => ({
+                history: agg.readingsDesc.map(r => ({
                   timestamp: new Date(r.t).toISOString(),
                   status: r.state,
                   code: r.code,

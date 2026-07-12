@@ -38,6 +38,8 @@ module.exports = {
     }],
   },
   moduleNameMapper: {
+    // Resolve the workspace-sibling core package from source (no build needed in tests)
+    '^@stentorosaur/core$': '<rootDir>/../core/src',
     // Mock CSS modules
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
     // Mock @theme modules
