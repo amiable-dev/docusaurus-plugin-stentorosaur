@@ -19,8 +19,11 @@ export interface MaintenanceFrontmatter {
 /**
  * Parse human-friendly date strings to ISO 8601.
  * ISO passthrough, '@tomorrow 2am UTC' shorthand, relative ('+2h').
+ *
+ * `referenceDate` is REQUIRED: this module is chartered deterministic
+ * (ADR-005 §5) — callers inject their `now`, never the system clock.
  */
-export function parseHumanDate(dateStr: string, referenceDate?: Date): string | null {
+export function parseHumanDate(dateStr: string, referenceDate: Date): string | null {
   if (!dateStr || typeof dateStr !== 'string') {
     return null;
   }
@@ -35,7 +38,7 @@ export function parseHumanDate(dateStr: string, referenceDate?: Date): string | 
     processedStr = processedStr.substring(1);
   }
 
-  const parsed = chrono.parseDate(processedStr, referenceDate ?? new Date());
+  const parsed = chrono.parseDate(processedStr, referenceDate);
   if (parsed) {
     return parsed.toISOString();
   }
@@ -53,7 +56,7 @@ export function parseHumanDate(dateStr: string, referenceDate?: Date): string | 
  */
 export function extractFrontmatter(
   body: string,
-  referenceDate?: Date
+  referenceDate: Date
 ): {frontmatter: MaintenanceFrontmatter; content: string} {
   const lines = body.split('\n');
   let contentStart = 0;
@@ -85,7 +88,8 @@ export function extractFrontmatter(
   const frontmatter: MaintenanceFrontmatter = {};
   const frontmatterLines = frontmatterText.split('\n');
 
-  for (const line of frontmatterLines) {
+  for (let lineIndex = 0; lineIndex < frontmatterLines.length; lineIndex++) {
+    const line = frontmatterLines[lineIndex];
     const colonIndex = line.indexOf(':');
     if (colonIndex === -1) continue;
     const key = line.substring(0, colonIndex).trim();
@@ -98,13 +102,15 @@ export function extractFrontmatter(
     } else if (key === 'end') {
       frontmatter.end = parseHumanDate(value, referenceDate) || value;
     } else if (key === 'systems') {
-      const systemsStart = frontmatterLines.indexOf(line);
       const systems: string[] = [];
-      for (let i = systemsStart + 1; i < frontmatterLines.length; i++) {
+      for (let i = lineIndex + 1; i < frontmatterLines.length; i++) {
         const systemLine = frontmatterLines[i];
         if (systemLine.trim().startsWith('-')) {
           systems.push(systemLine.trim().substring(1).trim());
-        } else if (!systemLine.trim().startsWith(' ')) {
+        } else if (!systemLine.startsWith(' ')) {
+          // Unindented line: the list block has ended. Indented non-dash
+          // lines (e.g. stray blanks) are skipped, not terminal —
+          // Council PR #83 r=1: trim().startsWith(' ') was always false.
           break;
         }
       }

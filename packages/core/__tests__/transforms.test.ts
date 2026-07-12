@@ -127,6 +127,11 @@ describe('renderMarkdownToSafeHtml (write-time sanitization)', () => {
     const html = renderMarkdownToSafeHtml(payload);
     expect(html.toLowerCase()).not.toContain(mustNotContain.toLowerCase());
   });
+  it('forces rel=noopener on target=_blank links (reverse tabnabbing)', () => {
+    const html = renderMarkdownToSafeHtml('<a href="https://x.example" target="_blank">x</a>');
+    expect(html).toContain('target="_blank"');
+    expect(html).toMatch(/rel="[^"]*noopener[^"]*"/);
+  });
   it('returns empty string for empty input', () => {
     expect(renderMarkdownToSafeHtml('')).toBe('');
   });
@@ -135,7 +140,7 @@ describe('renderMarkdownToSafeHtml (write-time sanitization)', () => {
 describe('maintenance parsing (deterministic: now injected)', () => {
   it('parses ISO frontmatter and derives status from injected now', () => {
     const body = '---\nstart: 2026-07-14T02:00:00Z\nend: 2026-07-14T04:00:00Z\n---\n\nDB migration.';
-    const {frontmatter} = extractFrontmatter(body);
+    const {frontmatter} = extractFrontmatter(body, new Date(NOW));
     expect(frontmatter.start).toBe('2026-07-14T02:00:00Z');
     expect(getMaintenanceStatus(frontmatter.start!, frontmatter.end!, 'open', new Date(NOW))).toBe('upcoming');
     expect(
@@ -149,9 +154,27 @@ describe('maintenance parsing (deterministic: now injected)', () => {
     const parsed = parseHumanDate('tomorrow at 2am UTC', ref);
     expect(parsed).toMatch(/^2026-07-13T/);
   });
+  it('systems list survives indented non-dash lines and stops at unindented keys', () => {
+    // Council PR #83 r=1 critical: trim().startsWith(' ') was always false,
+    // so ANY non-dash line (even an indented continuation) ended the list.
+    const body = [
+      '---',
+      'systems:',
+      '  - api',
+      '   ', // indented blank inside the block must not end it
+      '  - web',
+      'start: 2026-07-14T02:00:00Z',
+      'end: 2026-07-14T04:00:00Z',
+      '---',
+      'Body',
+    ].join('\n');
+    const {frontmatter} = extractFrontmatter(body, new Date(NOW));
+    expect(frontmatter.systems).toEqual(['api', 'web']);
+    expect(frontmatter.start).toBe('2026-07-14T02:00:00Z');
+  });
   it('skips GitHub issue-form headings before frontmatter', () => {
     const body = '### Maintenance Details\n\n---\nstart: 2026-07-14T02:00:00Z\nend: 2026-07-14T04:00:00Z\n---\nBody';
-    expect(extractFrontmatter(body).frontmatter.start).toBe('2026-07-14T02:00:00Z');
+    expect(extractFrontmatter(body, new Date(NOW)).frontmatter.start).toBe('2026-07-14T02:00:00Z');
   });
   it('issueToMaintenanceV1 produces a valid window', () => {
     const win = issueToMaintenanceV1(

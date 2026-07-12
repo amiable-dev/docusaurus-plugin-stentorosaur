@@ -10,12 +10,24 @@
  * utils/markdown.ts so rendered output is identical during migration.
  */
 
-import {marked} from 'marked';
+import {Marked} from 'marked';
 import createDOMPurify from 'dompurify';
 import {JSDOM} from 'jsdom';
 
 const window = new JSDOM('').window;
 const DOMPurify = createDOMPurify(window as unknown as Parameters<typeof createDOMPurify>[0]);
+
+// Reverse-tabnabbing guard: any link carrying target must also carry
+// rel="noopener noreferrer" (target stays allowed for renderer parity
+// with the plugin's client-side markdown component).
+DOMPurify.addHook('afterSanitizeAttributes', node => {
+  if (node.tagName === 'A' && node.hasAttribute('target')) {
+    node.setAttribute('rel', 'noopener noreferrer');
+  }
+});
+
+// Instance renderer: no global marked.setOptions mutation per call.
+const renderer = new Marked({gfm: true, breaks: true});
 
 const ALLOWED_TAGS = [
   'p', 'br', 'strong', 'em', 'u', 's', 'code', 'pre',
@@ -33,8 +45,7 @@ const ALLOWED_ATTR = ['href', 'title', 'src', 'alt', 'target', 'rel'];
 export function renderMarkdownToSafeHtml(markdown: string | undefined): string {
   if (!markdown) return '';
 
-  marked.setOptions({gfm: true, breaks: true});
-  const html = marked.parse(markdown) as string;
+  const html = renderer.parse(markdown) as string;
 
   return DOMPurify.sanitize(html, {ALLOWED_TAGS, ALLOWED_ATTR}).trim();
 }
