@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "description": "Fixture Docusaurus site for the ADR-005 pipeline e2e harness (ticket #66). Never published.",
   "scripts": {
-    "build": "docusaurus build"
+    "build:site": "docusaurus build"
   },
   "dependencies": {
     "@amiable-dev/docusaurus-plugin-stentorosaur": "*",
