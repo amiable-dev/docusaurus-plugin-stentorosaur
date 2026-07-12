@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Removed the provisional `status-update-v1.yml` workflow template until the published CLI wiring exists
+- Issue syncing now pages through all matching GitHub issues instead of truncating after 1,000 results
+
 ## [0.21.10] - 2026-01-29
 
 ### Fixed

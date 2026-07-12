@@ -40,7 +40,7 @@ export async function fetchStatusIssues(
   const byNumber = new Map<number, IssuePayload>();
   const labelSets = [statusLabel, ...maintenanceLabels];
   for (const label of labelSets) {
-    for (let page = 1; page <= 10; page++) {
+    for (let page = 1; ; page++) {
       const url = `${apiBase}/repos/${owner}/${repo}/issues?labels=${encodeURIComponent(label)}&state=all&per_page=100&page=${page}`;
       const res = await fetchImpl(url, {
         headers: {

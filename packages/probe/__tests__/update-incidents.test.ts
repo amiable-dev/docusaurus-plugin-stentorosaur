@@ -164,7 +164,12 @@ describe('fetchStatusIssues', () => {
               issue({number: 1}),
               {...issue({number: 2}), pull_request: {url: 'x'}},
               ...(label === 'status' ? [issue({number: 3})] : []),
+              ...Array.from({length: label === 'status' ? 97 : 99}, () => issue({number: 1})),
             ]
+          : ['2', '3', '4', '5', '6', '7', '8', '9', '10'].includes(page ?? '')
+            ? Array.from({length: 100}, () => issue({number: 1}))
+          : page === '11' && label === 'status'
+            ? [issue({number: 11})]
           : [];
       return new Response(JSON.stringify(body), {status: 200});
     }) as typeof fetch;
@@ -177,8 +182,9 @@ describe('fetchStatusIssues', () => {
       token: 'tok',
       fetchImpl,
     });
-    expect(issues.map(i => i.number)).toEqual([1, 3]); // PR dropped, dedup across labels
+    expect(issues.map(i => i.number)).toEqual([1, 3, 11]); // PR dropped, dedup across labels
     expect(calls.some(u => u.includes('labels=maintenance'))).toBe(true);
+    expect(calls.some(u => u.includes('page=11'))).toBe(true);
   });
 
   it('throws loudly on API errors', async () => {
