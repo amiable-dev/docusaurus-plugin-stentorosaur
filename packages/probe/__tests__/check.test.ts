@@ -119,6 +119,25 @@ describe('checkEndpoint', () => {
     expect(reading.code).toBe(0);
     expect(reading.err).toBeDefined();
   });
+
+  it('passes through supported non-GET methods', async () => {
+    const fetchImpl = jest.fn<typeof fetch>().mockResolvedValue(
+      new Response(null, {status: 204})
+    );
+
+    const reading = await checkEndpoint(
+      target({method: 'DELETE', expectedCodes: [204]}),
+      Date.now(),
+      fetchImpl
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      `${base}/ok`,
+      expect.objectContaining({method: 'DELETE'})
+    );
+    expect(reading.state).toBe('up');
+    expect(reading.code).toBe(204);
+  });
 });
 
 describe('runChecks', () => {

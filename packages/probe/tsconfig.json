@@ -4,6 +4,7 @@
     "lib": ["es2022", "dom"],
     "module": "commonjs",
     "moduleResolution": "node",
+    "composite": true,
     "strict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -13,6 +14,9 @@
     "outDir": "lib",
     "rootDir": "src"
   },
+  "references": [
+    { "path": "../core" }
+  ],
   "include": ["src"],
   "exclude": ["node_modules", "lib", "**/*.test.ts"]
 }

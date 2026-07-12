@@ -13,7 +13,7 @@ import type {CompactReading} from '@stentorosaur/core';
 export interface CheckTarget {
   system: string;
   url: string;
-  method?: 'GET' | 'POST' | 'HEAD';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
   timeout?: number;
   expectedCodes?: number[];
   maxResponseTime?: number;
