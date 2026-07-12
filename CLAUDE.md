@@ -61,17 +61,24 @@ Stentorosaurus/
 ### Plugin Build (TypeScript → JavaScript)
 
 ```bash
-cd docusaurus-plugin-stentorosaur
+# From the monorepo root (ADR-005 workspace layout):
+npm run build        # Builds all workspaces
+# Or within the plugin package:
+cd packages/docusaurus-plugin-stentorosaur
 npm run build        # Compiles TS + copies CSS files
 npm run watch        # Watch mode for development
 ```
 
-**Critical**: Build is THREE steps (v0.10.4+):
-1. `node scripts/generate-version.js` → Generates `src/version.ts` from `package.json`
-2. `tsc --build` → Compiles `.ts` files to `lib/`
-3. `node copyUntypedFiles.js` → Copies `.css` files (TypeScript ignores these)
+**Critical**: Build is TWO steps (ADR-005; was three before the
+generate-version hack was removed):
+1. `tsc --build` → Compiles `.ts` files to `lib/`
+2. `node copyUntypedFiles.js` → Copies `.css` files (TypeScript ignores these)
 
-**Never edit `lib/` or `src/version.ts` directly** - they're generated. Always edit `src/` and rebuild.
+The plugin version is read from `package.json` at load time and passed to
+theme components via `StatusData.pluginVersion` — there is no generated
+`src/version.ts`.
+
+**Never edit `lib/` directly** - it's generated. Always edit `src/` and rebuild.
 
 ### Test Site (Docusaurus)
 
@@ -389,7 +396,6 @@ npx stentorosaur-update-status --write-incidents --write-maintenance --verbose
 
 - `src/utils/annotation-utils.ts` - Chart annotation conversion and extensible event system
 - `src/utils/markdown.ts` - Markdown rendering with DOMPurify sanitization
-- `scripts/generate-version.js` - Auto-generates `src/version.ts` from `package.json`
 
 ### Theme Components
 

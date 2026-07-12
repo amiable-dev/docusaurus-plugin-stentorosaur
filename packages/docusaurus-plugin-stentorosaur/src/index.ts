@@ -16,6 +16,14 @@ import {getDemoStatusData, getDemoSystemFiles, getDemoCurrentJson} from './demo-
 export {validateOptions} from './options';
 
 /**
+ * Plugin version read from package.json at load time (server-side only).
+ * Threaded to theme components via StatusData.pluginVersion — replaces
+ * the generated src/version.ts (ADR-005 §11).
+ */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PLUGIN_VERSION: string = require('../package.json').version;
+
+/**
  * System entry in .monitorrc.json
  */
 interface MonitorRcSystem {
@@ -419,6 +427,7 @@ export default async function pluginStatus(
           useDemoData: true,
           fetchUrl: options.fetchUrl,
           statusCardLayout: options.statusCardLayout,
+          pluginVersion: PLUGIN_VERSION,
         };
 
         // Ensure directory exists
@@ -717,6 +726,7 @@ export default async function pluginStatus(
         useDemoData: shouldUseDemoData,
         fetchUrl: options.fetchUrl,
         statusCardLayout: options.statusCardLayout,
+        pluginVersion: PLUGIN_VERSION,
       };
 
       // Ensure directory exists

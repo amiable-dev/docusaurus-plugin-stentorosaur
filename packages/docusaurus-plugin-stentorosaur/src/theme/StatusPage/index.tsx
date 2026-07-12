@@ -14,7 +14,6 @@ import PerformanceMetrics from '../PerformanceMetrics';
 import { SystemCard, SystemCardDetails, SystemCardUptimeBar } from '../SystemCard';
 import { StatusDataProvider } from '../../context/StatusDataProvider';
 import type {StatusData, SystemStatusFile, DataSource} from '../../types';
-import {PLUGIN_VERSION} from '../../version';
 import { buildFetchUrl } from '../../data-source-resolver.client';
 import styles from './styles.module.css';
 
@@ -35,6 +34,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
     fetchUrl,
     dataSource,
     statusCardLayout = 'minimal',
+    pluginVersion,
   } = statusData || {};
   const [systemFiles, setSystemFiles] = useState<SystemStatusFile[]>([]);
   const [activeSystemIndex, setActiveSystemIndex] = useState<number | null>(null);
@@ -342,7 +342,7 @@ export default function StatusPage({statusData}: Props): JSX.Element {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Docusaurus Stentorosaur Plugin v{PLUGIN_VERSION}
+              Docusaurus Stentorosaur Plugin{pluginVersion ? ` v${pluginVersion}` : ''}
             </a>
           </p>
         </div>
