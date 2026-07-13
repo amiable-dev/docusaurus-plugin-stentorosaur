@@ -142,9 +142,13 @@ describe('StatusPage (v1)', () => {
 });
 
 describe('v1 helpers', () => {
-  it('deriveV1BaseUrl strips the summary suffix', () => {
+  it('deriveV1BaseUrl maps any summary.json mount to its directory', () => {
     expect(deriveV1BaseUrl('/docs/status-data/status/v1/summary.json')).toBe(
       '/docs/status-data/status/v1'
+    );
+    // Custom mounts that preserve the directory layout work too (r=1).
+    expect(deriveV1BaseUrl('https://cdn.test/mirror/summary.json')).toBe(
+      'https://cdn.test/mirror'
     );
     expect(deriveV1BaseUrl('https://x.test/nope.json')).toBeUndefined();
     expect(deriveV1BaseUrl(undefined)).toBeUndefined();

@@ -45,7 +45,11 @@ async function loadV1Summary(
 ): Promise<StatusSummary> {
   if (dataUrl && /^https?:\/\//.test(dataUrl)) {
     try {
-      const response = await fetch(dataUrl, {headers: {accept: 'application/json'}});
+      // Bounded: a hanging endpoint must not block the site build.
+      const response = await fetch(dataUrl, {
+        headers: {accept: 'application/json'},
+        signal: AbortSignal.timeout(15_000),
+      });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const summary = parseSummary(JSON.parse(await response.text()));
       console.log('[docusaurus-plugin-stentorosaur] Loaded status/v1 summary from dataUrl');

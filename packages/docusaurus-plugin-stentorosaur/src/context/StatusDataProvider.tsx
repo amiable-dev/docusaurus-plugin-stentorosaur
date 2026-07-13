@@ -20,10 +20,10 @@ export interface DayStatus {
   uptimePercent: number;
   /** Number of incidents */
   incidents: number;
-  /** Total checks performed */
-  checksTotal: number;
-  /** Successful checks */
-  checksPassed: number;
+  /** Total checks performed (absent in v1 — day rollups carry no counts) */
+  checksTotal?: number;
+  /** Successful checks (absent in v1 — day rollups carry no counts) */
+  checksPassed?: number;
   /** Computed status based on uptime thresholds */
   status: 'operational' | 'degraded' | 'outage' | 'no-data';
   /** Average latency in ms (optional) */
@@ -67,8 +67,8 @@ export function StatusDataProvider({summary, children}: StatusDataProviderProps)
           date: day.date,
           uptimePercent: day.uptime,
           incidents: 0,
-          checksTotal: 1,
-          checksPassed: day.uptime >= 100 ? 1 : 0,
+          // v1 day rollups carry uptime/latency/worst only — no check
+          // counts. Omit rather than fabricate (Council PR #92 r=1).
           status: statusFromDay(day.uptime, day.worst),
           avgLatencyMs: day.avgMs,
         }))

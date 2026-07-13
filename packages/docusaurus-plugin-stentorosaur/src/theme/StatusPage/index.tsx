@@ -26,12 +26,17 @@ export interface Props {
   readonly statusData: StatusData;
 }
 
-const V1_SUMMARY_SUFFIX = '/status/v1/summary.json';
+const SUMMARY_FILE = '/summary.json';
 
-/** …/status/v1/summary.json → …/status/v1 */
+/**
+ * …/summary.json → its directory, where the v1 layout's entities/ lives.
+ * Any mount that serves summary.json alongside entities/ works — not
+ * just the canonical …/status/v1/ path (Council PR #92 r=1). A dataUrl
+ * that is not a summary.json leaves drill-down disabled (undefined).
+ */
 export function deriveV1BaseUrl(dataUrl?: string): string | undefined {
-  if (!dataUrl || !dataUrl.endsWith(V1_SUMMARY_SUFFIX)) return undefined;
-  return `${dataUrl.slice(0, -V1_SUMMARY_SUFFIX.length)}/status/v1`;
+  if (!dataUrl || !dataUrl.endsWith(SUMMARY_FILE)) return undefined;
+  return dataUrl.slice(0, -SUMMARY_FILE.length);
 }
 
 /** Same slug rules the probe uses for entity file names. */
