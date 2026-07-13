@@ -1,0 +1,60 @@
+# Monthly data-branch compaction (ADR-005 §10). Self-contained pure git —
+# works against ANY plugin version. Five-minute probes produce ~100k
+# commits/year; the branch's FILES are authoritative (JSONL archives
+# carry the full time series), its history is not. This resets the branch
+# to a single orphan commit carrying the IDENTICAL tree.
+#
+# This is the one sanctioned force-push in the system: data branch only,
+# --force-with-lease against the head we just read, verified tree-equal.
+
+name: Compact data branch
+
+on:
+  schedule:
+    - cron: '17 3 1 * *' # monthly, 1st at 03:17 UTC (off the hour crush)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: status-data-writer
+  cancel-in-progress: false
+
+jobs:
+  compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout data branch (full history for the count log)
+        uses: actions/checkout@v4
+        with:
+          ref: status-data
+          fetch-depth: 0
+
+      - name: Orphan-reset with identical tree
+        run: |
+          set -euo pipefail
+          BRANCH=status-data
+          REMOTE_HEAD=$(git rev-parse "origin/${BRANCH}")
+          TREE=$(git rev-parse 'HEAD^{tree}')
+          BEFORE=$(git rev-list --count HEAD)
+
+          export GIT_AUTHOR_NAME=stentorosaur-compaction
+          export GIT_AUTHOR_EMAIL=probe@stentorosaur.invalid
+          export GIT_COMMITTER_NAME=$GIT_AUTHOR_NAME
+          export GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL
+
+          NEW=$(git commit-tree "$TREE" -m "compact: monthly data-branch reset (ADR-005 §10)")
+          git update-ref "refs/heads/${BRANCH}" "$NEW"
+
+          # Verify the tree is byte-identical before pushing.
+          AFTER_TREE=$(git rev-parse "${NEW}^{tree}")
+          test "$AFTER_TREE" = "$TREE"
+
+          # Lease: a probe push landing after our checkout fails this push;
+          # next month's run compacts it instead. Never clobbers data.
+          git push --force-with-lease="refs/heads/${BRANCH}:${REMOTE_HEAD}" \
+            origin "${BRANCH}:${BRANCH}"
+
+          echo "Compacted ${BEFORE} commits -> 1 (tree ${TREE})"

@@ -10,6 +10,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     strategy:
       matrix:
@@ -47,9 +48,23 @@ jobs:
           flags: unittests
           fail_ci_if_error: false
 
+  lint-workflows:
+    name: Lint workflows and templates
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint (repo workflows + shipped templates)
+        run: |
+          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint .github/workflows/*.yml \
+            packages/docusaurus-plugin-stentorosaur/templates/workflows/*.yml
+
   e2e:
     name: Pipeline e2e (fixture site)
     runs-on: ubuntu-latest
+    # Council follow-up (PR #81): bound a hung docusaurus build
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

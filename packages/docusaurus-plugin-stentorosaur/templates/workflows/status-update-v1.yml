@@ -1,0 +1,45 @@
+# ⚠️ COMPATIBILITY: requires @amiable-dev/docusaurus-plugin-stentorosaur
+# >= 0.22 (the `stentorosaur` unified CLI, epic #63 ticket #74). Do not
+# install this workflow against an older release.
+#
+# Issue-event handler (ADR-005 §3): incident changes propagate
+# issue event → this workflow → data branch → CDN TTL → client fetch.
+# The docs site never redeploys for status changes.
+
+name: Status update (v1 data branch)
+
+on:
+  issues:
+    types: [opened, edited, closed, reopened, labeled, unlabeled]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: read
+
+concurrency:
+  group: status-data-writer
+  cancel-in-progress: false
+
+jobs:
+  update-incidents:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout data branch
+        uses: actions/checkout@v4
+        with:
+          ref: status-data
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Update incidents on the data branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur \
+            stentorosaur update-incidents --branch status-data

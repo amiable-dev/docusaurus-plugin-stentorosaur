@@ -186,3 +186,44 @@ If upgrading from v0.14.x or earlier:
 - Check the [main documentation](../../README.md)
 - Review workflow logs in GitHub Actions tab
 - Open an issue: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues
+
+---
+
+## status/v1 templates (ADR-005 — plugin >= 0.22)
+
+> ⚠️ The `*-v1.yml` templates target the ADR-005 architecture and the
+> `stentorosaur` unified CLI shipping with plugin **0.22**. Do not
+> install `probe-v1.yml` / `status-update-v1.yml` against an older
+> release — `compact-data-branch-v1.yml` and `deploy-v1.yml` are pure
+> git/Pages and work with any version.
+
+| Template | Trigger | Purpose |
+|---|---|---|
+| `probe-v1.yml` | every 5 min | parallel checks → per-entity files + JSONL archives → regenerate `summary.json` → push (§5 retry) |
+| `status-update-v1.yml` | issue events | issues → incident/maintenance inputs + `raw/` provenance → regenerate → push |
+| `compact-data-branch-v1.yml` | monthly | orphan-reset the data branch to 1 commit, tree byte-identical (§10; the one sanctioned force-push, leased) |
+| `deploy-v1.yml` | push to main | docs deploy WITHOUT paths-ignore/[skip ci]/hourly-schedule gymnastics — status never redeploys the site |
+
+### Serving the data branch (ADR-005 §3)
+
+GitHub Pages is the primary endpoint for `status/v1/summary.json`
+(correct `application/json`, predictable `max-age=600` caching):
+
+1. Create the `status-data` branch (bootstrap: `stentorosaur init`, or
+   `git switch --orphan status-data && git commit --allow-empty -m init && git push -u origin status-data`).
+2. If the docs site does NOT use Pages: repo Settings → Pages → Deploy
+   from branch → `status-data` / root. Point the plugin's `dataUrl` at
+   `https://<user>.github.io/<repo>/status/v1/summary.json`.
+3. If the docs site DOES use Pages: serve the data branch from a small
+   sibling repo, or keep `raw.githubusercontent.com/<owner>/<repo>/status-data/status/v1/summary.json`
+   as the (fallback-quality) endpoint — undocumented cache (~5 min) and
+   `text/plain`, tolerated by the client's content-type-agnostic parser.
+
+Honest propagation bound: one CDN TTL (≤ ~10 min) from issue event to
+client — not seconds, and dramatically better than redeploy-on-change.
+
+### Workflow concurrency
+
+All three data-branch writers share `concurrency: status-data-writer`
+so same-workflow runs serialize; cross-workflow races are handled by the
+§5 regenerate-and-retry rule in the writer itself.
