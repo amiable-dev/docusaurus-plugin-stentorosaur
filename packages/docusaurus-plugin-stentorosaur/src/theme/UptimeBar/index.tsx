@@ -336,7 +336,7 @@ export function UptimeBar({
             type="button"
             className={`${styles.dayCell} ${getStatusClass(day.uptimePercent, thresholds, day.status)}`}
             tabIndex={index === focusedIndex ? 0 : -1}
-            aria-label={`${day.date}: ${day.uptimePercent.toFixed(1)}% uptime, ${day.incidents} incidents`}
+            aria-label={`${day.date}: ${day.uptimePercent.toFixed(1)}% uptime${day.incidents !== undefined ? `, ${day.incidents} incidents` : ''}`}
             onClick={() => handleDayClick(day, index)}
             onKeyDown={(e) => handleDayKeyDown(e, day, index)}
             onMouseEnter={() => handleDayHover(day)}

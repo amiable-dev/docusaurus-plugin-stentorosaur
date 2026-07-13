@@ -45,6 +45,22 @@ interface TimeBlockUptime {
   upChecks: number;
 }
 
+/**
+ * Anchor period windows to the NEWEST reading, not the client clock:
+ * on snapshot-only deployments the data is frozen at build time, and a
+ * wall-clock window would empty the chart once it passes (Council
+ * PR #92 r=2). For live data the newest reading ≈ now, so behavior is
+ * unchanged.
+ */
+function historyAnchorMs(history: {timestamp: string}[]): number {
+  let anchor = 0;
+  for (const check of history) {
+    const t = new Date(check.timestamp).getTime();
+    if (t > anchor) anchor = t;
+  }
+  return anchor > 0 ? anchor : Date.now();
+}
+
 export interface UptimeChartProps {
   /** System name */
   name: string;
@@ -69,9 +85,10 @@ export interface UptimeChartProps {
 /** Bucket checks into time blocks (hourly/4-hourly/daily by period). */
 function calculateTimeBlockUptime(
   history: StatusCheckHistory[],
-  activePeriod: TimePeriod
+  activePeriod: TimePeriod,
+  anchorMs: number = Date.now()
 ): TimeBlockUptime[] {
-  const now = new Date();
+  const now = new Date(anchorMs);
   let blockSizeMs: number;
   let blockCount: number;
   let formatLabel: (date: Date) => string;
@@ -165,7 +182,7 @@ export default function UptimeChart({
   const activePeriod = showPeriodSelector ? (selectedPeriod ?? period) : period;
 
   const blocks = useMemo(
-    () => calculateTimeBlockUptime(history, activePeriod),
+    () => calculateTimeBlockUptime(history, activePeriod, historyAnchorMs(history)),
     [history, activePeriod]
   );
 
@@ -181,11 +198,12 @@ export default function UptimeChart({
   }, [annotations, incidents, maintenance]);
 
   const visibleAnnotations = useMemo(() => {
-    const periodStartMs = Date.now() - PERIOD_DAYS[activePeriod] * 24 * 60 * 60 * 1000;
+    const periodStartMs =
+      historyAnchorMs(history) - PERIOD_DAYS[activePeriod] * 24 * 60 * 60 * 1000;
     return resolvedAnnotations.filter(
       annotation => new Date(annotation.timestamp).getTime() >= periodStartMs
     );
-  }, [resolvedAnnotations, activePeriod]);
+  }, [resolvedAnnotations, activePeriod, history]);
 
   const exportableData = useMemo(
     () =>

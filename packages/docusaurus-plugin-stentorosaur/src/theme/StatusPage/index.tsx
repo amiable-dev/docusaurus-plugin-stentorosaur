@@ -35,8 +35,12 @@ const SUMMARY_FILE = '/summary.json';
  * that is not a summary.json leaves drill-down disabled (undefined).
  */
 export function deriveV1BaseUrl(dataUrl?: string): string | undefined {
-  if (!dataUrl || !dataUrl.endsWith(SUMMARY_FILE)) return undefined;
-  return dataUrl.slice(0, -SUMMARY_FILE.length);
+  if (!dataUrl) return undefined;
+  // Query/hash (cache busters etc.) are per-file — strip before deriving
+  // the directory (Council PR #92 r=2).
+  const clean = dataUrl.split(/[?#]/)[0];
+  if (!clean.endsWith(SUMMARY_FILE)) return undefined;
+  return clean.slice(0, -SUMMARY_FILE.length);
 }
 
 /** Same slug rules the probe uses for entity file names. */

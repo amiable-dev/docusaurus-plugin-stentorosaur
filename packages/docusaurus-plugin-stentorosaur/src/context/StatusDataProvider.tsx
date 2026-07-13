@@ -18,8 +18,8 @@ export interface DayStatus {
   date: string;
   /** Uptime percentage (0-100) */
   uptimePercent: number;
-  /** Number of incidents */
-  incidents: number;
+  /** Number of incidents (absent in v1 — day rollups carry no counts) */
+  incidents?: number;
   /** Total checks performed (absent in v1 — day rollups carry no counts) */
   checksTotal?: number;
   /** Successful checks (absent in v1 — day rollups carry no counts) */
@@ -66,9 +66,8 @@ export function StatusDataProvider({summary, children}: StatusDataProviderProps)
         .map(day => ({
           date: day.date,
           uptimePercent: day.uptime,
-          incidents: 0,
-          // v1 day rollups carry uptime/latency/worst only — no check
-          // counts. Omit rather than fabricate (Council PR #92 r=1).
+          // v1 day rollups carry uptime/latency/worst only — no incident
+          // or check counts. Omit rather than fabricate (r=1, r=2).
           status: statusFromDay(day.uptime, day.worst),
           avgLatencyMs: day.avgMs,
         }))
