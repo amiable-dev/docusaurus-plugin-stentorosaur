@@ -115,20 +115,21 @@ export const summarySchema = z.object({
   }),
 });
 
+/** Wire schema for one compact reading (JSONL archives, entity details). */
+export const compactReadingSchema = z.object({
+  t: z.number(),
+  svc: z.string(),
+  state: entityStateSchema,
+  code: z.number(),
+  lat: z.number(),
+  err: z.string().optional(),
+});
+
 export const entityDetailSchema = z.object({
   schemaVersion: z.literal(STATUS_SCHEMA_VERSION),
   generatedAt: isoDateTime,
   name: z.string().min(1),
-  readings: z.array(
-    z.object({
-      t: z.number(),
-      svc: z.string(),
-      state: entityStateSchema,
-      code: z.number(),
-      lat: z.number(),
-      err: z.string().optional(),
-    })
-  ),
+  readings: z.array(compactReadingSchema),
 });
 
 export const rawIncidentBodySchema = z.object({

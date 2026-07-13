@@ -48,5 +48,12 @@
       "types": "./lib/server.d.ts",
       "default": "./lib/server.js"
     }
+  },
+  "typesVersions": {
+    "*": {
+      "server": [
+        "lib/server.d.ts"
+      ]
+    }
   }
 }
