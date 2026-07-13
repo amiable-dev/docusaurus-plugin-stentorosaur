@@ -1,8 +1,7 @@
 {
   "name": "@stentorosaur/probe",
-  "private": true,
   "version": "0.1.0",
-  "description": "Monitoring engine and I/O for Stentorosaur (ADR-005 §1). All fetching (HTTP checks, GitHub API, git writes) lives here; transforms live in @stentorosaur/core.",
+  "description": "Monitoring engine and I/O for Stentorosaur (ADR-005 \u00a71). All fetching (HTTP checks, GitHub API, git writes) lives here; transforms live in @stentorosaur/core.",
   "license": "MIT",
   "author": "Amiable Development <dev@amiable.dev>",
   "repository": {
@@ -13,7 +12,8 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
-    "lib"
+    "lib",
+    "bin"
   ],
   "scripts": {
     "build": "tsc --build",
@@ -21,7 +21,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "@stentorosaur/core": "^0.1.0"
+    "@stentorosaur/core": "^0.1.0",
+    "jiti": "^2.4.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
@@ -31,5 +32,11 @@
   },
   "engines": {
     "node": ">=20.19"
+  },
+  "bin": {
+    "stentorosaur": "bin/stentorosaur.cjs"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

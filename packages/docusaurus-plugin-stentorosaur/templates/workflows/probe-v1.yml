@@ -1,6 +1,6 @@
-# ⚠️ COMPATIBILITY: requires @amiable-dev/docusaurus-plugin-stentorosaur
-# >= 0.22 (the `stentorosaur` unified CLI, epic #63 ticket #74). Do not
-# install this workflow against an older release.
+# ⚠️ COMPATIBILITY: requires @stentorosaur/probe >= 0.1 on npm (the
+# unified `stentorosaur` CLI, shipping alongside plugin 0.22). Do not
+# install this workflow before that release.
 #
 # Probe schedule (ADR-005 §3/§6): checks run in parallel, write per-entity
 # files + JSONL archives to the DATA BRANCH, regenerate summary.json, and
@@ -26,10 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout data branch
+      - name: Checkout (config on main; the CLI switches to the data branch)
         uses: actions/checkout@v4
         with:
-          ref: status-data
           fetch-depth: 1
 
       - name: Setup Node.js
@@ -41,5 +40,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur \
-            stentorosaur probe --branch status-data
+          npx -y -p @stentorosaur/probe \
+            stentorosaur probe --config . --workdir . --branch status-data

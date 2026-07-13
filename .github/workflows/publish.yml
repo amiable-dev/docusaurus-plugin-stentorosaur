@@ -37,8 +37,12 @@ jobs:
 
       - name: Publish @stentorosaur/core to npm
         # Core publishes FIRST: if this fails (e.g. npm org not configured),
-        # the plugin is never published with an unresolvable dependency.
+        # nothing downstream ships with an unresolvable dependency.
         working-directory: packages/core
+        run: npm publish --access public
+
+      - name: Publish @stentorosaur/probe to npm
+        working-directory: packages/probe
         run: npm publish --access public
 
       - name: Publish plugin to npm

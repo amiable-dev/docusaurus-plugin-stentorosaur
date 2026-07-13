@@ -12,3 +12,6 @@ export * from './archives';
 export * from './regenerate';
 export * from './update-incidents';
 export * from './compact';
+export * from './config-loader';
+export * from './regenerate-from-raw';
+export * from './cli';
