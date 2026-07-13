@@ -139,6 +139,12 @@ describe('stentorosaur probe --no-push (local pipeline)', () => {
       expect(summary.entities.map(e => e.name)).toEqual(['api', 'onboarding']);
       expect(summary.entities[0].status).toBe('up');
       expect(fs.existsSync(path.join(tmp, 'status', 'v1', 'entities', 'api.json'))).toBe(true);
+      // ONE clock read per command (Council PR #89 r=3): the entity
+      // detail and the summary must carry the identical timestamp.
+      const detail = JSON.parse(
+        fs.readFileSync(path.join(tmp, 'status', 'v1', 'entities', 'api.json'), 'utf8')
+      );
+      expect(detail.generatedAt).toBe(summary.generatedAt);
     } finally {
       await new Promise(resolve => server.close(resolve));
     }

@@ -177,10 +177,11 @@ async function withDataBranch(
   options: CliOptions,
   config: StentorosaurConfig,
   commitMessage: string,
-  writeInputs: (workdir: string) => Promise<void>
+  writeInputs: (workdir: string, generatedAt: string) => Promise<void>
 ): Promise<void> {
-  // ONE clock read per command run; retries regenerate with the same
-  // timestamp (Council PR #89 r=1).
+  // ONE clock read per command run, threaded into writeInputs so every
+  // file a command touches carries the same timestamp; retries
+  // regenerate with it too (Council PR #89 r=1, r=3).
   const generatedAt = new Date().toISOString();
   const branch = options.branch ?? config.dataBranch;
   if (options.push) {
@@ -188,11 +189,13 @@ async function withDataBranch(
       workdir: options.workdir,
       branch,
       commitMessage,
-      writeInputs,
+      writeInputs: dir => writeInputs(dir, generatedAt),
       regenerate: async dir => regenerateDerived(dir, regenOptions(config, generatedAt)),
     });
   } else {
-    await writeInputs(options.workdir);
+    await writeInputs(options.workdir, generatedAt);
+    // regenerateDerived is synchronous (returns void) — all writes
+    // complete before it returns.
     regenerateDerived(options.workdir, regenOptions(config, generatedAt));
   }
 }
@@ -208,9 +211,8 @@ async function cmdProbe(options: CliOptions): Promise<number> {
     return 1;
   }
   const readings = await runChecks(targets);
-  const generatedAt = new Date().toISOString();
 
-  await withDataBranch(options, config, `probe: ${readings.length} checks`, async dir => {
+  await withDataBranch(options, config, `probe: ${readings.length} checks`, async (dir, generatedAt) => {
     // Group once: one entity-detail write per entity, one archive append
     // per reading (Council PR #89 r=2: the per-reading filter was O(n²)
     // and rewrote each entity file repeatedly).
@@ -243,15 +245,14 @@ async function cmdUpdateIncidents(options: CliOptions): Promise<number> {
     maintenanceLabels: config.incidents.maintenanceLabels,
     token: process.env.GITHUB_TOKEN,
   });
-  const now = new Date();
 
   let counts = {incidents: 0, maintenance: 0, skipped: 0};
-  await withDataBranch(options, config, `issues: sync ${issues.length} issues`, async dir => {
+  await withDataBranch(options, config, `issues: sync ${issues.length} issues`, async (dir, generatedAt) => {
     counts = writeIssueInputs(dir, issues, {
       entities: config.entities,
       maintenanceLabels: config.incidents.maintenanceLabels,
       labelScheme: config.labelScheme,
-      now,
+      now: new Date(generatedAt),
     });
   });
   console.log(`synced ${counts.incidents} incidents, ${counts.maintenance} maintenance windows (${counts.skipped} skipped)`);
@@ -260,9 +261,8 @@ async function cmdUpdateIncidents(options: CliOptions): Promise<number> {
 
 async function cmdRegenerate(options: CliOptions): Promise<number> {
   const config = await loadConfig(options.config);
-  const now = new Date();
-  await withDataBranch(options, config, 'regenerate: re-render from raw provenance (§7)', async dir => {
-    const counts = reRenderFromRaw(dir, now);
+  await withDataBranch(options, config, 'regenerate: re-render from raw provenance (§7)', async (dir, generatedAt) => {
+    const counts = reRenderFromRaw(dir, new Date(generatedAt));
     console.log(`re-rendered ${counts.incidents} incident and ${counts.maintenance} maintenance bodies from raw/`);
   });
   return 0;
