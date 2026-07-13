@@ -56,8 +56,12 @@ export default function ResponseTimeChart({
   showPeriodSelector = true,
 }: ResponseTimeChartProps): JSX.Element {
   // null until the user interacts, so a changed period PROP always flows
-  // through (Council PR #88 r=1: useState(period) froze the first value).
+  // through (Council PR #88 r=1/r=2): a NEW prop value also clears any
+  // user selection (parent intent resets the override).
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod | null>(null);
+  React.useEffect(() => {
+    setSelectedPeriod(null);
+  }, [period]);
   const activePeriod = showPeriodSelector ? (selectedPeriod ?? period) : period;
 
   const filteredData = useMemo(() => {
@@ -98,10 +102,12 @@ export default function ResponseTimeChart({
     () =>
       filteredData.map(check => {
         const date = new Date(check.timestamp);
+        // Fixed locale + UTC: SSR'd SVG must hydrate identically on any
+        // client locale/timezone (Council PR #88 r=2).
         const label =
           activePeriod === '24h'
-            ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })
+            : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
         const tone = check.status === 'up' ? 'ok' : check.status === 'down' ? 'bad' : 'warn';
         return {
           label,

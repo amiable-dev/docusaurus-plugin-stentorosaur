@@ -76,7 +76,7 @@ export function SvgLineChart({
     y: p.value === null ? null : yScale(p.value, lo, hi, height),
   }));
   const drawn = coords.filter((c): c is typeof c & {y: number} => c.y !== null);
-  const linePath = drawn.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y!.toFixed(1)}`).join(' ');
+  const linePath = drawn.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
   const baseline = yScale(lo, lo, hi, height);
   const areaPath = drawn.length > 1
     ? `${linePath} L${drawn[drawn.length - 1].x.toFixed(1)},${baseline.toFixed(1)} L${drawn[0].x.toFixed(1)},${baseline.toFixed(1)} Z`
@@ -175,7 +175,8 @@ export function SvgUptimeBars({bars, height = 300, ariaLabel}: SvgUptimeBarsProp
   const usableW = VIEW_W - PAD.left - PAD.right;
   const usableH = height - PAD.top - PAD.bottom;
   const step = usableW / Math.max(bars.length, 1);
-  const barW = Math.max(step * 0.7, 2);
+  // Clamp to the step so dense datasets never overlap neighbors.
+  const barW = Math.min(Math.max(step * 0.7, 2), Math.max(step, 0.5));
   const labelIdx = new Set([0, Math.floor((bars.length - 1) / 2), bars.length - 1]);
 
   return (

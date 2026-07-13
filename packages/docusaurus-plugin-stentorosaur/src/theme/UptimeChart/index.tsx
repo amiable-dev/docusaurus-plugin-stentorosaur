@@ -80,7 +80,7 @@ function calculateTimeBlockUptime(
     blockSizeMs = 60 * 60 * 1000;
     blockCount = 24;
     formatLabel = date => {
-      const hour = date.getHours();
+      const hour = date.getUTCHours();
       const ampm = hour >= 12 ? 'PM' : 'AM';
       return `${hour % 12 || 12} ${ampm}`;
     };
@@ -89,25 +89,25 @@ function calculateTimeBlockUptime(
     blockCount = 42;
     formatLabel = date => {
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const hour = date.getHours();
+      const hour = date.getUTCHours();
       const ampm = hour >= 12 ? 'PM' : 'AM';
-      return `${dayNames[date.getDay()]} ${hour % 12 || 12}${ampm}`;
+      return `${dayNames[date.getUTCDay()]} ${hour % 12 || 12}${ampm}`;
     };
   } else {
     blockSizeMs = 24 * 60 * 60 * 1000;
     blockCount = PERIOD_DAYS[activePeriod];
-    formatLabel = date => date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    formatLabel = date => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   }
 
   const blocks: TimeBlockUptime[] = [];
   for (let i = blockCount - 1; i >= 0; i--) {
     const blockStart = new Date(now.getTime() - i * blockSizeMs);
     if (activePeriod === '24h') {
-      blockStart.setMinutes(0, 0, 0);
+      blockStart.setUTCMinutes(0, 0, 0);
     } else if (activePeriod === '7d') {
-      blockStart.setHours(Math.floor(blockStart.getHours() / 4) * 4, 0, 0, 0);
+      blockStart.setUTCHours(Math.floor(blockStart.getUTCHours() / 4) * 4, 0, 0, 0);
     } else {
-      blockStart.setHours(0, 0, 0, 0);
+      blockStart.setUTCHours(0, 0, 0, 0);
     }
     blocks.push({
       timestamp: blockStart.toISOString(),
@@ -156,9 +156,12 @@ export default function UptimeChart({
   height = 300,
   showPeriodSelector = true,
 }: UptimeChartProps): JSX.Element {
-  // null until the user interacts, so a changed period PROP always flows
-  // through (Council PR #88 r=1: useState(period) froze the first value).
+  // null until the user interacts; a NEW prop value clears any user
+  // selection (Council PR #88 r=1/r=2).
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod | null>(null);
+  React.useEffect(() => {
+    setSelectedPeriod(null);
+  }, [period]);
   const activePeriod = showPeriodSelector ? (selectedPeriod ?? period) : period;
 
   const blocks = useMemo(

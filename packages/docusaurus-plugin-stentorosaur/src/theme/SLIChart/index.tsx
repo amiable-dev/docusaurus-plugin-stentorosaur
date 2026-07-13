@@ -61,9 +61,12 @@ export default function SLIChart({
   showErrorBudget = false,
   sloTarget = 99.9,
 }: SLIChartProps): JSX.Element {
-  // null until the user interacts, so a changed period PROP always flows
-  // through (Council PR #88 r=1: useState(period) froze the first value).
+  // null until the user interacts; a NEW prop value clears any user
+  // selection (Council PR #88 r=1/r=2).
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod | null>(null);
+  React.useEffect(() => {
+    setSelectedPeriod(null);
+  }, [period]);
   const activePeriod = showPeriodSelector ? (selectedPeriod ?? period) : period;
 
   const chartData = useMemo(() => {
@@ -78,7 +81,9 @@ export default function SLIChart({
 
     const dailyData = new Map<string, { total: number; successful: number }>();
     filteredHistory.forEach(check => {
-      const date = new Date(check.timestamp).toLocaleDateString();
+      // Fixed locale + UTC bucketing key: SSR-hydration-safe and
+      // timezone-stable (Council PR #88 r=2).
+      const date = new Date(check.timestamp).toLocaleDateString('en-US', {timeZone: 'UTC'});
       const existing = dailyData.get(date) || { total: 0, successful: 0 };
       existing.total++;
       if (check.status === 'up' || check.status === 'maintenance') {
