@@ -211,10 +211,16 @@ async function cmdProbe(options: CliOptions): Promise<number> {
   const generatedAt = new Date().toISOString();
 
   await withDataBranch(options, config, `probe: ${readings.length} checks`, async dir => {
+    // Group once: one entity-detail write per entity, one archive append
+    // per reading (Council PR #89 r=2: the per-reading filter was O(n²)
+    // and rewrote each entity file repeatedly).
+    const bySvc = new Map<string, typeof readings>();
     for (const reading of readings) {
       appendArchive(dir, reading);
-      const existing = readings.filter(r => r.svc === reading.svc);
-      writeEntityDetail(dir, reading.svc, existing, generatedAt);
+      bySvc.set(reading.svc, [...(bySvc.get(reading.svc) ?? []), reading]);
+    }
+    for (const [svc, svcReadings] of bySvc) {
+      writeEntityDetail(dir, svc, svcReadings, generatedAt);
     }
   });
   for (const reading of readings) {
@@ -225,6 +231,11 @@ async function cmdProbe(options: CliOptions): Promise<number> {
 
 async function cmdUpdateIncidents(options: CliOptions): Promise<number> {
   const config = await loadConfig(options.config);
+  if (!process.env.GITHUB_TOKEN) {
+    // Unauthenticated works for PUBLIC repos (60 req/hr); private repos
+    // and busy CI need the token. Loud but not fatal.
+    console.warn('⚠ GITHUB_TOKEN not set — using unauthenticated GitHub API (public repos only, 60 req/hr)');
+  }
   const issues = await fetchStatusIssues({
     owner: config.owner,
     repo: config.repo,
@@ -272,7 +283,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       case 'regenerate':
         return await cmdRegenerate(options);
       default:
-        console.log('usage: stentorosaur <init|doctor|probe|update-incidents|regenerate> [--config <path>] [--workdir <dir>] [--branch <name>] [--no-push]');
+        console.log('usage: stentorosaur <init|doctor|probe|update-incidents|regenerate> [--config <file-or-dir>] [--workdir <dir>] [--branch <name>] [--no-push]');
         return command === 'help' ? 0 : 1;
     }
   } catch (error) {
