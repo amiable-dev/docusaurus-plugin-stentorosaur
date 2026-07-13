@@ -93,18 +93,19 @@ describe('ADR-004: Minimal Layout Integration (#57)', () => {
       const statusData = createStatusData({ statusCardLayout: 'minimal' });
       render(<StatusPage statusData={statusData} />);
 
-      // Should see system names in minimal cards (uses name field)
-      expect(screen.getByText('api')).toBeInTheDocument();
-      expect(screen.getByText('database')).toBeInTheDocument();
-      expect(screen.getByText('cdn')).toBeInTheDocument();
+      // Minimal cards prefer displayName when present (PR #87: StatusPage
+      // now threads displayName through to SystemCard)
+      expect(screen.getByText('API Server')).toBeInTheDocument();
+      expect(screen.getByText('Database')).toBeInTheDocument();
+      expect(screen.getByText('CDN')).toBeInTheDocument();
     });
 
     it('should render detailed layout when statusCardLayout is "detailed"', () => {
       const statusData = createStatusData({ statusCardLayout: 'detailed' });
       render(<StatusPage statusData={statusData} />);
 
-      // Should still see system names (using original StatusBoard)
-      expect(screen.getByText('api')).toBeInTheDocument();
+      // Detailed layout (StatusBoard/StatusItem) also prefers displayName
+      expect(screen.getByText('API Server')).toBeInTheDocument();
     });
   });
 
@@ -156,10 +157,11 @@ describe('ADR-004: Minimal Layout Integration (#57)', () => {
       const statusData = createStatusData({ statusCardLayout: 'minimal' });
       render(<StatusPage statusData={statusData} />);
 
-      // All systems should be rendered (CSS handles display)
-      expect(screen.getByText('api')).toBeInTheDocument();
-      expect(screen.getByText('database')).toBeInTheDocument();
-      expect(screen.getByText('cdn')).toBeInTheDocument();
+      // All systems should be rendered (CSS handles display); minimal
+      // cards render displayName (PR #87)
+      expect(screen.getByText('API Server')).toBeInTheDocument();
+      expect(screen.getByText('Database')).toBeInTheDocument();
+      expect(screen.getByText('CDN')).toBeInTheDocument();
     });
   });
 
