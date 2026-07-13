@@ -24,6 +24,8 @@ export interface CompactOptions {
   commitMessage?: string;
   authorName?: string;
   authorEmail?: string;
+  /** Test seam: runs after commit-tree but before the force-with-lease push */
+  beforePush?: () => Promise<void>;
 }
 
 async function git(workdir: string, ...args: string[]): Promise<string> {
@@ -47,6 +49,7 @@ export async function compactDataBranch(options: CompactOptions): Promise<{
     commitMessage = `compact: monthly data-branch reset (ADR-005 §10)`,
     authorName = 'stentorosaur-probe',
     authorEmail = 'probe@stentorosaur.invalid',
+    beforePush,
   } = options;
 
   await git(workdir, 'fetch', 'origin', branch);
@@ -78,6 +81,7 @@ export async function compactDataBranch(options: CompactOptions): Promise<{
   await git(workdir, 'update-ref', `refs/heads/${branch}`, newCommit);
   // Lease against the exact remote head we compacted — a concurrent probe
   // push in the window fails this push; the next monthly run retries.
+  if (beforePush) await beforePush();
   await git(
     workdir,
     'push',

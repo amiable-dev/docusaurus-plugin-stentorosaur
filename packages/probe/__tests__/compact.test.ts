@@ -69,12 +69,12 @@ describe('compactDataBranch', () => {
     expect(count).toBe('1');
   });
 
-  it('force-with-lease refuses to clobber a concurrent push', async () => {
+  it("re-fetches before compacting, preserving a concurrent writer's data", async () => {
     await seedCommits(3);
     const worker = clone('compactor');
-    // Fetch happens inside compactDataBranch; sneak a push in AFTER by
-    // pre-fetching state into the worker, then racing a writer.
-    execFileSync('git', ['fetch', 'origin', 'status-data'], {cwd: worker});
+    // Worker clones BEFORE the racer pushes.  compactDataBranch re-fetches
+    // at the start, so it always compacts the fully-merged tree; no data
+    // from the racer is lost.
     const racer = clone('racer');
     await pushWithRegenerateRetry({
       workdir: racer,
@@ -88,8 +88,45 @@ describe('compactDataBranch', () => {
     });
 
     // compactDataBranch re-fetches, so it compacts INCLUDING the racer's
-    // commit — no data loss either way. Verify racer data survives.
+    // commit — no data loss.
     await compactDataBranch({workdir: worker, branch: 'status-data'});
+    const verify = clone('verify');
+    expect(fs.readFileSync(path.join(verify, 'log.jsonl'), 'utf8')).toContain('racer');
+  });
+
+  it('force-with-lease rejects a push that races between fetch and push', async () => {
+    await seedCommits(3);
+    const worker = clone('compactor');
+
+    // Use beforePush to inject a concurrent push after commit-tree but
+    // before the force-with-lease push — exactly the window the lease guards.
+    const racer = clone('racer');
+    let racerPushed = false;
+
+    await expect(
+      compactDataBranch({
+        workdir: worker,
+        branch: 'status-data',
+        beforePush: async () => {
+          if (!racerPushed) {
+            racerPushed = true;
+            await pushWithRegenerateRetry({
+              workdir: racer,
+              branch: 'status-data',
+              commitMessage: 'racer wins the window',
+              writeInputs: async workdir => {
+                fs.appendFileSync(path.join(workdir, 'log.jsonl'), '{"racer":true}\n');
+              },
+              regenerate: async () => {},
+              ...noJitter,
+            });
+          }
+        },
+      })
+    ).rejects.toThrow();
+
+    // The lease rejects the compactor's push (remote moved past remoteHead).
+    // Remote still points to the racer's commit, so the racer's data survives.
     const verify = clone('verify');
     expect(fs.readFileSync(path.join(verify, 'log.jsonl'), 'utf8')).toContain('racer');
   });
