@@ -114,3 +114,34 @@ describe('SLIChart (SVG)', () => {
     expect(screen.getByText(/No historical data/)).toBeInTheDocument();
   });
 });
+
+describe('Council PR #88 r=1 regression guards', () => {
+  it('a changed period PROP flows through after mount (no frozen useState)', () => {
+    const {rerender} = render(
+      <ResponseTimeChart name="api" history={makeHistory(24)} period="90d" />
+    );
+    expect(screen.getByRole('img').getAttribute('aria-label')).toMatch(/Last 90 Days/);
+    rerender(<ResponseTimeChart name="api" history={makeHistory(24)} period="24h" />);
+    expect(screen.getByRole('img').getAttribute('aria-label')).toMatch(/Last 24 Hours/);
+  });
+
+  it('charts scale uniformly (no preserveAspectRatio="none" distortion)', () => {
+    render(<ResponseTimeChart name="api" history={makeHistory(24)} showPeriodSelector={false} />);
+    expect(screen.getByRole('img').getAttribute('preserveAspectRatio')).toBe('xMidYMid meet');
+  });
+
+  it('a 0% uptime block still renders a visible bar', () => {
+    const now = Date.now();
+    const allDown: StatusCheckHistory[] = Array.from({length: 4}, (_, i) => ({
+      timestamp: new Date(now - i * 10 * 60_000).toISOString(),
+      status: 'down',
+      responseTime: 0,
+      code: 500,
+    }));
+    render(<UptimeChart name="api" history={allDown} period="24h" showPeriodSelector={false} />);
+    const bars = screen.getAllByTestId('uptime-bar');
+    const zeroBar = bars.find(bar => bar.querySelector('title')?.textContent?.includes('0.00%'));
+    expect(zeroBar).toBeDefined();
+    expect(Number(zeroBar!.getAttribute('height'))).toBeGreaterThanOrEqual(2);
+  });
+});

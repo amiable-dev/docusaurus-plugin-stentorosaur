@@ -156,8 +156,10 @@ export default function UptimeChart({
   height = 300,
   showPeriodSelector = true,
 }: UptimeChartProps): JSX.Element {
-  const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
-  const activePeriod = showPeriodSelector ? internalPeriod : period;
+  // null until the user interacts, so a changed period PROP always flows
+  // through (Council PR #88 r=1: useState(period) froze the first value).
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod | null>(null);
+  const activePeriod = showPeriodSelector ? (selectedPeriod ?? period) : period;
 
   const blocks = useMemo(
     () => calculateTimeBlockUptime(history, activePeriod),
@@ -221,8 +223,8 @@ export default function UptimeChart({
           {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map(p => (
             <button
               key={p}
-              className={`${styles.periodButton} ${internalPeriod === p ? styles.active : ''}`}
-              onClick={() => setInternalPeriod(p)}
+              className={`${styles.periodButton} ${activePeriod === p ? styles.active : ''}`}
+              onClick={() => setSelectedPeriod(p)}
             >
               {PERIOD_LABELS[p]}
             </button>

@@ -55,8 +55,10 @@ export default function ResponseTimeChart({
   height = 300,
   showPeriodSelector = true,
 }: ResponseTimeChartProps): JSX.Element {
-  const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
-  const activePeriod = showPeriodSelector ? internalPeriod : period;
+  // null until the user interacts, so a changed period PROP always flows
+  // through (Council PR #88 r=1: useState(period) froze the first value).
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod | null>(null);
+  const activePeriod = showPeriodSelector ? (selectedPeriod ?? period) : period;
 
   const filteredData = useMemo(() => {
     const cutoff = Date.now() - PERIOD_HOURS[activePeriod] * 60 * 60 * 1000;
@@ -126,8 +128,8 @@ export default function ResponseTimeChart({
           {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map(p => (
             <button
               key={p}
-              className={`${styles.periodButton} ${internalPeriod === p ? styles.active : ''}`}
-              onClick={() => setInternalPeriod(p)}
+              className={`${styles.periodButton} ${activePeriod === p ? styles.active : ''}`}
+              onClick={() => setSelectedPeriod(p)}
             >
               {PERIOD_LABELS[p]}
             </button>

@@ -61,11 +61,17 @@ export default function SLIChart({
   showErrorBudget = false,
   sloTarget = 99.9,
 }: SLIChartProps): JSX.Element {
-  const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
-  const activePeriod = showPeriodSelector ? internalPeriod : period;
+  // null until the user interacts, so a changed period PROP always flows
+  // through (Council PR #88 r=1: useState(period) froze the first value).
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod | null>(null);
+  const activePeriod = showPeriodSelector ? (selectedPeriod ?? period) : period;
 
   const chartData = useMemo(() => {
-    const filteredHistory = aggregateHistoricalData(history, PERIOD_HOURS[activePeriod]);
+    // Explicit temporal sort: the cumulative error-budget walk depends on
+    // day insertion order (Council PR #88 r=1 — never rely on an upstream
+    // function's unstated ordering).
+    const filteredHistory = [...aggregateHistoricalData(history, PERIOD_HOURS[activePeriod])]
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     if (filteredHistory.length === 0) {
       return null;
     }
@@ -139,8 +145,8 @@ export default function SLIChart({
           {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map(p => (
             <button
               key={p}
-              className={`${styles.periodButton} ${internalPeriod === p ? styles.active : ''}`}
-              onClick={() => setInternalPeriod(p)}
+              className={`${styles.periodButton} ${activePeriod === p ? styles.active : ''}`}
+              onClick={() => setSelectedPeriod(p)}
             >
               {PERIOD_LABELS[p]}
             </button>

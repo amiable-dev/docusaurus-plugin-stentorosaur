@@ -92,8 +92,8 @@ export function SvgLineChart({
       viewBox={`0 0 ${VIEW_W} ${height}`}
       role="img"
       aria-label={ariaLabel}
-      preserveAspectRatio="none"
-      style={{width: '100%', height}}
+      preserveAspectRatio="xMidYMid meet"
+      style={{width: '100%', height: 'auto', maxHeight: height}}
     >
       {ticks.map(t => (
         <g key={`tick-${t}`}>
@@ -184,8 +184,8 @@ export function SvgUptimeBars({bars, height = 300, ariaLabel}: SvgUptimeBarsProp
       viewBox={`0 0 ${VIEW_W} ${height}`}
       role="img"
       aria-label={ariaLabel}
-      preserveAspectRatio="none"
-      style={{width: '100%', height}}
+      preserveAspectRatio="xMidYMid meet"
+      style={{width: '100%', height: 'auto', maxHeight: height}}
     >
       {[0, 50, 100].map(t => (
         <g key={`tick-${t}`}>
@@ -203,7 +203,9 @@ export function SvgUptimeBars({bars, height = 300, ariaLabel}: SvgUptimeBarsProp
       ))}
       {bars.map((bar, i) => {
         const h = bar.uptime === null ? usableH : (usableH * bar.uptime) / 100;
-        const minVisible = bar.uptime !== null && bar.uptime > 0 ? Math.max(h, 2) : h;
+        // 0% (full downtime) must stay VISIBLE as a 2px sliver — Council
+        // PR #88 r=1: the >0 guard made total outages disappear entirely.
+        const minVisible = bar.uptime !== null ? Math.max(h, 2) : h;
         return (
           <rect
             key={i}
