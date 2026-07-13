@@ -14,6 +14,9 @@ import PerformanceMetrics from '../PerformanceMetrics';
 import { SystemCard, SystemCardDetails, SystemCardUptimeBar } from '../SystemCard';
 import { StatusDataProvider } from '../../context/StatusDataProvider';
 import type {StatusData, SystemStatusFile, DataSource} from '../../types';
+import {parseSummary} from '@stentorosaur/core';
+import {useStatusSummary} from '../../v1/useStatusSummary';
+import {summaryToStatusData} from '../../v1/summary-adapter';
 import { buildFetchUrl } from '../../data-source-resolver.client';
 import styles from './styles.module.css';
 
@@ -21,7 +24,40 @@ export interface Props {
   readonly statusData: StatusData;
 }
 
+/**
+ * status/v1 live bridge (ADR-005 par-4, ticket #72): snapshot-first render
+ * via useStatusSummary, adapted to the legacy shape the inner page
+ * consumes. The adapted data carries no v1Summary field, so the inner
+ * render takes the normal path.
+ */
+function V1LiveStatusPage({statusData}: Props): JSX.Element {
+  const snapshot = React.useMemo(
+    () => parseSummary(statusData.v1Summary),
+    [statusData.v1Summary]
+  );
+  const {summary} = useStatusSummary({snapshot, dataUrl: statusData.dataUrl});
+  const adapted = React.useMemo<StatusData>(
+    () => ({
+      ...summaryToStatusData(summary, {repoUrl: statusData.repoUrl ?? ''}),
+      showServices: statusData.showServices,
+      showIncidents: statusData.showIncidents,
+      showPerformanceMetrics: statusData.showPerformanceMetrics,
+      statusCardLayout: statusData.statusCardLayout,
+      pluginVersion: statusData.pluginVersion,
+    }),
+    [summary, statusData]
+  );
+  return <StatusPageInner statusData={adapted} />;
+}
+
 export default function StatusPage({statusData}: Props): JSX.Element {
+  if (statusData?.v1Summary) {
+    return <V1LiveStatusPage statusData={statusData} />;
+  }
+  return <StatusPageInner statusData={statusData} />;
+}
+
+function StatusPageInner({statusData}: Props): JSX.Element {
   const {
     items = [],
     incidents = [],

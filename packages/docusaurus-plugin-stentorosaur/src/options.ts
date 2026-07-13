@@ -270,6 +270,7 @@ const pluginOptionsSchema = Joi.object<PluginOptions>({
   statusLabel: Joi.string().default(DEFAULT_OPTIONS.statusLabel),
   entities: Joi.array().items(entitySchema).default(DEFAULT_OPTIONS.entities),
   entitiesSource: Joi.string().valid('config', 'monitorrc', 'hybrid').default('config'),
+  dataUrl: Joi.string().uri({allowRelative: true}),
   labelScheme: labelSchemeSchema.default(DEFAULT_OPTIONS.labelScheme),
   token: Joi.string(),
   updateInterval: Joi.number().min(1).default(DEFAULT_OPTIONS.updateInterval),

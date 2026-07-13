@@ -14,10 +14,13 @@ import {
   groupReadingsBySystem,
 } from '@stentorosaur/core';
 import type {CompactReading} from '@stentorosaur/core';
+import {parseSummary} from '@stentorosaur/core';
+import type {StatusSummary} from '@stentorosaur/core';
 import type {LoadContext, Plugin} from '@docusaurus/types';
 import type {PluginOptions, StatusData, StatusItem, SystemStatusFile, StatusIncident, ScheduledMaintenance, Entity} from './types';
 import {GitHubStatusService} from './github-service';
 import {getDemoStatusData, getDemoSystemFiles, getDemoCurrentJson} from './demo-data';
+import {summaryToStatusData} from './v1/summary-adapter';
 
 export {validateOptions} from './options';
 
@@ -387,6 +390,62 @@ export default async function pluginStatus(
     },
 
     async loadContent() {
+      // ── status/v1 read path (ADR-005, ticket #72) ─────────────────
+      // Takes priority over EVERY legacy path. Sources, in order:
+      // an options.dataUrl endpoint fetched at build time, else a local
+      // status/v1/summary.json under dataPath (e.g. the data branch
+      // checked out in CI, or a fixture). Failures fall through to the
+      // legacy paths with a warning — never a broken build.
+      {
+        let v1Summary: StatusSummary | null = null;
+        const localV1 = path.join(siteDir, dataPath, 'status', 'v1', 'summary.json');
+        if (options.dataUrl && /^https?:\/\//.test(options.dataUrl)) {
+          try {
+            const response = await fetch(options.dataUrl, {
+              headers: {accept: 'application/json'},
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            v1Summary = parseSummary(JSON.parse(await response.text()));
+            console.log('[docusaurus-plugin-stentorosaur] Loaded status/v1 summary from dataUrl');
+          } catch (error) {
+            console.warn(
+              '[docusaurus-plugin-stentorosaur] dataUrl fetch failed, trying local/legacy data:',
+              error instanceof Error ? error.message : String(error)
+            );
+          }
+        }
+        if (!v1Summary && (await fs.pathExists(localV1))) {
+          try {
+            v1Summary = parseSummary(await fs.readJson(localV1));
+            console.log('[docusaurus-plugin-stentorosaur] Loaded local status/v1 summary');
+          } catch (error) {
+            console.warn(
+              '[docusaurus-plugin-stentorosaur] Invalid local status/v1 summary, falling back:',
+              error instanceof Error ? error.message : String(error)
+            );
+          }
+        }
+
+        if (v1Summary) {
+          const repoUrl = `https://github.com/${owner}/${repo}`;
+          const statusData: StatusData = {
+            ...summaryToStatusData(v1Summary, {repoUrl}),
+            showServices,
+            showIncidents,
+            showPerformanceMetrics,
+            statusCardLayout: options.statusCardLayout,
+            pluginVersion: PLUGIN_VERSION,
+            v1Summary,
+            ...(options.dataUrl ? {dataUrl: options.dataUrl} : {}),
+            repoUrl,
+          };
+          await fs.ensureDir(statusDataDir);
+          await fs.writeJson(statusDataPath, statusData, {spaces: 2});
+          return statusData;
+        }
+      }
+      // ── legacy read paths below (deleted at the #77 cutover) ───────
+
       let items: StatusItem[] = [];
       let incidents: StatusIncident[] = [];
       let maintenance: ScheduledMaintenance[] = [];
@@ -849,6 +908,14 @@ export default async function pluginStatus(
           sourceMaintenance,
           path.join(buildStatusDir, 'maintenance.json')
         );
+      }
+
+      // Copy the status/v1 tree if present (ADR-005 #72) so a site can
+      // self-serve summary.json (site-relative dataUrl) without Pages.
+      const sourceV1 = path.join(sourceDataDir, 'status', 'v1');
+      if (await fs.pathExists(sourceV1)) {
+        console.log('[docusaurus-plugin-stentorosaur] Copying status/v1 data');
+        await fs.copy(sourceV1, path.join(buildStatusDir, 'status', 'v1'));
       }
 
       // If using demo data, write demo system files with historical data for charts

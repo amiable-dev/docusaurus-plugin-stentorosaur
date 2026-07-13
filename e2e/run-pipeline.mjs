@@ -14,12 +14,14 @@
  */
 import {execFile, execFileSync} from 'node:child_process';
 import fs from 'node:fs';
+import {createRequire} from 'node:module';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {startMockServer} from './mock-server.mjs';
 
 const execFileAsync = promisify(execFile);
+const require = createRequire(import.meta.url);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = path.join(ROOT, 'fixtures', 'site');
@@ -78,6 +80,31 @@ async function runPipeline() {
     {t: now, svc: 'ghost', state: 'up', code: 200, lat: 43}
   );
   fs.writeFileSync(currentPath, JSON.stringify(readings));
+
+  // Generate status/v1 from the SAME readings via the compiled probe lib
+  // (ticket #72: the v1 read path takes priority in loadContent). Ghost
+  // stays legacy-only: only configured entities get v1 detail files, so
+  // the #62 DOM assertion now guards the v1 pipeline too.
+  const {writeEntityDetail} = require(path.join(ROOT, 'packages', 'probe', 'lib', 'files.js'));
+  const {regenerateDerived} = require(path.join(ROOT, 'packages', 'probe', 'lib', 'regenerate.js'));
+  const generatedAt = new Date().toISOString();
+  const entities = [
+    {name: 'alpha', type: 'system'},
+    {name: 'beta', type: 'system'},
+  ];
+  for (const entity of entities) {
+    const entityReadings = readings
+      .filter(r => r.svc === entity.name)
+      .map(({err, ...rest}) => (typeof err === 'string' ? {...rest, err} : rest));
+    writeEntityDetail(DATA, entity.name, entityReadings, generatedAt);
+  }
+  regenerateDerived(DATA, {
+    generatedAt,
+    generatedBy: 'e2e-pipeline',
+    entities,
+    siteTitle: 'Fixture Status',
+    siteUrl: 'http://127.0.0.1:3999',
+  });
 
   // Build the fixture site with the real plugin (committed-data path).
   execFileSync('npx', ['docusaurus', 'build', SITE, '--out-dir', path.join(SITE, 'build')], {
