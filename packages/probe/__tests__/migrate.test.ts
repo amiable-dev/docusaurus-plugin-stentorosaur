@@ -326,6 +326,28 @@ describe('edge cases', () => {
     expect(summary.entities.map(e => e.name)).toEqual(['api']);
   });
 
+  it('continues reading remaining files after one unreadable archive in the same directory', () => {
+    // Two good days in the same month directory, with a corrupt .gz sandwiched between them.
+    const dayStart0 = NOW - 2 * DAY_MS - (NOW % DAY_MS);
+    const dayStart1 = NOW - 1 * DAY_MS - (NOW % DAY_MS);
+    const dayStart2 = NOW - (NOW % DAY_MS);
+    writeLegacyArchiveDay(legacy, dayStart0, makeReadings('api', dayStart0, 3, 0));
+    writeLegacyArchiveDay(legacy, dayStart2, makeReadings('api', dayStart2, 3, 0));
+    // Corrupt gzip between the two good days (same directory).
+    const y = new Date(dayStart1).toISOString().slice(0, 4);
+    const m = new Date(dayStart1).toISOString().slice(5, 7);
+    const d = new Date(dayStart1).toISOString().slice(8, 10);
+    const corruptFile = path.join(legacy, 'archives', y, m, `history-${y}-${m}-${d}.jsonl.gz`);
+    fs.mkdirSync(path.dirname(corruptFile), {recursive: true});
+    fs.writeFileSync(corruptFile, Buffer.from('this is not a valid gzip'));
+
+    const warnings: string[] = [];
+    const collected = collectLegacyData(legacy, msg => warnings.push(msg));
+    expect(warnings).toHaveLength(1);
+    // Both good days must be collected — the corrupt file must not stop the walk.
+    expect(collected.readings).toHaveLength(6);
+  });
+
   it('deduplicates readings that appear in both current.json and archives', () => {
     const dayStart = NOW - (NOW % DAY_MS);
     const readings = makeReadings('api', dayStart, 6, 0);

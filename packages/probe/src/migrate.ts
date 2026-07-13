@@ -116,7 +116,7 @@ export function collectLegacyData(
               : fs.readFileSync(full, 'utf8');
           } catch (error) {
             onWarn(`unreadable archive ${full}: ${String(error)}`);
-            return;
+            continue;
           }
           for (const line of body.split('\n')) {
             if (!line.trim()) continue;
