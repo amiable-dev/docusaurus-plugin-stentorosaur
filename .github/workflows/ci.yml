@@ -10,6 +10,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     strategy:
       matrix:
@@ -47,9 +48,31 @@ jobs:
           flags: unittests
           fail_ci_if_error: false
 
+  lint-workflows:
+    name: Lint workflows and templates
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint (repo workflows + shipped templates)
+        # shellcheck at error severity only: the legacy workflows
+        # (release.yml, monitor-systems.yml, compress-archives.yml) carry
+        # info/warning-level style debt and are deleted at the #77
+        # cutover; the gate still fails on real breakage everywhere and
+        # the v1 templates lint clean at every severity.
+        env:
+          SHELLCHECK_OPTS: --severity=error
+        run: |
+          curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz \
+            | tar xzf - actionlint
+          ./actionlint .github/workflows/*.yml \
+            packages/docusaurus-plugin-stentorosaur/templates/workflows/*.yml
+
   e2e:
     name: Pipeline e2e (fixture site)
     runs-on: ubuntu-latest
+    # Council follow-up (PR #81): bound a hung docusaurus build
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

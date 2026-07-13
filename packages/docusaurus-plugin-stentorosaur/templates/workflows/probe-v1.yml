@@ -1,0 +1,45 @@
+# ⚠️ COMPATIBILITY: requires @amiable-dev/docusaurus-plugin-stentorosaur
+# >= 0.22 (the `stentorosaur` unified CLI, epic #63 ticket #74). Do not
+# install this workflow against an older release.
+#
+# Probe schedule (ADR-005 §3/§6): checks run in parallel, write per-entity
+# files + JSONL archives to the DATA BRANCH, regenerate summary.json, and
+# push with the §5 regenerate-and-retry rule. Monitoring never touches
+# main and never redeploys the docs site.
+
+name: Probe (status/v1 data branch)
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: status-data-writer
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout data branch
+        uses: actions/checkout@v4
+        with:
+          ref: status-data
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run probes and push readings
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx -y -p @amiable-dev/docusaurus-plugin-stentorosaur \
+            stentorosaur probe --branch status-data
