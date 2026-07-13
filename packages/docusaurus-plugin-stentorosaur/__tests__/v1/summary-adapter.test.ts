@@ -128,7 +128,7 @@ describe('summaryToStatusData', () => {
   it('threads lastUpdated from generatedAt and marks v1 provenance', () => {
     const data = summaryToStatusData(fixtureSummary(), {repoUrl: 'https://github.com/o/r'});
     expect(data.lastUpdated).toBe(NOW);
-    expect(data.useDemoData).toBe(false);
+    // useDemoData died at the #77 cutover — demo = a sample data branch.
   });
 
   it('is deterministic (no clock reads)', () => {

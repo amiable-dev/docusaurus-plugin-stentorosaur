@@ -7,12 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-13
+
+The ADR-005 hard cutover (epic #63). One data contract (`status/v1/` on
+a dedicated data branch), one read path, three packages. **Existing
+users: run `stentorosaur migrate` — your history is preserved.** See
+docs/setup/MIGRATION_1.0.md.
+
+### Added
+
+- `@stentorosaur/core` — versioned zod schemas for `status/v1`, all
+  aggregation math, issue→incident transforms, write-time markdown
+  sanitization with raw provenance (§7)
+- `@stentorosaur/probe` — check engine, data-branch writers with the
+  regenerate-and-retry concurrency rule (§5), and the unified
+  `stentorosaur` CLI: `init | doctor | probe | update-incidents |
+  regenerate | migrate | ingest`
+- Snapshot-first live client (SWR + ETag + exponential backoff, §4)
+- Inline SVG charts (response time, uptime bars, SLI/SLO) — chart.js,
+  react-chartjs-2, and chartjs-plugin-annotation removed (−272 KB)
+- `stentorosaur migrate`: one-time historical data migration covering
+  every legacy generation (current.json, daily-summary.json,
+  systems/*.json, archives) with golden-tested zero data loss
+- Cloudflare Worker probe via repository_dispatch (§6 trust model:
+  the Worker holds no write credential) + receiving workflow template
+- `incidents.atom` feed on the data branch
+- Monthly data-branch compaction workflow (§10)
+- v1 workflow templates: probe-v1, status-update-v1, probe-dispatch-v1,
+  compact-data-branch-v1, deploy-v1
+
+### Removed (hard cutover — no compatibility mode)
+
+- All legacy read paths (current.json/status.json/systems/*.json/
+  daily-summary.json aggregation in `loadContent()`)
+- `src/notifications/` + nodemailer — substitute: the incidents.atom
+  feed (honest gap, deferred to a future optional package)
+- chart.js family, axios, date-fns, marked + dompurify (client),
+  @octokit/rest, chrono-node from the plugin dependency tree
+- The nine per-task bin scripts — replaced by the `stentorosaur` CLI in
+  @stentorosaur/probe
+- Plugin options: `token`, `useDemoData`, `entitiesSource`,
+  `labelScheme`, `statusLabel`, `scheduledMaintenance`, `sites`,
+  `fetchUrl`, `dataSource`, `updateInterval` (monitoring config moved
+  to `stentorosaur.config.js`)
+
 ### Fixed
 
-- Removed the provisional `status-update-v1.yml` workflow template until the published CLI wiring exists
-- Issue syncing now pages through all matching GitHub issues instead of truncating after 1,000 results
-- The status/v1 bridge now preserves canonical entity names for history lookups while still rendering display names
-- Relative status/v1 `dataUrl` values now resolve against the Docusaurus base URL and keep history fetches on the correct path
+- Issue syncing pages through all matching GitHub issues instead of truncating after 1,000 results
+- Canonical entity names preserved for history lookups while rendering display names
+- Relative `dataUrl` values resolve against the Docusaurus base URL
+
+### Support
+
+- v0.22 lives on the `v0.22-maintenance` branch: critical fixes only,
+  for 90 days.
 
 ## [0.21.10] - 2026-01-29
 

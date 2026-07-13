@@ -13,7 +13,6 @@
 
 import React, { useState, useMemo } from 'react';
 import type { StatusCheckHistory } from '../../types';
-import { aggregateHistoricalData } from '../../historical-data';
 import { ExportButton } from '../components/ExportButton';
 import { SvgLineChart } from '../svg/SvgCharts';
 import type { LinePoint } from '../svg/SvgCharts';
@@ -34,6 +33,22 @@ const PERIOD_HOURS: Record<TimePeriod, number> = {
   '30d': 720,
   '90d': 2160,
 };
+
+/**
+ * Anchor period windows to the NEWEST reading, not the client clock:
+ * on snapshot-only deployments the data is frozen at build time, and a
+ * wall-clock window would empty the chart once it passes (Council
+ * PR #92 r=2). For live data the newest reading ≈ now, so behavior is
+ * unchanged.
+ */
+function historyAnchorMs(history: {timestamp: string}[]): number {
+  let anchor = 0;
+  for (const check of history) {
+    const t = new Date(check.timestamp).getTime();
+    if (t > anchor) anchor = t;
+  }
+  return anchor > 0 ? anchor : Date.now();
+}
 
 export interface SLIChartProps {
   /** System name */
@@ -73,7 +88,9 @@ export default function SLIChart({
     // Explicit temporal sort: the cumulative error-budget walk depends on
     // day insertion order (Council PR #88 r=1 — never rely on an upstream
     // function's unstated ordering).
-    const filteredHistory = [...aggregateHistoricalData(history, PERIOD_HOURS[activePeriod])]
+    const cutoff = historyAnchorMs(history) - PERIOD_HOURS[activePeriod] * 60 * 60 * 1000;
+    const filteredHistory = history
+      .filter(check => new Date(check.timestamp).getTime() >= cutoff)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     if (filteredHistory.length === 0) {
       return null;

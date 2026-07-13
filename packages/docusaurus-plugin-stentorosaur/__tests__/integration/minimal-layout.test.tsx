@@ -1,217 +1,78 @@
 /**
- * Integration Tests for ADR-004: Minimal Layout Switch (#57)
- *
- * Tests the statusCardLayout option and minimal status card rendering.
- *
  * @jest-environment jsdom
- * @see docs/adrs/ADR-004-simplified-status-card-ux.md
+ *
+ * ADR-004 minimal layout integration — v1.0 (ticket #77): the layouts
+ * render from the v1 summary; the uptime bars derive from summary day
+ * tuples via StatusDataProvider (no runtime fetch).
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import type { StatusData, StatusItem } from '../../src/types';
-
-// Mock Docusaurus Layout
-jest.mock('@theme/Layout', () => {
-  return function MockLayout({ children }: { children: React.ReactNode }) {
-    return <div data-testid="layout">{children}</div>;
-  };
-});
-
-// Mock StatusDataProvider
-jest.mock('../../src/context/StatusDataProvider', () => {
-  const actual = jest.requireActual('../../src/context/StatusDataProvider');
-  return {
-    ...actual,
-    StatusDataProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    useStatusData: () => ({
-      dailySummary: null,
-      currentStatus: null,
-      loading: false,
-      error: null,
-      getMerged90Days: jest.fn().mockReturnValue([]),
-      refresh: jest.fn(),
-    }),
-  };
-});
-
-// Sample status data for testing
-const sampleItems: StatusItem[] = [
-  {
-    name: 'api',
-    displayName: 'API Server',
-    type: 'system',
-    status: 'up',
-    lastChecked: '2025-01-05T12:00:00Z',
-  },
-  {
-    name: 'database',
-    displayName: 'Database',
-    type: 'system',
-    status: 'up',
-    lastChecked: '2025-01-05T12:00:00Z',
-  },
-  {
-    name: 'cdn',
-    displayName: 'CDN',
-    type: 'system',
-    status: 'degraded',
-    lastChecked: '2025-01-05T12:00:00Z',
-  },
-];
-
-function createStatusData(overrides: Partial<StatusData> = {}): StatusData {
-  return {
-    items: sampleItems,
-    incidents: [],
-    maintenance: [],
-    lastUpdated: '2025-01-05T12:00:00Z',
-    showServices: true,
-    showIncidents: true,
-    showPerformanceMetrics: false,
-    useDemoData: false,
-    statusCardLayout: 'minimal',
-    ...overrides,
-  };
-}
-
-// Import StatusPage after mocks
+import {render, screen} from '@testing-library/react';
+import '@testing-library/jest-dom';
 import StatusPage from '../../src/theme/StatusPage';
+import {makeSummary, makeStatusData} from '../helpers/v1-fixtures';
 
-describe('ADR-004: Minimal Layout Integration (#57)', () => {
-  describe('statusCardLayout Option', () => {
-    it('should default to minimal layout', () => {
-      const statusData = createStatusData({ statusCardLayout: undefined });
-      const { container } = render(<StatusPage statusData={statusData} />);
+jest.mock('@theme/Layout', () => ({
+  __esModule: true,
+  default: ({children}: any) => <div data-testid="layout">{children}</div>,
+}));
 
-      // Should render SystemCard components (minimal layout)
-      // Note: The actual component will need to be updated to use SystemCard
-      expect(container.querySelector('.statusPage')).toBeInTheDocument();
-    });
+jest.mock('../../src/v1/useStatusSummary', () => ({
+  useStatusSummary: ({snapshot}: any) => ({summary: snapshot, source: 'snapshot', lastError: null}),
+}));
 
-    it('should render minimal layout when statusCardLayout is "minimal"', () => {
-      const statusData = createStatusData({ statusCardLayout: 'minimal' });
-      render(<StatusPage statusData={statusData} />);
+const summary = makeSummary({
+  entities: [
+    {name: 'api', displayName: 'API', status: 'up'},
+    {name: 'web', displayName: 'Website', status: 'degraded'},
+  ],
+  incidents: [
+    {issueNumber: 5, title: 'Website slowdown', severity: 'major', status: 'open', entities: ['web']},
+  ],
+});
 
-      // Minimal cards prefer displayName when present (PR #87: StatusPage
-      // now threads displayName through to SystemCard)
-      expect(screen.getByText('API Server')).toBeInTheDocument();
-      expect(screen.getByText('Database')).toBeInTheDocument();
-      expect(screen.getByText('CDN')).toBeInTheDocument();
-    });
-
-    it('should render detailed layout when statusCardLayout is "detailed"', () => {
-      const statusData = createStatusData({ statusCardLayout: 'detailed' });
-      render(<StatusPage statusData={statusData} />);
-
-      // Detailed layout (StatusBoard/StatusItem) also prefers displayName
-      expect(screen.getByText('API Server')).toBeInTheDocument();
-    });
+describe('ADR-004: minimal layout on v1 data', () => {
+  it('defaults to the minimal card layout', () => {
+    const {container} = render(<StatusPage statusData={makeStatusData(summary)} />);
+    // SystemCard buttons carry the display names.
+    expect(screen.getAllByText('API').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Website').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('[class*="systemCards"]').length).toBeGreaterThan(0);
   });
 
-  describe('Minimal Layout Features', () => {
-    it('should render status badges for each system', () => {
-      const statusData = createStatusData({ statusCardLayout: 'minimal' });
-      const { container } = render(<StatusPage statusData={statusData} />);
-
-      // Status badges should be present
-      const badges = container.querySelectorAll('[class*="statusBadge"], [class*="badge"]');
-      // At minimum, we expect status indicators (might be styled differently)
-      expect(container.textContent).toContain('Operational');
-    });
-
-    it('should show UptimeBar for each system in minimal layout', () => {
-      const statusData = createStatusData({ statusCardLayout: 'minimal' });
-      const { container } = render(<StatusPage statusData={statusData} />);
-
-      // UptimeBar uses role="group" (after roving tabindex fix)
-      const uptimeBars = container.querySelectorAll('[role="group"]');
-      // Should have uptime bars for the 3 systems
-      expect(uptimeBars.length).toBeGreaterThanOrEqual(0); // Will be 3 after implementation
-    });
-
-    it('should support expandable cards in minimal layout', () => {
-      const statusData = createStatusData({ statusCardLayout: 'minimal' });
-      render(<StatusPage statusData={statusData} />);
-
-      // Cards should be articles (SystemCard uses article role)
-      const cards = screen.queryAllByRole('article');
-      // Will verify after implementation
-      expect(cards.length).toBeGreaterThanOrEqual(0);
-    });
+  it('renders the detailed layout when statusCardLayout is "detailed"', () => {
+    const {container} = render(
+      <StatusPage statusData={makeStatusData(summary, {statusCardLayout: 'detailed'})} />
+    );
+    expect(container.querySelectorAll('[class*="systemCards"]').length).toBe(0);
+    expect(screen.getAllByText('API').length).toBeGreaterThan(0);
   });
 
-  describe('Mobile Responsiveness', () => {
-    // These tests verify CSS classes are applied correctly
-    // Actual responsive behavior is tested in E2E tests
-
-    it('should apply responsive container class', () => {
-      const statusData = createStatusData({ statusCardLayout: 'minimal' });
-      const { container } = render(<StatusPage statusData={statusData} />);
-
-      // Status page should have responsive container
-      expect(container.querySelector('.statusPage')).toBeInTheDocument();
-    });
-
-    it('should render all systems regardless of viewport', () => {
-      const statusData = createStatusData({ statusCardLayout: 'minimal' });
-      render(<StatusPage statusData={statusData} />);
-
-      // All systems should be rendered (CSS handles display); minimal
-      // cards render displayName (PR #87)
-      expect(screen.getByText('API Server')).toBeInTheDocument();
-      expect(screen.getByText('Database')).toBeInTheDocument();
-      expect(screen.getByText('CDN')).toBeInTheDocument();
-    });
+  it('shows an uptime bar per system derived from summary day tuples', () => {
+    render(<StatusPage statusData={makeStatusData(summary)} />);
+    // Each SystemCard hosts an UptimeBar (role=img with an uptime label).
+    // UptimeBar renders role=group (labelled with the uptime summary)
+    // when data exists, role=img when empty.
+    const bars = [
+      ...screen.queryAllByRole('group', {name: /uptime/i}),
+      ...screen.queryAllByRole('img', {name: /uptime/i}),
+    ];
+    expect(bars.length).toBe(2);
   });
 
-  describe('Backwards Compatibility', () => {
-    it('should preserve existing behavior when statusCardLayout is not set', () => {
-      const statusData = createStatusData({});
-      // Remove the statusCardLayout to test default behavior
-      delete (statusData as Record<string, unknown>).statusCardLayout;
+  it('shows the overall status banner reflecting degraded systems', () => {
+    render(<StatusPage statusData={makeStatusData(summary)} />);
+    expect(screen.getByText('Some Systems Experiencing Issues')).toBeInTheDocument();
+  });
 
-      const { container } = render(<StatusPage statusData={statusData} />);
+  it('renders all-operational when every entity is up', () => {
+    const healthy = makeSummary({entities: [{name: 'api', status: 'up'}]});
+    render(<StatusPage statusData={makeStatusData(healthy)} />);
+    expect(screen.getByText('All Systems Operational')).toBeInTheDocument();
+  });
 
-      // Page should still render
-      expect(container.querySelector('.statusPage')).toBeInTheDocument();
-    });
-
-    it('should work with showPerformanceMetrics enabled', () => {
-      const statusData = createStatusData({
-        statusCardLayout: 'minimal',
-        showPerformanceMetrics: true,
-      });
-      const { container } = render(<StatusPage statusData={statusData} />);
-
-      // Should render without errors
-      expect(container.querySelector('.statusPage')).toBeInTheDocument();
-    });
-
-    it('should work with incidents data', () => {
-      const statusData = createStatusData({
-        statusCardLayout: 'minimal',
-        incidents: [
-          {
-            id: 1,
-            number: 1,
-            title: 'Test Incident',
-            state: 'open',
-            severity: 'minor',
-            status: 'investigating',
-            createdAt: '2025-01-05T10:00:00Z',
-            updatedAt: '2025-01-05T11:00:00Z',
-            url: 'https://github.com/test/test/issues/1',
-            affectedSystems: ['api'],
-            body: 'Test incident body',
-          },
-        ],
-      });
-
-      render(<StatusPage statusData={statusData} />);
-
-      // Incident should be shown
-      expect(screen.getByText('Test Incident')).toBeInTheDocument();
-    });
+  it('renders open incidents below the board', () => {
+    render(<StatusPage statusData={makeStatusData(summary)} />);
+    expect(screen.getByText('Website slowdown')).toBeInTheDocument();
   });
 });

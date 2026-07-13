@@ -1,6 +1,6 @@
-// Fixture site for the ADR-005 pipeline e2e harness (ticket #66).
+// Fixture site for the ADR-005 pipeline e2e harness (tickets #66/#77).
 // Deliberately minimal: one page + the status plugin reading the
-// committed-data path produced by monitor.js in e2e/run-pipeline.mjs.
+// status/v1 snapshot produced by the probe lib in e2e/run-pipeline.mjs.
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -29,14 +29,8 @@ const config = {
       {
         title: 'Fixture Status',
         description: 'Pipeline harness status page',
-        // Single source of truth: entities auto-discovered from
-        // .monitorrc.json — the #62 shape ('ghost' in data, not in
-        // config) must therefore not render.
-        entitiesSource: 'monitorrc',
-        useDemoData: false,
         showIncidents: false,
-        scheduledMaintenance: {enabled: false},
-        // ADR-005 #72: client-side live refresh from the self-served v1
+        // ADR-005 §4: client-side live refresh from the self-served v1
         // summary (relative URL — build-time fetch only applies to http(s)).
         dataUrl: '/status-data/status/v1/summary.json',
       },

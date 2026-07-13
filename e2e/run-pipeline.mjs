@@ -1,71 +1,65 @@
 /**
- * Pipeline runner for the fixture harness (ADR-005 Phase 0, ticket #66).
+ * Pipeline runner for the fixture harness (ADR-005; tickets #66/#77).
  *
- * Runs the REAL pipeline end-to-end before Playwright asserts on the DOM:
+ * Runs the REAL v1 pipeline end-to-end before Playwright asserts on the
+ * DOM — pure status/v1 since the #77 cutover:
  *   1. start mock HTTP endpoints (alpha=200, beta=500)
- *   2. run scripts/monitor.js twice against them (real checks, real archives)
- *   3. seed 'ghost' readings into current.json — a system with data but no
- *      config entry, the issue #62 shape that must NOT render
- *   4. docusaurus build fixtures/site (real plugin, committed-data path)
+ *   2. run the probe engine twice against them (real checks)
+ *   3. write archives + entity details, seed 'ghost' readings into the
+ *      archives — a system with data but no config entry, the issue #62
+ *      shape that must NOT render
+ *   4. regenerate status/v1 (summary.json + atom) via the probe lib
+ *   5. docusaurus build fixtures/site (real plugin, local-snapshot path)
  *
  * Invoked as the pre-step of `npm run test:e2e` (NOT as Playwright
  * globalSetup: the webServer is started before globalSetup, so the build
  * must already exist by the time Playwright runs).
  */
-import {execFile, execFileSync} from 'node:child_process';
+import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import {createRequire} from 'node:module';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {promisify} from 'node:util';
 import {startMockServer} from './mock-server.mjs';
 
-const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = path.join(ROOT, 'fixtures', 'site');
 const DATA = path.join(SITE, 'status-data');
-const MONITOR = path.join(
-  ROOT,
-  'packages',
-  'docusaurus-plugin-stentorosaur',
-  'scripts',
-  'monitor.js'
-);
+const PROBE_LIB = path.join(ROOT, 'packages', 'probe', 'lib');
 
 async function runPipeline() {
   fs.rmSync(DATA, {recursive: true, force: true});
   fs.rmSync(path.join(SITE, 'build'), {recursive: true, force: true});
 
+  const {runChecks} = require(path.join(PROBE_LIB, 'check.js'));
+  const {appendArchive, writeEntityDetail} = require(path.join(PROBE_LIB, 'files.js'));
+  const {regenerateDerived} = require(path.join(PROBE_LIB, 'regenerate.js'));
+
+  const targets = [
+    {system: 'alpha', url: 'http://127.0.0.1:39990/alpha', expectedCodes: [200]},
+    {system: 'beta', url: 'http://127.0.0.1:39990/beta', expectedCodes: [200]},
+  ];
+
+  // 1–2. Real checks against real HTTP endpoints, twice (two data points).
+  const readings = [];
   const server = await startMockServer(39990);
   try {
     for (let i = 0; i < 2; i++) {
-      // Async spawn — execFileSync would block THIS process's event loop,
-      // starving the mock server and timing every check out to 'down'.
-      const {stdout, stderr} = await execFileAsync(
-        'node',
-        [MONITOR, '--config', path.join(SITE, '.monitorrc.json'), '--output-dir', DATA],
-        {cwd: SITE}
-      );
-      process.stdout.write(stdout);
-      process.stderr.write(stderr);
+      const batch = await runChecks(targets, {now: Date.now() - (1 - i) * 60_000});
+      readings.push(...batch);
     }
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
 
-  // Single read of current.json: sanity-check, then seed onto the same array.
-  const currentPath = path.join(DATA, 'current.json');
-  const readings = JSON.parse(fs.readFileSync(currentPath, 'utf8'));
-  if (!Array.isArray(readings) || readings.length === 0) {
-    throw new Error('monitor.js produced no readings — pipeline broken before seed step');
+  if (readings.length === 0) {
+    throw new Error('probe produced no readings — pipeline broken before write step');
   }
-
   // The mock returns 200 for alpha and 500 for beta: the harness must see
   // BOTH states, otherwise it cannot catch up/down regressions.
-  const stateOf = svc =>
-    readings.filter(r => r.svc === svc).map(r => r.state);
+  const stateOf = svc => readings.filter(r => r.svc === svc).map(r => r.state);
   if (!stateOf('alpha').every(s => s === 'up')) {
     throw new Error(`pipeline sanity: alpha should be up, got ${stateOf('alpha')}`);
   }
@@ -73,31 +67,32 @@ async function runPipeline() {
     throw new Error(`pipeline sanity: beta should be down, got ${stateOf('beta')}`);
   }
 
-  // Seed the #62 shape: readings for a system that is NOT configured.
+  // 3. Seed the #62 shape: archived readings for a system that is NOT
+  // configured. It must appear nowhere in the rendered page.
   const now = Date.now();
-  readings.push(
+  const ghostReadings = [
     {t: now - 60_000, svc: 'ghost', state: 'up', code: 200, lat: 42},
-    {t: now, svc: 'ghost', state: 'up', code: 200, lat: 43}
-  );
-  fs.writeFileSync(currentPath, JSON.stringify(readings));
+    {t: now, svc: 'ghost', state: 'up', code: 200, lat: 43},
+  ];
 
-  // Generate status/v1 from the SAME readings via the compiled probe lib
-  // (ticket #72: the v1 read path takes priority in loadContent). Ghost
-  // stays legacy-only: only configured entities get v1 detail files, so
-  // the #62 DOM assertion now guards the v1 pipeline too.
-  const {writeEntityDetail} = require(path.join(ROOT, 'packages', 'probe', 'lib', 'files.js'));
-  const {regenerateDerived} = require(path.join(ROOT, 'packages', 'probe', 'lib', 'regenerate.js'));
-  const generatedAt = new Date().toISOString();
   const entities = [
     {name: 'alpha', type: 'system'},
     {name: 'beta', type: 'system'},
   ];
-  for (const entity of entities) {
-    const entityReadings = readings
-      .filter(r => r.svc === entity.name)
-      .map(({err, ...rest}) => (typeof err === 'string' ? {...rest, err} : rest));
-    writeEntityDetail(DATA, entity.name, entityReadings, generatedAt);
+  for (const reading of [...readings, ...ghostReadings]) {
+    appendArchive(DATA, reading);
   }
+  const generatedAt = new Date().toISOString();
+  for (const entity of entities) {
+    writeEntityDetail(
+      DATA,
+      entity.name,
+      readings.filter(r => r.svc === entity.name),
+      generatedAt
+    );
+  }
+
+  // 4. The real §5 regenerate — summary.json + incidents.atom.
   regenerateDerived(DATA, {
     generatedAt,
     generatedBy: 'e2e-pipeline',
@@ -106,7 +101,7 @@ async function runPipeline() {
     siteUrl: 'http://127.0.0.1:3999',
   });
 
-  // Build the fixture site with the real plugin (committed-data path).
+  // 5. Build the fixture site with the real plugin (local-snapshot path).
   execFileSync('npx', ['docusaurus', 'build', SITE, '--out-dir', path.join(SITE, 'build')], {
     cwd: ROOT,
     stdio: 'inherit',

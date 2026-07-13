@@ -59,6 +59,37 @@ describe('ResponseTimeChart (SVG)', () => {
   });
 });
 
+describe('frozen-snapshot anchoring (Council PR #92 r=2)', () => {
+  function makeStaleHistory(hours: number, ageDays: number): StatusCheckHistory[] {
+    // Data whose NEWEST reading is ageDays old — a snapshot-only build.
+    const anchor = Date.now() - ageDays * 24 * 60 * 60 * 1000;
+    const history: StatusCheckHistory[] = [];
+    for (let m = 0; m < hours * 60; m += 30) {
+      history.push({
+        timestamp: new Date(anchor - m * 60_000).toISOString(),
+        status: 'up',
+        responseTime: 100,
+        code: 200,
+      });
+    }
+    return history;
+  }
+
+  it('ResponseTimeChart still renders data whose newest reading is days old', () => {
+    const history = makeStaleHistory(24, 10);
+    render(
+      <ResponseTimeChart name="api" history={history} period="24h" showPeriodSelector={false} />
+    );
+    // Wall-clock windowing would render the no-data state here.
+    expect(screen.getAllByTestId('line-point')).toHaveLength(history.length);
+  });
+
+  it('SLIChart still renders SLI data whose newest reading is days old', () => {
+    render(<SLIChart name="api" history={makeStaleHistory(24, 10)} sloTarget={99} period="24h" />);
+    expect(screen.queryByText(/no data/i)).not.toBeInTheDocument();
+  });
+});
+
 describe('UptimeChart (SVG)', () => {
   it('renders 24 hourly bars for the 24h period', () => {
     render(<UptimeChart name="api" history={makeHistory(24)} period="24h" showPeriodSelector={false} />);

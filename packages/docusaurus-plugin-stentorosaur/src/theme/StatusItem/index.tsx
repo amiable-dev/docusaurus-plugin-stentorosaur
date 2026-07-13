@@ -7,7 +7,6 @@
 
 import React, { useMemo } from 'react';
 import type {StatusItem as StatusItemType, StatusIncident, ScheduledMaintenance, StatusCheckHistory} from '../../types';
-import { useDailySummary } from '../../hooks/useDailySummary';
 import MiniHeatmap from './MiniHeatmap';
 import styles from './styles.module.css';
 
@@ -62,45 +61,25 @@ export default function StatusItem({
   const config = statusConfig[item.status];
   const label = item.displayName || item.name;
 
-  // Determine days to show: use prop if provided, otherwise 90 if dataBaseUrl, else 14
-  const daysToShow = heatmapDays ?? (dataBaseUrl ? 90 : 14);
+  // Determine days to show: use prop if provided, otherwise 90 when the
+  // item carries v1 day rollups, else 14
+  const daysToShow = heatmapDays ?? (item.days?.length ? 90 : 14);
 
-  // Fetch daily summary data if baseUrl provided (ADR-002)
-  const { data: summaryData } = useDailySummary({
-    baseUrl: dataBaseUrl || '',
-    serviceName: item.name,
-    days: daysToShow,
-    enabled: !!dataBaseUrl && showMiniChart,
-  });
-
-  // Convert summary data to history format for MiniHeatmap
+  // v1 (ADR-005): day rollups arrive ON the item — no runtime fetch.
   const enhancedHistory = useMemo((): StatusCheckHistory[] => {
-    // Start with existing history
     const existingHistory = item.history || [];
-
-    // If no summary data, return existing
-    if (!summaryData || summaryData.length === 0) {
+    const days = (item.days ?? []).slice(-daysToShow);
+    if (days.length === 0) {
       return existingHistory;
     }
 
-    // Create synthetic history entries from summary data
-    // Each day becomes a single "check" with status based on uptimePct
-    const summaryAsHistory: StatusCheckHistory[] = summaryData.map(entry => {
-      // Determine status from uptime percentage
-      let status: 'up' | 'down' | 'degraded' | 'maintenance' = 'up';
-      if (entry.uptimePct < 0.5) {
-        status = 'down';
-      } else if (entry.uptimePct < 0.99) {
-        status = 'degraded';
-      }
-
-      return {
-        timestamp: `${entry.date}T12:00:00Z`, // Noon UTC as representative time
-        status,
-        code: entry.checksPassed > 0 ? 200 : 500,
-        responseTime: entry.avgLatencyMs || 0,
-      };
-    });
+    // Each day becomes a single representative "check".
+    const summaryAsHistory: StatusCheckHistory[] = days.map(day => ({
+      timestamp: `${day.date}T12:00:00Z`,
+      status: day.worst,
+      code: day.uptime > 0 ? 200 : 500,
+      responseTime: day.avgMs || 0,
+    }));
 
     // Merge: prefer existing history for recent days, use summary for older days
     const existingDates = new Set(
@@ -120,7 +99,7 @@ export default function StatusItem({
     return combined.sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-  }, [item.history, summaryData]);
+  }, [item.history, item.days, daysToShow]);
 
   return (
     <div 

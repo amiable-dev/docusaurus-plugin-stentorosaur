@@ -35,6 +35,22 @@ const PERIOD_HOURS: Record<TimePeriod, number> = {
   '90d': 2160,
 };
 
+/**
+ * Anchor period windows to the NEWEST reading, not the client clock:
+ * on snapshot-only deployments the data is frozen at build time, and a
+ * wall-clock window would empty the chart once it passes (Council
+ * PR #92 r=2). For live data the newest reading ≈ now, so behavior is
+ * unchanged.
+ */
+function historyAnchorMs(history: {timestamp: string}[]): number {
+  let anchor = 0;
+  for (const check of history) {
+    const t = new Date(check.timestamp).getTime();
+    if (t > anchor) anchor = t;
+  }
+  return anchor > 0 ? anchor : Date.now();
+}
+
 export interface ResponseTimeChartProps {
   /** System name */
   name: string;
@@ -65,7 +81,7 @@ export default function ResponseTimeChart({
   const activePeriod = showPeriodSelector ? (selectedPeriod ?? period) : period;
 
   const filteredData = useMemo(() => {
-    const cutoff = Date.now() - PERIOD_HOURS[activePeriod] * 60 * 60 * 1000;
+    const cutoff = historyAnchorMs(history) - PERIOD_HOURS[activePeriod] * 60 * 60 * 1000;
     return history
       .filter(check => new Date(check.timestamp).getTime() >= cutoff)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
