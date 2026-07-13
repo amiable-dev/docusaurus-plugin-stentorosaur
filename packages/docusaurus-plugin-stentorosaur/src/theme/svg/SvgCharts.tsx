@@ -63,9 +63,10 @@ export function SvgLineChart({
 }: SvgLineChartProps): JSX.Element {
   const values = points.map(p => p.value).filter((v): v is number => v !== null);
   const thresholdValues = thresholds.map(t => t.value);
-  const dataMin = Math.min(...values, ...thresholdValues);
-  const dataMax = Math.max(...values, ...thresholdValues);
-  const span = dataMax - dataMin || 1;
+  const allValues = [...values, ...thresholdValues];
+  const dataMin = allValues.length > 0 ? Math.min(...allValues) : 0;
+  const dataMax = allValues.length > 0 ? Math.max(...allValues) : 1;
+  const span = dataMax === dataMin ? 1 : dataMax - dataMin;
   const lo = yMin ?? dataMin - span * 0.1;
   const hi = yMax ?? dataMax + span * 0.1;
 
