@@ -1,41 +1,39 @@
 /**
- * Copyright (c) Your Organization
+ * Copyright (c) Amiable Development
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
+/**
+ * Response time chart — inline SVG (ADR-005 §11, ticket #73; chart.js
+ * removed). Theming comes from CSS variables; CSV/JSON export retained;
+ * chart-image export dropped with the canvas.
+ */
+
+import React, { useState, useMemo, useCallback } from 'react';
 import type { StatusCheckHistory } from '../../types';
-import { useChartExport } from '../hooks/useChartExport';
-import { useDataExport } from '../hooks/useDataExport';
 import { ExportButton } from '../components/ExportButton';
 import { formatDateForFilename } from '../../utils/csv';
+import { SvgLineChart } from '../svg/SvgCharts';
+import type { LinePoint } from '../svg/SvgCharts';
 import styles from './styles.module.css';
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+type TimePeriod = '24h' | '7d' | '30d' | '90d';
+
+const PERIOD_LABELS: Record<TimePeriod, string> = {
+  '24h': 'Last 24 Hours',
+  '7d': 'Last 7 Days',
+  '30d': 'Last 30 Days',
+  '90d': 'Last 90 Days',
+};
+
+const PERIOD_HOURS: Record<TimePeriod, number> = {
+  '24h': 24,
+  '7d': 168,
+  '30d': 720,
+  '90d': 2160,
+};
 
 export interface ResponseTimeChartProps {
   /** System name */
@@ -50,22 +48,6 @@ export interface ResponseTimeChartProps {
   showPeriodSelector?: boolean;
 }
 
-type TimePeriod = '24h' | '7d' | '30d' | '90d';
-
-const PERIOD_LABELS: Record<TimePeriod, string> = {
-  '24h': '24 Hours',
-  '7d': '7 Days',
-  '30d': '30 Days',
-  '90d': '90 Days',
-};
-
-const PERIOD_HOURS: Record<TimePeriod, number> = {
-  '24h': 24,
-  '7d': 24 * 7,
-  '30d': 24 * 30,
-  '90d': 24 * 90,
-};
-
 export default function ResponseTimeChart({
   name,
   history,
@@ -73,192 +55,69 @@ export default function ResponseTimeChart({
   height = 300,
   showPeriodSelector = true,
 }: ResponseTimeChartProps): JSX.Element {
-  const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
-  const chartRef = useRef<ChartJS<'line'>>(null);
-  const { exportPNG, exportJPEG } = useChartExport();
-  const { exportData } = useDataExport();
-  
-  // Use internal state only if period selector is shown, otherwise use prop
-  const activePeriod = showPeriodSelector ? internalPeriod : period;
+  // null until the user interacts, so a changed period PROP always flows
+  // through (Council PR #88 r=1/r=2): a NEW prop value also clears any
+  // user selection (parent intent resets the override).
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod | null>(null);
+  React.useEffect(() => {
+    setSelectedPeriod(null);
+  }, [period]);
+  const activePeriod = showPeriodSelector ? (selectedPeriod ?? period) : period;
 
-  // Detect dark mode from document
-  useEffect(() => {
-    const checkDarkMode = () => {
-      setIsDarkTheme(document.documentElement.getAttribute('data-theme') === 'dark');
-    };
-    
-    checkDarkMode();
-    
-    // Watch for theme changes
-    const observer = new MutationObserver(checkDarkMode);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme'],
-    });
-    
-    return () => observer.disconnect();
-  }, []);
-
-  // Filter data by selected period
   const filteredData = useMemo(() => {
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - PERIOD_HOURS[activePeriod] * 60 * 60 * 1000);
-    
+    const cutoff = Date.now() - PERIOD_HOURS[activePeriod] * 60 * 60 * 1000;
     return history
-      .filter(check => new Date(check.timestamp) >= cutoff)
+      .filter(check => new Date(check.timestamp).getTime() >= cutoff)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [history, activePeriod]);
 
-  // Calculate average response time
-  const avgResponseTime = useMemo(() => {
-    return filteredData.length > 0
-      ? Math.round(filteredData.reduce((sum, check) => sum + check.responseTime, 0) / filteredData.length)
-      : 0;
-  }, [filteredData]);
+  const avgResponseTime = useMemo(
+    () =>
+      filteredData.length > 0
+        ? Math.round(filteredData.reduce((sum, check) => sum + check.responseTime, 0) / filteredData.length)
+        : 0,
+    [filteredData]
+  );
 
-  // Prepare data for CSV/JSON export
-  const exportableData = useMemo(() => {
-    return filteredData.map(check => ({
-      timestamp: check.timestamp,
-      responseTime: check.responseTime,
-      status: check.status,
-      statusCode: check.code,
-    }));
-  }, [filteredData]);
+  const exportableData = useMemo(
+    () =>
+      filteredData.map(check => ({
+        timestamp: check.timestamp,
+        responseTime: check.responseTime,
+        status: check.status,
+        statusCode: check.code,
+      })),
+    [filteredData]
+  );
 
-  // Generate filename with date range
   const generateExportFilename = useCallback(() => {
-    if (filteredData.length === 0) return `${name}-response-time`;
-    
+    const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
+    if (filteredData.length === 0) return `${systemSlug}-response-time`;
     const firstDate = new Date(filteredData[0].timestamp);
     const lastDate = new Date(filteredData[filteredData.length - 1].timestamp);
-    const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
-    
     return `${systemSlug}-response-time-${formatDateForFilename(firstDate)}-to-${formatDateForFilename(lastDate)}`;
   }, [filteredData, name]);
 
-  // Prepare chart data
-  const chartData = useMemo(() => ({
-    labels: filteredData.map(check => {
-      const date = new Date(check.timestamp);
-      if (activePeriod === '24h') {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      } else {
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      }
-    }),
-    datasets: [
-      {
-        label: 'Response Time (ms)',
-        data: filteredData.map(check => check.responseTime),
-        borderColor: isDarkTheme ? 'rgb(75, 192, 192)' : 'rgb(53, 162, 235)',
-        backgroundColor: isDarkTheme ? 'rgba(75, 192, 192, 0.1)' : 'rgba(53, 162, 235, 0.1)',
-        pointBackgroundColor: filteredData.map(check => {
-          // Color code points based on status
-          if (check.status === 'down') return 'rgb(255, 99, 132)';
-          if (check.status === 'degraded') return 'rgb(255, 205, 86)';
-          return isDarkTheme ? 'rgb(75, 192, 192)' : 'rgb(53, 162, 235)';
-        }),
-        pointBorderColor: filteredData.map(check => {
-          if (check.status === 'down') return 'rgb(255, 99, 132)';
-          if (check.status === 'degraded') return 'rgb(255, 205, 86)';
-          return isDarkTheme ? 'rgb(75, 192, 192)' : 'rgb(53, 162, 235)';
-        }),
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        tension: 0.3,
-        fill: true,
-      },
-      {
-        label: 'Average',
-        data: filteredData.map(() => avgResponseTime),
-        borderColor: isDarkTheme ? 'rgba(153, 102, 255, 0.9)' : 'rgba(255, 99, 132, 0.9)',
-        borderDash: [8, 4],
-        borderWidth: 3,
-        pointRadius: 0,
-        pointHoverRadius: 0,
-        tension: 0,
-        fill: false,
-      },
-    ],
-  }), [filteredData, isDarkTheme, activePeriod, avgResponseTime]);
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
-    },
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top' as const,
-        labels: {
-          color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        },
-      },
-      tooltip: {
-        enabled: true,
-        backgroundColor: isDarkTheme ? 'rgba(28, 30, 33, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-        titleColor: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        bodyColor: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        borderColor: isDarkTheme ? '#444' : '#ccc',
-        borderWidth: 1,
-        callbacks: {
-          label: (context: any) => {
-            const dataIndex = context.dataIndex;
-            const check = filteredData[dataIndex];
-            const lines = [`Response Time: ${context.parsed.y} ms`];
-            
-            if (context.datasetIndex === 0 && check) {
-              lines.push(`Status: ${check.status}`);
-              lines.push(`Code: ${check.code}`);
-            }
-            
-            return lines;
-          },
-        },
-      },
-      title: {
-        display: true,
-        text: `${name} - Response Time Trends`,
-        color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Response Time (ms)',
-          color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        },
-        ticks: {
-          color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        },
-        grid: {
-          color: isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-        },
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Time',
-          color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        },
-        ticks: {
-          color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-          maxRotation: 45,
-          minRotation: 45,
-        },
-        grid: {
-          color: isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-        },
-      },
-    },
-  };
+  const points = useMemo<LinePoint[]>(
+    () =>
+      filteredData.map(check => {
+        const date = new Date(check.timestamp);
+        // Fixed locale + UTC: SSR'd SVG must hydrate identically on any
+        // client locale/timezone (Council PR #88 r=2).
+        const label =
+          activePeriod === '24h'
+            ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })
+            : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+        const tone = check.status === 'up' ? 'ok' : check.status === 'down' ? 'bad' : 'warn';
+        return {
+          label,
+          value: check.responseTime,
+          tone,
+          title: `${label}: ${check.responseTime} ms (${check.status})`,
+        };
+      }),
+    [filteredData, activePeriod]
+  );
 
   if (filteredData.length === 0) {
     return (
@@ -272,18 +131,18 @@ export default function ResponseTimeChart({
     <div className={styles.chartContainer}>
       {showPeriodSelector && (
         <div className={styles.periodSelector}>
-          {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map((p) => (
+          {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map(p => (
             <button
               key={p}
-              className={`${styles.periodButton} ${internalPeriod === p ? styles.active : ''}`}
-              onClick={() => setInternalPeriod(p)}
+              className={`${styles.periodButton} ${activePeriod === p ? styles.active : ''}`}
+              onClick={() => setSelectedPeriod(p)}
             >
               {PERIOD_LABELS[p]}
             </button>
           ))}
         </div>
       )}
-      
+
       <div className={styles.chartHeader}>
         <div className={styles.stats}>
           <div className={styles.stat}>
@@ -296,20 +155,6 @@ export default function ResponseTimeChart({
           </div>
         </div>
         <div className={styles.exportButtons}>
-          <button
-            className={styles.exportButton}
-            onClick={() => exportPNG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-response-time`)}
-            title="Export as PNG"
-          >
-            PNG
-          </button>
-          <button
-            className={styles.exportButton}
-            onClick={() => exportJPEG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-response-time`)}
-            title="Export as JPEG"
-          >
-            JPG
-          </button>
           <ExportButton
             filename={generateExportFilename()}
             data={exportableData}
@@ -326,8 +171,14 @@ export default function ResponseTimeChart({
         </div>
       </div>
 
-      <div className={styles.chart} style={{ height: `${height}px` }}>
-        <Line key={activePeriod} ref={chartRef} data={chartData} options={options} />
+      <div className={styles.chart}>
+        <SvgLineChart
+          points={points}
+          height={height}
+          yMin={0}
+          yFormat={v => `${Math.round(v)} ms`}
+          ariaLabel={`Response time chart for ${name}, ${PERIOD_LABELS[activePeriod]}: average ${avgResponseTime} ms over ${filteredData.length} checks`}
+        />
       </div>
     </div>
   );
