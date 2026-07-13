@@ -58,6 +58,15 @@ export function parseTargets(json: string): CheckTarget[] {
     if (typeof target?.system !== 'string' || target.system.length === 0 || typeof target?.url !== 'string') {
       throw new Error(`TARGETS[${i}] must have string 'system' and 'url'`);
     }
+    let parsed: URL;
+    try {
+      parsed = new URL(target.url);
+    } catch {
+      throw new Error(`TARGETS[${i}].url is not a valid URL: ${target.url}`);
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`TARGETS[${i}].url must be http(s), got ${parsed.protocol}`);
+    }
   }
   return raw as CheckTarget[];
 }

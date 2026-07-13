@@ -234,7 +234,12 @@ function writeReadings(dir: string, readings: CompactReading[], generatedAt: str
   const bySvc = new Map<string, CompactReading[]>();
   for (const reading of readings) {
     appendArchive(dir, reading);
-    bySvc.set(reading.svc, [...(bySvc.get(reading.svc) ?? []), reading]);
+    const list = bySvc.get(reading.svc);
+    if (list) {
+      list.push(reading);
+    } else {
+      bySvc.set(reading.svc, [reading]);
+    }
   }
   for (const [svc, svcReadings] of bySvc) {
     writeEntityDetail(dir, svc, svcReadings, generatedAt);

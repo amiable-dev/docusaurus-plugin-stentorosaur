@@ -148,8 +148,14 @@ export const rawIncidentBodySchema = z.object({
  */
 export const probeDispatchPayloadSchema = z.object({
   schemaVersion: z.literal(STATUS_SCHEMA_VERSION),
-  /** Which prober sent this, e.g. 'cf-worker' */
-  source: z.string().min(1).max(100),
+  /** Which prober sent this, e.g. 'cf-worker'. Slug-restricted: the
+   * source flows into the ingest commit message, so control characters,
+   * newlines, and '[skip ci]'-style smuggling must fail validation. */
+  source: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[A-Za-z0-9._\/-]+$/, 'source must be a slug ([A-Za-z0-9._/-])'),
   readings: z.array(compactReadingSchema).min(1).max(1000),
 });
 
