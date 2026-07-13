@@ -10,8 +10,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import {encodeDayRollups} from '@stentorosaur/core';
+import type {StatusSummary} from '@stentorosaur/core';
 import StatusPage from '../src/theme/StatusPage';
 import type { StatusData } from '../src/types';
+import {useStatusSummary} from '../src/v1/useStatusSummary';
 
 // Mock Layout component
 jest.mock('@theme/Layout', () => ({
@@ -22,6 +25,14 @@ jest.mock('@theme/Layout', () => ({
     </div>
   ),
 }));
+
+jest.mock('../src/v1/useStatusSummary', () => ({
+  useStatusSummary: jest.fn(),
+}));
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 describe('StatusPage (default view)', () => {
   const mockStatusData: StatusData = {
@@ -218,5 +229,67 @@ describe('StatusPage (default view)', () => {
 
     // But maintenance should still be visible
     expect(screen.getByText('Scheduled Maintenance')).toBeInTheDocument();
+  });
+
+  it('uses the v1 summary display name but fetches history from the canonical service path', async () => {
+    const summary: StatusSummary = {
+      schemaVersion: 1,
+      generatedAt: '2026-07-12T18:00:00.000Z',
+      generatedBy: 'test',
+      entities: [
+        {
+          name: 'api',
+          displayName: 'API',
+          type: 'system',
+          status: 'up',
+          uptime: {d1: 100, d7: 100, d90: 100},
+          responseTimeMs: {d1: 50},
+          ...encodeDayRollups([{date: '2026-07-12', uptime: 100, avgMs: 50, worst: 'up'}]),
+        },
+      ],
+      incidents: {open: [], recent: []},
+      maintenance: {upcoming: [], inProgress: []},
+    };
+
+    (useStatusSummary as jest.Mock).mockReturnValue({
+      summary,
+      source: 'snapshot',
+      lastError: null,
+    });
+
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        readings: [
+          {
+            t: Date.parse('2026-07-12T18:00:00.000Z'),
+            svc: 'api',
+            state: 'up',
+            code: 200,
+            lat: 50,
+          },
+        ],
+      }),
+    });
+    (global as any).fetch = fetchMock;
+
+    const statusData: StatusData = {
+      items: [],
+      incidents: [],
+      maintenance: [],
+      lastUpdated: '2026-07-12T18:00:00.000Z',
+      showServices: true,
+      showIncidents: true,
+      showPerformanceMetrics: true,
+      useDemoData: false,
+      v1Summary: summary,
+      dataUrl: '/docs/status-data/status/v1/summary.json',
+      repoUrl: 'https://github.com/test/test',
+    };
+
+    render(<StatusPage statusData={statusData} />);
+
+    expect(await screen.findByText('API')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith('/docs/status-data/current.json');
   });
 });

@@ -120,6 +120,7 @@ export interface SystemStatusFile {
 
 export interface StatusItem {
   name: string;
+  displayName?: string;
   description?: string;
   status: StatusItemStatus;
   lastChecked?: string;
@@ -550,6 +551,14 @@ export interface PluginOptions {
    * @see docs/adrs/ADR-001-configurable-data-fetching-strategies.md
    */
   dataSource?: DataSource | string;
+
+  /**
+   * status/v1 summary.json endpoint (ADR-005 §3/§4). When set (or when a
+   * local status/v1/summary.json exists under dataPath), the v1 read
+   * path takes priority over every legacy data path. PUBLIC endpoints
+   * only — private repos use the build-time snapshot (§9).
+   */
+  dataUrl?: string;
 }
 
 export interface StatusData {
@@ -587,6 +596,15 @@ export interface StatusData {
    * components never need a generated version module (ADR-005 §11)
    */
   pluginVersion?: string;
+
+  /**
+   * status/v1 mode (ADR-005): the raw summary snapshot embedded at build
+   * time (SSG-first render, §4) plus the endpoint for live refresh and
+   * the repo URL the adapter uses for issue links.
+   */
+  v1Summary?: unknown;
+  dataUrl?: string;
+  repoUrl?: string;
 }
 
 export interface UptimeStatusSection {

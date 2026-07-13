@@ -36,6 +36,9 @@ const config = {
         useDemoData: false,
         showIncidents: false,
         scheduledMaintenance: {enabled: false},
+        // ADR-005 #72: client-side live refresh from the self-served v1
+        // summary (relative URL — build-time fetch only applies to http(s)).
+        dataUrl: '/status-data/status/v1/summary.json',
       },
     ],
   ],

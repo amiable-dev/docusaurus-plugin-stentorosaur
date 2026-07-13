@@ -94,3 +94,28 @@ test.describe('postBuild copied the data plane (v0.21.2 regression shape)', () =
     expect(body.length).toBeGreaterThan(0);
   });
 });
+
+test.describe('status/v1 read path (ADR-005 #72)', () => {
+  test('summary.json is served and schema-shaped', async ({request}) => {
+    const res = await request.get('/status-data/status/v1/summary.json');
+    expect(res.ok()).toBe(true);
+    const summary = await res.json();
+    expect(summary.schemaVersion).toBe(1);
+    expect(summary.entities.map((e: {name: string}) => e.name).sort()).toEqual(['alpha', 'beta']);
+    // ghost has readings in legacy current.json but is NOT a configured
+    // entity — it must never enter the v1 contract (#62, v1 edition).
+    expect(JSON.stringify(summary)).not.toContain('ghost');
+  });
+
+  test('the build consumed the v1 path (route data carries the snapshot)', async () => {
+    const statusJson = JSON.parse(
+      fs.readFileSync(path.join(BUILD_DIR, 'status-data', 'status.json'), 'utf8')
+    );
+    expect(statusJson.v1Summary).toBeDefined();
+    expect(statusJson.v1Summary.schemaVersion).toBe(1);
+    expect(statusJson.dataUrl).toBe('/status-data/status/v1/summary.json');
+    // v1 entities drove the items (beta down from the mock's 500s)
+    const beta = statusJson.items.find((i: {name: string}) => i.name === 'beta');
+    expect(beta.status).toBe('down');
+  });
+});
