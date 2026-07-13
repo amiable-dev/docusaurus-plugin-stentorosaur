@@ -11,6 +11,24 @@
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./worker": {
+      "types": "./lib/worker.d.ts",
+      "default": "./lib/worker.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "worker": [
+        "lib/worker.d.ts"
+      ]
+    }
+  },
   "files": [
     "lib",
     "bin"

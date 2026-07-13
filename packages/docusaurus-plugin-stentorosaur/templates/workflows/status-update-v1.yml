@@ -40,5 +40,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx -y -p @stentorosaur/probe \
+          # PINNED version (supply-chain: this workflow holds
+          # contents:write). Bump deliberately when upgrading the plugin.
+          npx -y -p @stentorosaur/probe@0.1.0 \
             stentorosaur update-incidents --config . --workdir . --branch status-data

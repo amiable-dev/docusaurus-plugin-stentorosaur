@@ -1,0 +1,51 @@
+# Receive probe readings from an external prober (Cloudflare Worker)
+# via repository_dispatch — ADR-005 §6 trust model: the Worker never
+# writes to git; this Action validates the payload against the core
+# schema and commits with its ephemeral GITHUB_TOKEN.
+#
+# Pairs with templates/worker/ (the dispatching Worker). Run ONE prober
+# per entity: if the Worker replaces the Actions cron probe, remove the
+# schedule trigger from probe-v1.yml — ingest appends readings, so two
+# probers checking the same entity double its check counts.
+
+name: Probe ingest (dispatch)
+
+on:
+  repository_dispatch:
+    types: [stentorosaur-probe]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: status-data-writer
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main (config + tooling)
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Write dispatch payload to file
+        env:
+          # toJSON via env var, never inline interpolation — the payload
+          # is external input and must not reach the shell as code.
+          CLIENT_PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+        run: printf '%s' "$CLIENT_PAYLOAD" > /tmp/dispatch-payload.json
+
+      - name: Validate and ingest readings (schema-gated, §5 retry)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # PINNED version (supply-chain: this workflow holds
+          # contents:write). Bump deliberately when upgrading the plugin.
+          npx -y -p @stentorosaur/probe@0.1.0 stentorosaur ingest \
+            --payload /tmp/dispatch-payload.json

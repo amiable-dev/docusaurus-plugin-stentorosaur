@@ -1,0 +1,28 @@
+# Cloudflare Worker probe (ADR-005 §6; see ../workflows/README.md).
+#
+# Setup:
+#   1. npm create cloudflare@latest -- --template hello-world  (or reuse)
+#   2. Copy worker.mjs + this file; npm i @stentorosaur/probe
+#   3. wrangler secret put GITHUB_TOKEN     (fine-grained PAT, see README)
+#   4. wrangler deploy
+
+name = "stentorosaur-probe"
+main = "worker.mjs"
+compatibility_date = "2025-01-01"
+
+[triggers]
+# 1-minute resolution is the point of the Worker path — but every
+# dispatch triggers one Actions run of the ingest workflow. Quota math
+# in ../workflows/README.md; "*/5 * * * *" is the balanced default.
+crons = ["*/5 * * * *"]
+
+[vars]
+GITHUB_OWNER = "OWNER"
+GITHUB_REPO = "REPO"
+# JSON array of check targets ({system, url, method?, timeout?,
+# expectedCodes?, maxResponseTime?}) — keep in sync with the entities
+# in stentorosaur.config.js.
+TARGETS = '[{"system":"api","url":"https://api.example.com/health","expectedCodes":[200]}]'
+
+# GITHUB_TOKEN is a secret — never a [vars] entry:
+#   wrangler secret put GITHUB_TOKEN

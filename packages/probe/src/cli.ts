@@ -8,6 +8,7 @@
  *   stentorosaur update-incidents   sync issues, write + push (§5 retry)
  *   stentorosaur regenerate         §7 re-render from raw/ + rebuild
  *   stentorosaur migrate            one-time legacy → status/v1 (#75)
+ *   stentorosaur ingest             receive dispatched readings (§6, #76)
  *
  * probe/update-incidents/regenerate operate on a git worktree of the
  * data branch (the workflow templates check it out first) or any dir
@@ -26,8 +27,8 @@ import {reRenderFromRaw} from './regenerate-from-raw';
 import {fetchStatusIssues, writeIssueInputs} from './update-incidents';
 import {migrateHistoricalData, planMigration} from './migrate';
 import type {MigrationReport} from './migrate';
-import {parseSummary} from '@stentorosaur/core';
-import type {StentorosaurConfig} from '@stentorosaur/core';
+import {parseProbeDispatch, parseSummary} from '@stentorosaur/core';
+import type {CompactReading, StentorosaurConfig} from '@stentorosaur/core';
 
 interface CliOptions {
   config: string;
@@ -38,6 +39,8 @@ interface CliOptions {
   from: string;
   /** migrate: plan only, write nothing */
   dryRun: boolean;
+  /** ingest: path to the repository_dispatch client_payload JSON */
+  payload?: string;
 }
 
 function parseArgs(argv: string[]): {command: string; options: CliOptions} {
@@ -75,6 +78,9 @@ function parseArgs(argv: string[]): {command: string; options: CliOptions} {
         break;
       case '--dry-run':
         options.dryRun = true;
+        break;
+      case '--payload':
+        options.payload = takeValue('--payload', ++i);
         break;
       default:
         throw new Error(`unknown flag: ${rest[i]}`);
@@ -219,6 +225,27 @@ async function withDataBranch(
   }
 }
 
+/**
+ * Group once: one entity-detail write per entity, one archive append
+ * per reading (Council PR #89 r=2: a per-reading filter was O(n²) and
+ * rewrote each entity file repeatedly). Shared by probe and ingest.
+ */
+function writeReadings(dir: string, readings: CompactReading[], generatedAt: string): void {
+  const bySvc = new Map<string, CompactReading[]>();
+  for (const reading of readings) {
+    appendArchive(dir, reading);
+    const list = bySvc.get(reading.svc);
+    if (list) {
+      list.push(reading);
+    } else {
+      bySvc.set(reading.svc, [reading]);
+    }
+  }
+  for (const [svc, svcReadings] of bySvc) {
+    writeEntityDetail(dir, svc, svcReadings, generatedAt);
+  }
+}
+
 async function cmdProbe(options: CliOptions): Promise<number> {
   const config = await loadConfig(options.config);
   assertUniqueSlugs(config.entities.map(e => e.name));
@@ -232,17 +259,7 @@ async function cmdProbe(options: CliOptions): Promise<number> {
   const readings = await runChecks(targets);
 
   await withDataBranch(options, config, `probe: ${readings.length} checks`, async (dir, generatedAt) => {
-    // Group once: one entity-detail write per entity, one archive append
-    // per reading (Council PR #89 r=2: the per-reading filter was O(n²)
-    // and rewrote each entity file repeatedly).
-    const bySvc = new Map<string, typeof readings>();
-    for (const reading of readings) {
-      appendArchive(dir, reading);
-      bySvc.set(reading.svc, [...(bySvc.get(reading.svc) ?? []), reading]);
-    }
-    for (const [svc, svcReadings] of bySvc) {
-      writeEntityDetail(dir, svc, svcReadings, generatedAt);
-    }
+    writeReadings(dir, readings, generatedAt);
   });
   for (const reading of readings) {
     console.log(`  ${reading.state === 'up' ? '✓' : '✗'} ${reading.svc}: ${reading.state} (${reading.code} in ${reading.lat}ms)`);
@@ -284,6 +301,49 @@ async function cmdRegenerate(options: CliOptions): Promise<number> {
     const counts = reRenderFromRaw(dir, new Date(generatedAt));
     console.log(`re-rendered ${counts.incidents} incident and ${counts.maintenance} maintenance bodies from raw/`);
   });
+  return 0;
+}
+
+/**
+ * Receive a repository_dispatch probe payload (ADR-005 §6, the Worker
+ * trust model; ticket #76): validate against the core schema BEFORE any
+ * write — a malformed payload exits 1 without touching the data branch.
+ */
+async function cmdIngest(options: CliOptions): Promise<number> {
+  const config = await loadConfig(options.config);
+  if (!options.payload) {
+    console.error('ingest requires --payload <file> (the dispatch client_payload JSON)');
+    return 1;
+  }
+  let payload;
+  try {
+    payload = parseProbeDispatch(JSON.parse(fs.readFileSync(options.payload, 'utf8')));
+  } catch (error) {
+    console.error(
+      `rejecting dispatch payload — nothing written: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return 1;
+  }
+
+  // Readings must belong to configured entities; unknown svcs are the
+  // #62 ghost shape and a dispatcher bug — reject the whole payload
+  // rather than archive unvetted names from an external sender.
+  const configured = new Set(config.entities.map(e => e.name));
+  const unknown = [...new Set(payload.readings.map(r => r.svc))].filter(svc => !configured.has(svc));
+  if (unknown.length > 0) {
+    console.error(`rejecting dispatch payload — unknown entities: ${unknown.join(', ')}`);
+    return 1;
+  }
+
+  await withDataBranch(
+    options,
+    config,
+    `probe(${payload.source}): ${payload.readings.length} dispatched readings`,
+    async (dir, generatedAt) => {
+      writeReadings(dir, payload.readings, generatedAt);
+    }
+  );
+  console.log(`ingested ${payload.readings.length} readings from '${payload.source}'`);
   return 0;
 }
 
@@ -418,8 +478,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return await cmdRegenerate(options);
       case 'migrate':
         return await cmdMigrate(options);
+      case 'ingest':
+        return await cmdIngest(options);
       default:
-        console.log('usage: stentorosaur <init|doctor|probe|update-incidents|regenerate|migrate> [--config <file-or-dir>] [--workdir <dir>] [--branch <name>] [--no-push] [--from <legacy-dir>] [--dry-run]');
+        console.log('usage: stentorosaur <init|doctor|probe|update-incidents|regenerate|migrate|ingest> [--config <file-or-dir>] [--workdir <dir>] [--branch <name>] [--no-push] [--from <legacy-dir>] [--dry-run] [--payload <file>]');
         return command === 'help' ? 0 : 1;
     }
   } catch (error) {

@@ -139,12 +139,33 @@ export const rawIncidentBodySchema = z.object({
   bodyMarkdown: z.string(),
 });
 
+/**
+ * repository_dispatch client_payload from an external prober (ADR-005
+ * §6, Worker trust model; ticket #76). The receiving Action validates
+ * before ANY write — a malformed payload is rejected without touching
+ * the data branch. The readings cap bounds what a compromised or
+ * misconfigured dispatcher can make the ingest workflow write per event.
+ */
+export const probeDispatchPayloadSchema = z.object({
+  schemaVersion: z.literal(STATUS_SCHEMA_VERSION),
+  /** Which prober sent this, e.g. 'cf-worker'. Slug-restricted: the
+   * source flows into the ingest commit message, so control characters,
+   * newlines, and '[skip ci]'-style smuggling must fail validation. */
+  source: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[A-Za-z0-9._\/-]+$/, 'source must be a slug ([A-Za-z0-9._/-])'),
+  readings: z.array(compactReadingSchema).min(1).max(1000),
+});
+
 export type StatusSummary = z.infer<typeof summarySchema>;
 export type SummaryEntity = z.infer<typeof summaryEntitySchema>;
 export type StatusIncidentV1 = z.infer<typeof incidentSchema>;
 export type MaintenanceWindowV1 = z.infer<typeof maintenanceWindowSchema>;
 export type EntityDetail = z.infer<typeof entityDetailSchema>;
 export type RawIncidentBody = z.infer<typeof rawIncidentBodySchema>;
+export type ProbeDispatchPayload = z.infer<typeof probeDispatchPayloadSchema>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CODE_BY_STATE = Object.fromEntries(
@@ -226,4 +247,8 @@ export function parseEntityDetail(input: unknown): EntityDetail {
 
 export function parseRawIncidentBody(input: unknown): RawIncidentBody {
   return parseWith(rawIncidentBodySchema, input, 'raw incident body');
+}
+
+export function parseProbeDispatch(input: unknown): ProbeDispatchPayload {
+  return parseWith(probeDispatchPayloadSchema, input, 'probe dispatch payload');
 }
