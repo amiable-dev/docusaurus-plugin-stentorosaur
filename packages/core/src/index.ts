@@ -11,3 +11,4 @@ export * from './aggregate';
 export * from './labels';
 export * from './issues';
 export * from './status-v1';
+export * from './config';
