@@ -203,6 +203,7 @@ If upgrading from v0.14.x or earlier:
 | `status-update-v1.yml` | issue events | issues → incident/maintenance inputs + `raw/` provenance → regenerate → push |
 | `compact-data-branch-v1.yml` | monthly | orphan-reset the data branch to 1 commit, tree byte-identical (§10; the one sanctioned force-push, leased) |
 | `deploy-v1.yml` | push to main | docs deploy WITHOUT paths-ignore/[skip ci]/hourly-schedule gymnastics — status never redeploys the site |
+| `probe-dispatch-v1.yml` | `repository_dispatch` | receive Worker readings → schema-validate → `stentorosaur ingest` → push (§5 retry) |
 
 ### Serving the data branch (ADR-005 §3)
 
@@ -224,6 +225,52 @@ client — not seconds, and dramatically better than redeploy-on-change.
 
 ### Workflow concurrency
 
-All three data-branch writers share `concurrency: status-data-writer`
+All data-branch writers share `concurrency: status-data-writer`
 so same-workflow runs serialize; cross-workflow races are handled by the
 §5 regenerate-and-retry rule in the writer itself.
+
+### Cloudflare Worker probe (ADR-005 §6, optional graduation path)
+
+For sub-5-minute resolution without burning Actions minutes on the
+checks themselves, run the probe as a Cloudflare Worker
+(`../worker/wrangler.toml` + `worker.mjs`).
+
+**Trust model (council condition):** the Worker never writes to git. It
+runs the checks and sends a `repository_dispatch` event with the
+readings; `probe-dispatch-v1.yml` validates the payload against the
+schema (`stentorosaur ingest` rejects malformed payloads and unknown
+entities without writing) and commits with its ephemeral
+`GITHUB_TOKEN`.
+
+Setup:
+
+1. Install `probe-dispatch-v1.yml` in `.github/workflows/` and REMOVE
+   the `schedule:` trigger from `probe-v1.yml` (one prober per entity —
+   ingest appends readings, so double-probing doubles check counts).
+2. Create the dispatch token: GitHub → Settings → Developer settings →
+   Fine-grained personal access tokens → scope it to **only the status
+   repo** with **Contents: Read and write** (the minimum GitHub
+   requires for the `dispatches` endpoint) and nothing else. The Worker
+   code only ever calls `POST /repos/{owner}/{repo}/dispatches`; the
+   receiving Action is what writes, and a leaked token is revocable and
+   confined to this one repo.
+3. Copy `templates/worker/` into a Worker project,
+   `npm i @stentorosaur/probe`, fill in `[vars]`, then
+   `wrangler secret put GITHUB_TOKEN` and `wrangler deploy`.
+
+**Quota math:** each dispatch triggers one ingest workflow run
+(~30–60 s). At `*/5` cron that is ~288 runs/day ≈ 150–300 Actions
+minutes/month — comparable to the Actions-cron probe it replaces, but
+the checks themselves (and their 1-minute upper bound on resolution)
+are free on the Workers side (100k invocations/day free tier vs 1,440
+used at 1-minute cron). At `* * * * *` expect ~5× the Actions usage of
+the 5-minute default; public repos get Actions minutes free, private
+repos should do the math against their plan.
+
+**Opt-in alternative — direct write:** a Worker holding a fine-grained
+PAT (data repo only, Contents read/write) may push readings itself,
+skipping dispatch+Action entirely. This trades the ephemeral-token
+model for a long-lived write credential in Worker secrets — acceptable
+for some, but not the default (ADR-005 §6). If you choose it, reuse the
+same token scope as step 2 and write via `stentorosaur probe` in any
+git-capable runtime instead of the Worker.
