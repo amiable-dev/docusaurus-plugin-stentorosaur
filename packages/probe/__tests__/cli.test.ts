@@ -182,3 +182,39 @@ describe('reRenderFromRaw (§7 runbook)', () => {
     expect(maintenance[0].bodyHtml).not.toContain('start:'); // frontmatter stripped
   });
 });
+
+describe('Council PR #89 r=1 regression guards', () => {
+  it('trailing flags without values fail with a clear message (no out-of-bounds read)', async () => {
+    expect(await main(['doctor', '--config'])).toBe(1);
+    expect(await main(['probe', '--branch', '--no-push'])).toBe(1);
+  });
+
+  it('parseConfig error paths use zod v4 prettifyError with field paths (disposition: the API exists)', async () => {
+    fs.writeFileSync(
+      path.join(tmp, 'stentorosaur.config.json'),
+      JSON.stringify({owner: 'o', repo: 'r', entities: [{name: '', type: 'starship'}]})
+    );
+    await expect(loadConfig(tmp)).rejects.toThrow(/entities/); // pretty output names the failing path
+  });
+
+  it('init refuses when ANY config flavor exists', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.json'), JSON.stringify({owner: 'o', repo: 'r', entities: [{name: 'a', type: 'system'}]}));
+    expect(await main(['init', '--workdir', tmp])).toBe(1);
+  });
+
+  it('doctor treats staleness as a warning, not a failure', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), `module.exports = {owner: 'o', repo: 'r', entities: [{name: 'api', type: 'system'}]};`);
+    const staleSummary = {
+      schemaVersion: 1,
+      generatedAt: new Date(Date.now() - 3 * 3600_000).toISOString(),
+      generatedBy: 'test',
+      entities: [],
+      incidents: {open: [], recent: []},
+      maintenance: {upcoming: [], inProgress: []},
+    };
+    (global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200, text: async () => JSON.stringify(staleSummary), headers: {get: () => null},
+    });
+    expect(await main(['doctor', '--config', tmp])).toBe(0); // warn, exit 0
+  });
+});

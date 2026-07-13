@@ -16,7 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {appendArchive, assertUniqueSlugs, writeEntityDetail} from './files';
-import {loadConfig} from './config-loader';
+import {findConfigFile, loadConfig} from './config-loader';
 import {runChecks} from './check';
 import type {CheckTarget} from './check';
 import {pushWithRegenerateRetry} from './git-writer';
@@ -36,16 +36,23 @@ interface CliOptions {
 function parseArgs(argv: string[]): {command: string; options: CliOptions} {
   const [command = 'help', ...rest] = argv;
   const options: CliOptions = {config: process.cwd(), workdir: process.cwd(), push: true};
+  const takeValue = (flag: string, i: number): string => {
+    const value = rest[i];
+    if (value === undefined || value.startsWith('--')) {
+      throw new Error(`${flag} requires a value`);
+    }
+    return value;
+  };
   for (let i = 0; i < rest.length; i++) {
     switch (rest[i]) {
       case '--config':
-        options.config = rest[++i];
+        options.config = takeValue('--config', ++i);
         break;
       case '--workdir':
-        options.workdir = rest[++i];
+        options.workdir = takeValue('--workdir', ++i);
         break;
       case '--branch':
-        options.branch = rest[++i];
+        options.branch = takeValue('--branch', ++i);
         break;
       case '--no-push':
         options.push = false;
@@ -57,9 +64,9 @@ function parseArgs(argv: string[]): {command: string; options: CliOptions} {
   return {command, options};
 }
 
-function regenOptions(config: StentorosaurConfig) {
+function regenOptions(config: StentorosaurConfig, generatedAt: string) {
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     generatedBy: `stentorosaur-cli`,
     entities: config.entities.map(({name, type, displayName}) => ({
       name,
@@ -95,11 +102,12 @@ module.exports = {
 `;
 
 async function cmdInit(options: CliOptions): Promise<number> {
-  const target = path.join(options.workdir, 'stentorosaur.config.js');
-  if (fs.existsSync(target)) {
-    console.error(`refusing to overwrite existing ${target}`);
+  const existing = findConfigFile(options.workdir);
+  if (existing) {
+    console.error(`refusing to scaffold: config already exists at ${existing}`);
     return 1;
   }
+  const target = path.join(options.workdir, 'stentorosaur.config.js');
   fs.writeFileSync(target, CONFIG_TEMPLATE);
   console.log(`wrote ${target}`);
   console.log('\nNext steps:');
@@ -150,7 +158,9 @@ async function cmdDoctor(options: CliOptions): Promise<number> {
       ok(`summary.json parses (schemaVersion ${summary.schemaVersion})`);
       const ageMinutes = (Date.now() - Date.parse(summary.generatedAt)) / 60_000;
       if (ageMinutes > 60) {
-        bad(`summary is ${Math.round(ageMinutes)} min old — is the probe workflow running?`);
+        // WARNING, not failure (Council PR #89 r=1): a paused probe
+        // shouldn't flap CI that runs doctor.
+        console.warn(`  ⚠ summary is ${Math.round(ageMinutes)} min old — is the probe workflow running?`);
       } else {
         ok(`summary is fresh (${Math.round(ageMinutes)} min old)`);
       }
@@ -169,6 +179,9 @@ async function withDataBranch(
   commitMessage: string,
   writeInputs: (workdir: string) => Promise<void>
 ): Promise<void> {
+  // ONE clock read per command run; retries regenerate with the same
+  // timestamp (Council PR #89 r=1).
+  const generatedAt = new Date().toISOString();
   const branch = options.branch ?? config.dataBranch;
   if (options.push) {
     await pushWithRegenerateRetry({
@@ -176,11 +189,11 @@ async function withDataBranch(
       branch,
       commitMessage,
       writeInputs,
-      regenerate: async dir => regenerateDerived(dir, regenOptions(config)),
+      regenerate: async dir => regenerateDerived(dir, regenOptions(config, generatedAt)),
     });
   } else {
     await writeInputs(options.workdir);
-    regenerateDerived(options.workdir, regenOptions(config));
+    regenerateDerived(options.workdir, regenOptions(config, generatedAt));
   }
 }
 
