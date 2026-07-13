@@ -1,25 +1,19 @@
 /**
- * Copyright (c) Your Organization
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
  * @jest-environment jsdom
+ *
+ * StatusPage tests — v1.0 (ticket #77): everything renders from the v1
+ * summary; chart drill-down fetches the canonical entity-detail path.
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import '@testing-library/jest-dom';
-import {encodeDayRollups} from '@stentorosaur/core';
-import type {StatusSummary} from '@stentorosaur/core';
-import StatusPage from '../src/theme/StatusPage';
-import type { StatusData } from '../src/types';
-import {useStatusSummary} from '../src/v1/useStatusSummary';
+import StatusPage, {deriveV1BaseUrl, entitySlug, detailToSystemFile} from '../src/theme/StatusPage';
+import {makeSummary, makeStatusData} from './helpers/v1-fixtures';
 
-// Mock Layout component
 jest.mock('@theme/Layout', () => ({
   __esModule: true,
-  default: ({ children, title, description }: any) => (
+  default: ({children, title, description}: any) => (
     <div data-testid="layout" data-title={title} data-description={description}>
       {children}
     </div>
@@ -27,269 +21,150 @@ jest.mock('@theme/Layout', () => ({
 }));
 
 jest.mock('../src/v1/useStatusSummary', () => ({
-  useStatusSummary: jest.fn(),
+  useStatusSummary: ({snapshot}: any) => ({summary: snapshot, source: 'snapshot', lastError: null}),
 }));
 
-beforeEach(() => {
-  jest.clearAllMocks();
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
-describe('StatusPage (default view)', () => {
-  const mockStatusData: StatusData = {
-    items: [
-      {
-        name: 'API',
-        status: 'up',
-        description: 'API Service',
-        uptime: '99.9%',
-      },
-      {
-        name: 'Database',
-        status: 'up',
-        description: 'Database Service',
-        uptime: '99.8%',
-      },
+describe('StatusPage (v1)', () => {
+  const summary = makeSummary({
+    entities: [
+      {name: 'API', status: 'up'},
+      {name: 'Database', status: 'up'},
     ],
     incidents: [
       {
-        id: 1,
+        issueNumber: 1,
         title: 'API Degraded Performance',
-        status: 'closed',
         severity: 'minor',
-        createdAt: '2025-01-01T10:00:00Z',
-        updatedAt: '2025-01-01T12:00:00Z',
-        closedAt: '2025-01-01T12:00:00Z',
-        url: 'https://github.com/test/test/issues/1',
-        labels: ['status', 'minor'],
-        affectedSystems: ['api'],
+        status: 'resolved',
+        entities: ['API'],
       },
     ],
     maintenance: [
       {
-        id: 10,
+        issueNumber: 10,
         title: 'Database Upgrade',
-        start: '2025-01-15T02:00:00Z',
-        end: '2025-01-15T04:00:00Z',
         status: 'upcoming',
-        affectedSystems: ['database'],
-        description: 'Upgrading database to version 2.0',
-        comments: [],
-        url: 'https://github.com/test/test/issues/10',
-        createdAt: '2025-01-10T10:00:00Z',
-      },
-      {
-        id: 11,
-        title: 'API Server Migration',
-        start: '2025-01-05T02:00:00Z',
-        end: '2025-01-05T04:00:00Z',
-        status: 'completed',
-        affectedSystems: ['api'],
-        description: 'Migrated API servers to new infrastructure',
-        comments: [],
-        url: 'https://github.com/test/test/issues/11',
-        createdAt: '2025-01-03T10:00:00Z',
+        bodyHtml: '<p>Upgrading database to version 2.0</p>',
       },
     ],
-    lastUpdated: '2025-01-10T10:00:00Z',
-    showServices: true,
-    showIncidents: true,
-    showPerformanceMetrics: true,
-    useDemoData: false,
-  };
-
-  it('renders status board with systems', () => {
-    render(<StatusPage statusData={mockStatusData} />);
-
-    // Check that systems are displayed
-    expect(screen.getByText('API')).toBeInTheDocument();
-    expect(screen.getByText('Database')).toBeInTheDocument();
   });
 
-  it('renders incident history', () => {
-    render(<StatusPage statusData={mockStatusData} />);
+  it('renders systems from the summary', () => {
+    render(<StatusPage statusData={makeStatusData(summary)} />);
+    expect(screen.getAllByText('API').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Database').length).toBeGreaterThan(0);
+  });
 
-    // Check that incident is displayed
+  it('renders incident history from the summary', () => {
+    render(<StatusPage statusData={makeStatusData(summary)} />);
     expect(screen.getByText('API Degraded Performance')).toBeInTheDocument();
   });
 
-  it('renders upcoming scheduled maintenance', () => {
-    render(<StatusPage statusData={mockStatusData} />);
-
-    // Check that upcoming maintenance is displayed
+  it('renders upcoming scheduled maintenance with its sanitized HTML body', () => {
+    render(<StatusPage statusData={makeStatusData(summary)} />);
     expect(screen.getByText('Scheduled Maintenance')).toBeInTheDocument();
     expect(screen.getByText('Database Upgrade')).toBeInTheDocument();
     expect(screen.getByText('Upgrading database to version 2.0')).toBeInTheDocument();
   });
 
-  it('renders past maintenance separately', () => {
-    render(<StatusPage statusData={mockStatusData} />);
-
-    // Check that past maintenance is displayed
-    expect(screen.getByText('Past Maintenance')).toBeInTheDocument();
-    expect(screen.getByText('API Server Migration')).toBeInTheDocument();
-  });
-
-  it('does not render maintenance sections when no maintenance data', () => {
-    const dataWithoutMaintenance: StatusData = {
-      ...mockStatusData,
-      maintenance: [],
-    };
-
-    render(<StatusPage statusData={dataWithoutMaintenance} />);
-
-    // Check that maintenance sections are NOT displayed
+  it('does not render the maintenance section without maintenance data', () => {
+    const quiet = makeSummary({entities: [{name: 'API'}]});
+    render(<StatusPage statusData={makeStatusData(quiet)} />);
     expect(screen.queryByText('Scheduled Maintenance')).not.toBeInTheDocument();
-    expect(screen.queryByText('Past Maintenance')).not.toBeInTheDocument();
-  });
-
-  it('correctly splits maintenance by status', () => {
-    const dataWithMixedMaintenance: StatusData = {
-      ...mockStatusData,
-      maintenance: [
-        {
-          id: 10,
-          title: 'Upcoming Work',
-          start: '2025-01-15T02:00:00Z',
-          end: '2025-01-15T04:00:00Z',
-          status: 'upcoming',
-          affectedSystems: ['api'],
-          description: 'Upcoming maintenance',
-          comments: [],
-          url: 'https://github.com/test/test/issues/10',
-          createdAt: '2025-01-10T10:00:00Z',
-        },
-        {
-          id: 11,
-          title: 'In Progress Work',
-          start: '2025-01-10T02:00:00Z',
-          end: '2025-01-10T04:00:00Z',
-          status: 'in-progress',
-          affectedSystems: ['database'],
-          description: 'Currently in progress',
-          comments: [],
-          url: 'https://github.com/test/test/issues/11',
-          createdAt: '2025-01-09T10:00:00Z',
-        },
-        {
-          id: 12,
-          title: 'Completed Work',
-          start: '2025-01-05T02:00:00Z',
-          end: '2025-01-05T04:00:00Z',
-          status: 'completed',
-          affectedSystems: ['api'],
-          description: 'Already done',
-          comments: [],
-          url: 'https://github.com/test/test/issues/12',
-          createdAt: '2025-01-03T10:00:00Z',
-        },
-      ],
-    };
-
-    render(<StatusPage statusData={dataWithMixedMaintenance} />);
-
-    // Upcoming and in-progress should be in "Scheduled Maintenance"
-    const scheduledSection = screen.getByText('Scheduled Maintenance').parentElement;
-    expect(scheduledSection).toHaveTextContent('Upcoming Work');
-    expect(scheduledSection).toHaveTextContent('In Progress Work');
-    expect(scheduledSection).not.toHaveTextContent('Completed Work');
-
-    // Completed should be in "Past Maintenance"
-    const pastSection = screen.getByText('Past Maintenance').parentElement;
-    expect(pastSection).toHaveTextContent('Completed Work');
-    expect(pastSection).not.toHaveTextContent('Upcoming Work');
-    expect(pastSection).not.toHaveTextContent('In Progress Work');
   });
 
   it('respects showServices flag', () => {
-    const dataWithServicesHidden: StatusData = {
-      ...mockStatusData,
-      showServices: false,
-    };
-
-    render(<StatusPage statusData={dataWithServicesHidden} />);
-
-    // Services should not be displayed
-    expect(screen.queryByText('API')).not.toBeInTheDocument();
-    expect(screen.queryByText('Database')).not.toBeInTheDocument();
-
-    // But maintenance should still be visible
+    const {container} = render(
+      <StatusPage statusData={makeStatusData(summary, {showServices: false})} />
+    );
+    // No system cards — the name may still appear in incident/maintenance tags.
+    expect(container.querySelectorAll('[class*="systemCards"]').length).toBe(0);
     expect(screen.getByText('Scheduled Maintenance')).toBeInTheDocument();
   });
 
   it('respects showIncidents flag', () => {
-    const dataWithIncidentsHidden: StatusData = {
-      ...mockStatusData,
-      showIncidents: false,
-    };
-
-    render(<StatusPage statusData={dataWithIncidentsHidden} />);
-
-    // Incidents should not be displayed
+    render(<StatusPage statusData={makeStatusData(summary, {showIncidents: false})} />);
     expect(screen.queryByText('API Degraded Performance')).not.toBeInTheDocument();
-
-    // But maintenance should still be visible
     expect(screen.getByText('Scheduled Maintenance')).toBeInTheDocument();
   });
 
-  it('uses the v1 summary display name but fetches history from the canonical service path', async () => {
-    const summary: StatusSummary = {
-      schemaVersion: 1,
-      generatedAt: '2026-07-12T18:00:00.000Z',
-      generatedBy: 'test',
-      entities: [
-        {
-          name: 'api',
-          displayName: 'API',
-          type: 'system',
-          status: 'up',
-          uptime: {d1: 100, d7: 100, d90: 100},
-          responseTimeMs: {d1: 50},
-          ...encodeDayRollups([{date: '2026-07-12', uptime: 100, avgMs: 50, worst: 'up'}]),
-        },
-      ],
-      incidents: {open: [], recent: []},
-      maintenance: {upcoming: [], inProgress: []},
-    };
+  it('uses the title/description from the plugin options', () => {
+    render(
+      <StatusPage
+        statusData={makeStatusData(summary, {title: 'Acme Status', description: 'How Acme is doing'})}
+      />
+    );
+    expect(screen.getByTestId('layout')).toHaveAttribute('data-title', 'Acme Status');
+  });
 
-    (useStatusSummary as jest.Mock).mockReturnValue({
-      summary,
-      source: 'snapshot',
-      lastError: null,
+  it('fetches entity detail from the canonical slugged v1 path on expand', async () => {
+    const withDisplay = makeSummary({
+      entities: [{name: 'API v1', displayName: 'Public API', status: 'up'}],
     });
-
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        readings: [
-          {
-            t: Date.parse('2026-07-12T18:00:00.000Z'),
-            svc: 'api',
-            state: 'up',
-            code: 200,
-            lat: 50,
-          },
-        ],
-      }),
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schemaVersion: 1,
+          generatedAt: withDisplay.generatedAt,
+          name: 'API v1',
+          readings: [
+            {t: Date.parse(withDisplay.generatedAt), svc: 'API v1', state: 'up', code: 200, lat: 50},
+          ],
+        }),
     });
     (global as any).fetch = fetchMock;
 
-    const statusData: StatusData = {
-      items: [],
-      incidents: [],
-      maintenance: [],
-      lastUpdated: '2026-07-12T18:00:00.000Z',
-      showServices: true,
-      showIncidents: true,
-      showPerformanceMetrics: true,
-      useDemoData: false,
-      v1Summary: summary,
-      dataUrl: '/docs/status-data/status/v1/summary.json',
-      repoUrl: 'https://github.com/test/test',
-    };
+    render(
+      <StatusPage
+        statusData={makeStatusData(withDisplay, {
+          dataUrl: '/docs/status-data/status/v1/summary.json',
+        })}
+      />
+    );
+    expect(screen.getByText('Public API')).toBeInTheDocument();
 
-    render(<StatusPage statusData={statusData} />);
+    // Expand the card → the canonical (name-derived, not displayName)
+    // entity path is fetched.
+    fireEvent.click(screen.getByRole('button', {name: /Public API/i}));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/docs/status-data/status/v1/entities/api-v1.json',
+        expect.anything()
+      )
+    );
+  });
+});
 
-    expect(await screen.findByText('API')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith('/docs/status-data/current.json');
+describe('v1 helpers', () => {
+  it('deriveV1BaseUrl strips the summary suffix', () => {
+    expect(deriveV1BaseUrl('/docs/status-data/status/v1/summary.json')).toBe(
+      '/docs/status-data/status/v1'
+    );
+    expect(deriveV1BaseUrl('https://x.test/nope.json')).toBeUndefined();
+    expect(deriveV1BaseUrl(undefined)).toBeUndefined();
+  });
+
+  it('entitySlug matches the probe slug rules', () => {
+    expect(entitySlug('API v1')).toBe('api-v1');
+    expect(entitySlug('  Fancy -- Name!! ')).toBe('fancy-name');
+  });
+
+  it('detailToSystemFile sorts readings and maps the latest state', () => {
+    const file = detailToSystemFile({
+      name: 'api',
+      generatedAt: '2026-07-13T12:00:00.000Z',
+      readings: [
+        {t: 2000, state: 'down', code: 500, lat: 0},
+        {t: 1000, state: 'up', code: 200, lat: 40},
+      ],
+    });
+    expect(file.currentStatus).toBe('down');
+    expect(file.history.map(h => h.responseTime)).toEqual([40, 0]);
   });
 });

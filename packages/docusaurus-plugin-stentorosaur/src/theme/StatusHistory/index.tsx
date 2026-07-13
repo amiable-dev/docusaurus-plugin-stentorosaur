@@ -11,6 +11,8 @@ import ResponseTimeChart from '../ResponseTimeChart';
 import UptimeChart from '../UptimeChart';
 import SLIChart from '../SLIChart';
 import type { SystemStatusFile } from '../../types';
+import { parseEntityDetail } from '@stentorosaur/core';
+import { detailToSystemFile } from '../StatusPage';
 import styles from './styles.module.css';
 
 export interface Props {
@@ -36,12 +38,13 @@ export default function StatusHistory({
           throw new Error('System name not found in URL');
         }
 
-        const response = await fetch(`/${dataPath}/systems/${systemName}.json`);
+        // v1 (ADR-005): per-entity detail from the published snapshot.
+        const response = await fetch(`/${dataPath}/status/v1/entities/${systemName}.json`);
         if (!response.ok) {
           throw new Error(`Failed to load data: ${response.statusText}`);
         }
-        const data: SystemStatusFile = await response.json();
-        setSystemData(data);
+        const detail = parseEntityDetail(await response.json());
+        setSystemData(detailToSystemFile(detail));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load system data');
       } finally {

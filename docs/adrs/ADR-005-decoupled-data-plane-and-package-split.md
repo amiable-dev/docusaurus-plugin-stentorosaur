@@ -2,7 +2,8 @@
 
 ## Status
 
-**APPROVED (council conditions incorporated)** - 2026-07-12
+**IMPLEMENTED** - 2026-07-13 (epic #63: tickets #64–#77; approved with
+council conditions 2026-07-12, all conditions honored in implementation)
 
 ## Council Review
 

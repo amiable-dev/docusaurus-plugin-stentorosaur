@@ -1,23 +1,25 @@
 /**
- * Copyright (c) Your Organization
+ * StatusPage — v1.0 (ADR-005 §4, tickets #72/#77).
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Snapshot-first: renders the build-time summary immediately, then
+ * refreshes it live via useStatusSummary (SWR + ETag + backoff). All
+ * chart drill-down data comes from status/v1/entities/<slug>.json under
+ * the same base as the summary endpoint.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, {useMemo, useState} from 'react';
 import Layout from '@theme/Layout';
 import StatusBoard from '../StatusBoard';
 import IncidentHistory from '../IncidentHistory';
 import MaintenanceList from '../Maintenance/MaintenanceList';
 import PerformanceMetrics from '../PerformanceMetrics';
-import { SystemCard, SystemCardDetails, SystemCardUptimeBar } from '../SystemCard';
-import { StatusDataProvider } from '../../context/StatusDataProvider';
-import type {StatusData, SystemStatusFile, DataSource} from '../../types';
-import {parseSummary} from '@stentorosaur/core';
+import {SystemCard, SystemCardDetails, SystemCardUptimeBar} from '../SystemCard';
+import {StatusDataProvider} from '../../context/StatusDataProvider';
+import type {StatusData, SystemStatusFile} from '../../types';
+import {parseEntityDetail} from '@stentorosaur/core';
+import type {StatusSummary} from '@stentorosaur/core';
 import {useStatusSummary} from '../../v1/useStatusSummary';
 import {summaryToStatusData} from '../../v1/summary-adapter';
-import { buildFetchUrl } from '../../data-source-resolver.client';
 import styles from './styles.module.css';
 
 export interface Props {
@@ -26,303 +28,166 @@ export interface Props {
 
 const V1_SUMMARY_SUFFIX = '/status/v1/summary.json';
 
-function deriveV1HistoryBaseUrl(dataUrl?: string): string | undefined {
-  if (!dataUrl || !dataUrl.endsWith(V1_SUMMARY_SUFFIX)) {
-    return undefined;
-  }
-  return dataUrl.slice(0, -V1_SUMMARY_SUFFIX.length);
+/** …/status/v1/summary.json → …/status/v1 */
+export function deriveV1BaseUrl(dataUrl?: string): string | undefined {
+  if (!dataUrl || !dataUrl.endsWith(V1_SUMMARY_SUFFIX)) return undefined;
+  return `${dataUrl.slice(0, -V1_SUMMARY_SUFFIX.length)}/status/v1`;
 }
 
-/**
- * status/v1 live bridge (ADR-005 par-4, ticket #72): snapshot-first render
- * via useStatusSummary, adapted to the legacy shape the inner page
- * consumes. The adapted data carries no v1Summary field, so the inner
- * render takes the normal path.
- */
-function V1LiveStatusPage({statusData}: Props): JSX.Element {
-  const snapshot = React.useMemo(
-    () => parseSummary(statusData.v1Summary),
-    [statusData.v1Summary]
-  );
-  const {summary} = useStatusSummary({snapshot, dataUrl: statusData.dataUrl});
-  const fetchUrl = React.useMemo(
-    () => statusData.fetchUrl ?? deriveV1HistoryBaseUrl(statusData.dataUrl),
-    [statusData.dataUrl, statusData.fetchUrl]
-  );
-  const adapted = React.useMemo<StatusData>(
-    () => ({
-      ...summaryToStatusData(summary, {repoUrl: statusData.repoUrl ?? ''}),
-      showServices: statusData.showServices,
-      showIncidents: statusData.showIncidents,
-      showPerformanceMetrics: statusData.showPerformanceMetrics,
-      fetchUrl,
-      dataSource: statusData.dataSource,
-      statusCardLayout: statusData.statusCardLayout,
-      pluginVersion: statusData.pluginVersion,
-    }),
-    [fetchUrl, summary, statusData]
-  );
-  return <StatusPageInner statusData={adapted} />;
+/** Same slug rules the probe uses for entity file names. */
+export function entitySlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/** Entity detail readings → the chart-friendly SystemStatusFile shape. */
+export function detailToSystemFile(detail: {
+  name: string;
+  generatedAt: string;
+  readings: Array<{t: number; state: string; code: number; lat: number}>;
+}): SystemStatusFile {
+  const readings = [...detail.readings].sort((a, b) => a.t - b.t);
+  const latest = readings[readings.length - 1];
+  return {
+    name: detail.name,
+    url: '',
+    lastChecked: detail.generatedAt,
+    currentStatus: (latest?.state ?? 'up') as SystemStatusFile['currentStatus'],
+    history: readings.map(r => ({
+      timestamp: new Date(r.t).toISOString(),
+      status: r.state as SystemStatusFile['currentStatus'],
+      code: r.code,
+      responseTime: r.lat,
+    })),
+  };
 }
 
 export default function StatusPage({statusData}: Props): JSX.Element {
-  if (statusData?.v1Summary) {
-    return <V1LiveStatusPage statusData={statusData} />;
-  }
-  return <StatusPageInner statusData={statusData} />;
+  const snapshot = statusData.v1Summary as StatusSummary;
+  const {summary} = useStatusSummary({snapshot, dataUrl: statusData.dataUrl});
+  return <StatusPageInner statusData={statusData} summary={summary} />;
 }
 
-function StatusPageInner({statusData}: Props): JSX.Element {
+function StatusPageInner({
+  statusData,
+  summary,
+}: Props & {summary: StatusSummary}): JSX.Element {
   const {
-    items = [],
-    incidents = [],
-    maintenance = [],
-    lastUpdated,
+    title = 'System Status',
+    description = 'Current operational status of our systems',
     showServices = true,
     showIncidents = true,
     showPerformanceMetrics = true,
-    useDemoData = false,
-    fetchUrl,
-    dataSource,
     statusCardLayout = 'minimal',
     pluginVersion,
+    repoUrl = '',
   } = statusData || {};
-  const [systemFiles, setSystemFiles] = useState<SystemStatusFile[]>([]);
-  const [activeSystemIndex, setActiveSystemIndex] = useState<number | null>(null);
 
-  // Default values if not provided
-  const title = useDemoData ? 'Demo Data: System Status' : 'System Status';
-  const description = 'Current operational status of our systems';
+  const adapted = useMemo(
+    () => summaryToStatusData(summary, {repoUrl}),
+    [summary, repoUrl]
+  );
+  // Display metadata (descriptions) comes from the build-time adapt.
+  const items = useMemo(
+    () =>
+      adapted.items.map(item => {
+        const buildItem = statusData.items.find(i => i.name === item.name);
+        return {...item, description: buildItem?.description};
+      }),
+    [adapted.items, statusData.items]
+  );
+  const {incidents, maintenance, lastUpdated} = adapted;
 
-  // Resolve data fetch base URL from dataSource (preferred) or legacy fetchUrl
-  const dataBaseUrl = useMemo(() => {
-    if (dataSource) {
-      // Build URL from dataSource, stripping the file part to get base URL
-      const url = buildFetchUrl(dataSource);
-      if (url) {
-        // Remove file:// prefix for browser context
-        const cleanUrl = url.startsWith('file://') ? url.replace('file://', '') : url;
-        // Get directory path (remove filename)
-        const lastSlash = cleanUrl.lastIndexOf('/');
-        return lastSlash > 0 ? cleanUrl.substring(0, lastSlash) : cleanUrl;
-      }
+  const v1Base = useMemo(() => deriveV1BaseUrl(statusData.dataUrl), [statusData.dataUrl]);
+  const [systemFiles, setSystemFiles] = useState<Map<string, SystemStatusFile>>(new Map());
+  const [activeSystem, setActiveSystem] = useState<string | null>(null);
+
+  // Fetch status/v1/entities/<slug>.json lazily on first expand.
+  const loadEntityDetail = async (name: string): Promise<void> => {
+    if (!v1Base || systemFiles.has(name)) return;
+    try {
+      const response = await fetch(`${v1Base}/entities/${entitySlug(name)}.json`, {
+        headers: {accept: 'application/json'},
+      });
+      if (!response.ok) return;
+      const detail = parseEntityDetail(JSON.parse(await response.text()));
+      setSystemFiles(prev => new Map(prev).set(name, detailToSystemFile(detail)));
+    } catch {
+      // Detail data is enhancement-only; the card still renders.
     }
-    // Fall back to legacy fetchUrl or default
-    return fetchUrl || '/status-data';
-  }, [dataSource, fetchUrl]);
-
-  // Helper: Create SystemStatusFile from build-time item data
-  const createSystemFilesFromItems = (): SystemStatusFile[] => {
-    const files: SystemStatusFile[] = [];
-    for (const item of items) {
-      if (item.history && item.history.length > 0) {
-        files.push({
-          name: item.name,
-          url: '',
-          lastChecked: item.lastChecked || new Date().toISOString(),
-          currentStatus: item.status,
-          history: item.history,
-        });
-      }
-    }
-    return files;
   };
 
-  // Load system files with historical data for charts
-  useEffect(() => {
-    async function loadSystemFiles() {
-      if (!showPerformanceMetrics) {
-        return;
-      }
-
-      // For build-only strategy, use build-time data from items
-      if (dataSource?.strategy === 'build-only') {
-        const buildTimeFiles = createSystemFilesFromItems();
-        if (buildTimeFiles.length > 0) {
-          setSystemFiles(buildTimeFiles);
-        }
-        return;
-      }
-
-      const files: SystemStatusFile[] = [];
-      try {
-        const response = await fetch(`${dataBaseUrl}/current.json`);
-        if (response.ok) {
-          const data = await response.json();
-          const readings: Array<{
-            t: number;
-            svc: string;
-            state: 'up' | 'down' | 'degraded' | 'maintenance';
-            code: number;
-            lat: number;
-            err?: string;
-          }> = data.readings || data;
-
-          // Group readings by service
-          const serviceMap = new Map<string, typeof readings>();
-          for (const reading of readings) {
-            const key = reading.svc.toLowerCase();
-            if (!serviceMap.has(key)) {
-              serviceMap.set(key, []);
-            }
-            serviceMap.get(key)!.push(reading);
-          }
-
-          // Convert to SystemStatusFile format
-          for (const item of items) {
-            const serviceReadings = serviceMap.get(item.name.toLowerCase());
-            if (serviceReadings && serviceReadings.length > 0) {
-              files.push({
-                name: item.name,
-                url: '', // URL not available in current.json format
-                lastChecked: new Date(Math.max(...serviceReadings.map(r => r.t))).toISOString(),
-                currentStatus: serviceReadings[serviceReadings.length - 1].state,
-                history: serviceReadings.map(r => ({
-                  timestamp: new Date(r.t).toISOString(),
-                  status: r.state,
-                  code: r.code,
-                  responseTime: r.lat,
-                })),
-              });
-            }
-          }
-
-          // Only use current.json data if we found matching items
-          if (files.length > 0) {
-            setSystemFiles(files);
-            return; // Success, don't try legacy format
-          }
-          // Otherwise, fall through to try legacy format or build-time data
-        }
-      } catch (error) {
-        // Fall through to legacy format or build-time fallback
-      }
-
-      // Fallback to legacy format (systems/*.json)
-      for (const item of items) {
-        try {
-          // Use same slug generation as plugin to ensure filename matches
-          const fileName = item.name
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-            .replace(/\s+/g, '-') // Replace spaces with hyphens
-            .replace(/-+/g, '-'); // Replace multiple hyphens with single
-          const response = await fetch(`${dataBaseUrl}/systems/${fileName}.json`);
-
-          if (response.ok) {
-            const data: SystemStatusFile = await response.json();
-            if (data.history && data.history.length > 0) {
-              files.push(data);
-            }
-          }
-        } catch (error) {
-          // Silently ignore - file might not exist
-        }
-      }
-
-      // If no runtime data fetched, fall back to build-time data
-      if (files.length === 0) {
-        const buildTimeFiles = createSystemFilesFromItems();
-        setSystemFiles(buildTimeFiles);
-      } else {
-        setSystemFiles(files);
-      }
-    }
-
-    if (items.length > 0) {
-      loadSystemFiles();
-    }
-  }, [items, showPerformanceMetrics, dataBaseUrl, dataSource]);
-
-  // Handle system card click to toggle performance metrics
-  const handleSystemClick = (systemName: string) => {
-    if (!showPerformanceMetrics || systemFiles.length === 0) {
-      return;
-    }
-
-    const index = systemFiles.findIndex(
-      (file) => file.name === systemName
-    );
-
-    if (index === -1) {
-      // System doesn't have data, don't toggle
-      return;
-    }
-
-    // Toggle: if clicking the same system, hide metrics; otherwise show new system
-    setActiveSystemIndex(activeSystemIndex === index ? null : index);
+  const handleSystemClick = (name: string) => {
+    if (!showPerformanceMetrics) return;
+    void loadEntityDetail(name);
+    setActiveSystem(prev => (prev === name ? null : name));
   };
 
-  // Check if a system has data (for determining if it should be clickable)
-  const hasSystemData = (systemName: string): boolean => {
-    return systemFiles.some((file) => file.name === systemName);
-  };
-
-  // Split maintenance into upcoming/in-progress and past
+  // The v1 summary carries only upcoming/in-progress windows — past
+  // events live in the incident history and the atom feed.
   const upcomingMaintenance = maintenance.filter(
     m => m.status === 'upcoming' || m.status === 'in-progress'
   );
-  const pastMaintenance = maintenance.filter(m => m.status === 'completed');
+  const allOperational = items.every(item => item.status === 'up');
+  const activeFile = activeSystem ? systemFiles.get(activeSystem) : undefined;
 
-  // Determine overall status for minimal layout header
-  const allOperational = items.every((item) => item.status === 'up');
-
-  // Render minimal layout with SystemCard components
   const renderMinimalLayout = () => (
-    <StatusDataProvider baseUrl={dataBaseUrl}>
-      <div className={styles.statusBoard}>
-        <div className={styles.header}>
-          <h1>{title}</h1>
-          {description && <p className={styles.description}>{description}</p>}
+    <div className={styles.statusBoard}>
+      <div className={styles.header}>
+        <h1>{title}</h1>
+        {description && <p className={styles.description}>{description}</p>}
 
-          <div className={styles.overallStatus}>
-            {allOperational ? (
-              <div className={styles.statusGood}>
-                <span className={styles.statusDot} />
-                All Systems Operational
-              </div>
-            ) : (
-              <div className={styles.statusIssue}>
-                <span className={styles.statusDot} />
-                Some Systems Experiencing Issues
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className={styles.systemCards}>
-          {items.length === 0 ? (
-            <div className={styles.emptyState}>
-              <p>No systems configured for monitoring.</p>
+        <div className={styles.overallStatus}>
+          {allOperational ? (
+            <div className={styles.statusGood}>
+              <span className={styles.statusDot} />
+              All Systems Operational
             </div>
           ) : (
-            items.map((item) => (
-              <SystemCard
-                key={item.name}
-                name={item.name}
-                displayName={item.displayName}
-                status={item.status}
-                expandable
-                onExpandChange={showPerformanceMetrics && hasSystemData(item.name)
-                  ? (expanded) => expanded && handleSystemClick(item.name)
-                  : undefined
-                }
-              >
-                <SystemCardUptimeBar serviceName={item.name} />
-                {item.description && (
-                  <SystemCardDetails>
-                    <p>{item.description}</p>
-                  </SystemCardDetails>
-                )}
-              </SystemCard>
-            ))
+            <div className={styles.statusIssue}>
+              <span className={styles.statusDot} />
+              Some Systems Experiencing Issues
+            </div>
           )}
         </div>
       </div>
-    </StatusDataProvider>
+
+      <div className={styles.systemCards}>
+        {items.length === 0 ? (
+          <div className={styles.emptyState}>
+            <p>No systems configured for monitoring.</p>
+          </div>
+        ) : (
+          items.map(item => (
+            <SystemCard
+              key={item.name}
+              name={item.name}
+              displayName={item.displayName}
+              status={item.status}
+              expandable
+              onExpandChange={
+                showPerformanceMetrics
+                  ? expanded => expanded && handleSystemClick(item.name)
+                  : undefined
+              }
+            >
+              <SystemCardUptimeBar serviceName={item.name} />
+              {item.description && (
+                <SystemCardDetails>
+                  <p>{item.description}</p>
+                </SystemCardDetails>
+              )}
+            </SystemCard>
+          ))
+        )}
+      </div>
+    </div>
   );
 
-  // Render detailed layout with StatusBoard (legacy)
   const renderDetailedLayout = () => (
     <StatusBoard
       items={items}
@@ -330,26 +195,26 @@ function StatusPageInner({statusData}: Props): JSX.Element {
       maintenance={maintenance}
       title={title}
       description={description}
-      onSystemClick={showPerformanceMetrics && systemFiles.length > 0 ? handleSystemClick : undefined}
-      hasSystemData={showPerformanceMetrics ? hasSystemData : undefined}
+      onSystemClick={showPerformanceMetrics ? handleSystemClick : undefined}
+      hasSystemData={showPerformanceMetrics ? () => Boolean(v1Base) : undefined}
     />
   );
 
   return (
     <Layout title={title} description={description}>
       <main className={styles.statusPage}>
-        {showServices && (
-          statusCardLayout === 'minimal' ? renderMinimalLayout() : renderDetailedLayout()
-        )}
-        
-        {showPerformanceMetrics && activeSystemIndex !== null && systemFiles[activeSystemIndex] && (
+        <StatusDataProvider summary={summary}>
+          {showServices &&
+            (statusCardLayout === 'minimal' ? renderMinimalLayout() : renderDetailedLayout())}
+        </StatusDataProvider>
+
+        {showPerformanceMetrics && activeFile && (
           <PerformanceMetrics
-            systemFile={systemFiles[activeSystemIndex]}
+            systemFile={activeFile}
             incidents={incidents}
             maintenance={maintenance}
             isVisible={true}
-            onClose={() => setActiveSystemIndex(null)}
-            useDemoData={useDemoData}
+            onClose={() => setActiveSystem(null)}
           />
         )}
 
@@ -366,26 +231,11 @@ function StatusPageInner({statusData}: Props): JSX.Element {
           </section>
         )}
 
-        {showIncidents && incidents && incidents.length > 0 && (
-          <IncidentHistory incidents={incidents} useDemoData={useDemoData} />
-        )}
-
-        {pastMaintenance.length > 0 && (
-          <section className={styles.maintenanceSection}>
-            <h2 className={styles.sectionTitle}>Past Maintenance</h2>
-            <MaintenanceList
-              maintenance={pastMaintenance}
-              filterStatus="completed"
-              showComments={false}
-              showAffectedSystems={true}
-              emptyMessage="No past maintenance to display"
-            />
-          </section>
-        )}
+        {showIncidents && incidents.length > 0 && <IncidentHistory incidents={incidents} />}
 
         <div className={styles.footer}>
           <p className={styles.lastUpdated}>
-            Last updated: {new Date(lastUpdated).toLocaleString()}
+            Last updated: {new Date(lastUpdated).toLocaleString('en-US', {timeZone: 'UTC'})} UTC
           </p>
           <p className={styles.poweredBy}>
             Powered by{' '}

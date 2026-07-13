@@ -1,31 +1,31 @@
 /**
- * Pipeline fixture test (ADR-005 Migration Phase 0, ticket #66).
+ * Pipeline fixture test (ADR-005; tickets #66/#77).
  *
- * Asserts on the /status DOM of the fixture site after the REAL pipeline
- * ran: monitor.js against a mock HTTP server → status-data files →
- * docusaurus build → served build. Each assertion targets a bug shape
- * from the v0.21.x cluster:
+ * Asserts on the /status DOM of the fixture site after the REAL v1
+ * pipeline ran: probe engine against a mock HTTP server → status/v1
+ * files → docusaurus build → served build. Each assertion targets a bug
+ * shape from the v0.21.x cluster:
  *   - ghost-system absence  → issue #62 (entity filtering, fixed twice)
- *   - data-file presence    → v0.21.2 (postBuild copy omissions)
+ *   - data-plane presence   → v0.21.2 (postBuild copy omissions)
  *   - card content rendered → v0.21.1/.3 (option threading)
  */
 import {expect, test} from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const BUILD_DIR = path.resolve(__dirname, '..', 'fixtures', 'site', 'build');
+const SITE_DIR = path.resolve(__dirname, '..', 'fixtures', 'site');
+const BUILD_DIR = path.join(SITE_DIR, 'build');
 
 test.describe('status page renders pipeline output', () => {
-  test('shows monitored systems from current.json', async ({page}) => {
+  test('shows monitored systems from the v1 summary', async ({page}) => {
     await page.goto('/status');
-    // Both configured systems render as cards
     await expect(page.getByText('alpha', {exact: false}).first()).toBeVisible();
     await expect(page.getByText('beta', {exact: false}).first()).toBeVisible();
   });
 
-  test('does NOT render systems absent from .monitorrc.json (issue #62)', async ({page}) => {
-    // 'ghost' has readings in current.json but is not a configured entity;
-    // v0.21.8 and earlier rendered it (#62 — the bug fixed twice).
+  test('does NOT render systems absent from the config (issue #62)', async ({page}) => {
+    // 'ghost' has readings in the archives but is not a configured
+    // entity; v0.21.8 and earlier rendered it (#62 — fixed twice).
     // Scoped to visible main-content text (not raw HTML) so a class name
     // or script chunk containing 'ghost' can't false-positive.
     await page.goto('/status');
@@ -51,71 +51,84 @@ test.describe('status page renders pipeline output', () => {
     const banner = page.getByText(/all systems operational/i);
     await expect(banner).toHaveCount(0);
   });
+
+  test('renders an uptime bar per configured system (summary day tuples)', async ({page}) => {
+    await page.goto('/status');
+    await page.waitForLoadState('networkidle');
+    const bars = page.locator('main [role="group"]');
+    await expect(bars).toHaveCount(2);
+  });
 });
 
-test.describe('postBuild copied the data plane (v0.21.2 regression shape)', () => {
-  const dataFiles = [
-    'status-data/status.json',
-    'status-data/current.json',
-    'status-data/daily-summary.json',
+test.describe('postBuild published the v1 data plane', () => {
+  const v1Files = [
+    'status-data/status/v1/summary.json',
+    'status-data/status/v1/incidents.atom',
+    'status-data/status/v1/entities/alpha.json',
+    'status-data/status/v1/entities/beta.json',
   ];
-  for (const rel of dataFiles) {
+  for (const rel of v1Files) {
     test(`build output contains ${rel}`, async () => {
       expect(fs.existsSync(path.join(BUILD_DIR, rel))).toBe(true);
     });
   }
 
-  test('generated system files are filtered to configured entities (#62)', async () => {
-    const systemsDir = path.join(BUILD_DIR, 'status-data', 'systems');
-    const files = fs.readdirSync(systemsDir);
+  test('entity detail files are filtered to configured entities (#62)', async () => {
+    const entitiesDir = path.join(BUILD_DIR, 'status-data', 'status', 'v1', 'entities');
+    const files = fs.readdirSync(entitiesDir);
     expect(files).toContain('alpha.json');
     expect(files).toContain('beta.json');
     expect(files).not.toContain('ghost.json');
   });
 
-  test('system files carry the observed up/down states', async () => {
-    const systemsDir = path.join(BUILD_DIR, 'status-data', 'systems');
-    const alpha = JSON.parse(
-      fs.readFileSync(path.join(systemsDir, 'alpha.json'), 'utf8')
-    );
-    const beta = JSON.parse(
-      fs.readFileSync(path.join(systemsDir, 'beta.json'), 'utf8')
-    );
-    expect(alpha.currentStatus).toBe('up');
-    expect(alpha.timeDay).toBeGreaterThan(0); // real measured latency
-    expect(beta.currentStatus).toBe('down');
-  });
-
-  test('client fetch of current.json succeeds from the served build', async ({request}) => {
-    const res = await request.get('/status-data/current.json');
-    expect(res.ok()).toBe(true);
-    const body = await res.json();
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBeGreaterThan(0);
+  test('legacy data files are gone from the build output (#77 cutover)', async () => {
+    for (const legacy of [
+      'status-data/current.json',
+      'status-data/daily-summary.json',
+      'status-data/systems',
+    ]) {
+      expect(fs.existsSync(path.join(BUILD_DIR, legacy))).toBe(false);
+    }
   });
 });
 
-test.describe('status/v1 read path (ADR-005 #72)', () => {
+test.describe('status/v1 read path (ADR-005 §4)', () => {
   test('summary.json is served and schema-shaped', async ({request}) => {
     const res = await request.get('/status-data/status/v1/summary.json');
     expect(res.ok()).toBe(true);
     const summary = await res.json();
     expect(summary.schemaVersion).toBe(1);
     expect(summary.entities.map((e: {name: string}) => e.name).sort()).toEqual(['alpha', 'beta']);
-    // ghost has readings in legacy current.json but is NOT a configured
-    // entity — it must never enter the v1 contract (#62, v1 edition).
+    // ghost has readings in the archives but is NOT a configured entity —
+    // it must never enter the v1 contract (#62, v1 edition).
     expect(JSON.stringify(summary)).not.toContain('ghost');
+    // beta observed down from the mock's 500s
+    const beta = summary.entities.find((e: {name: string}) => e.name === 'beta');
+    expect(beta.status).toBe('down');
+  });
+
+  test('entity detail is served and fetchable by the drill-down path', async ({request}) => {
+    const res = await request.get('/status-data/status/v1/entities/alpha.json');
+    expect(res.ok()).toBe(true);
+    const detail = await res.json();
+    expect(detail.schemaVersion).toBe(1);
+    expect(detail.readings.length).toBeGreaterThan(0);
+    expect(detail.readings.every((r: {svc: string}) => r.svc === 'alpha')).toBe(true);
   });
 
   test('the build consumed the v1 path (route data carries the snapshot)', async () => {
     const statusJson = JSON.parse(
-      fs.readFileSync(path.join(BUILD_DIR, 'status-data', 'status.json'), 'utf8')
+      fs.readFileSync(
+        path.join(SITE_DIR, '.docusaurus', 'docusaurus-plugin-stentorosaur', 'status.json'),
+        'utf8'
+      )
     );
     expect(statusJson.v1Summary).toBeDefined();
     expect(statusJson.v1Summary.schemaVersion).toBe(1);
     expect(statusJson.dataUrl).toBe('/status-data/status/v1/summary.json');
-    // v1 entities drove the items (beta down from the mock's 500s)
     const beta = statusJson.items.find((i: {name: string}) => i.name === 'beta');
     expect(beta.status).toBe('down');
+    // v1 items carry decoded day rollups for the uptime bars.
+    expect(beta.days.length).toBeGreaterThan(0);
   });
 });

@@ -6,10 +6,8 @@
  */
 
 import React from 'react';
-import {formatDistanceToNow} from 'date-fns';
 import type {StatusIncident} from '../../types';
-import {formatResolutionInfo} from '../../time-utils';
-import {markdownToHtml} from '../../utils/markdown';
+import {formatResolutionInfo, relativeTimeFromNow} from '../../time-utils';
 import styles from './styles.module.css';
 
 export interface Props {
@@ -50,7 +48,7 @@ export default function IncidentHistory({
 }: Props): JSX.Element {
   const displayIncidents = incidents.slice(0, maxItems);
 
-  const defaultTitle = useDemoData ? 'Demo Data: Recent Incidents' : 'Recent Incidents';
+  const defaultTitle = 'Recent Incidents';
   const displayTitle = title || defaultTitle;
 
   if (displayIncidents.length === 0) {
@@ -70,9 +68,7 @@ export default function IncidentHistory({
       <div className={styles.timeline}>
         {displayIncidents.map((incident) => {
           const config = severityConfig[incident.severity];
-          const timeAgo = formatDistanceToNow(new Date(incident.createdAt), {
-            addSuffix: true,
-          });
+          const timeAgo = relativeTimeFromNow(new Date(incident.createdAt));
 
           return (
             <div
@@ -128,9 +124,7 @@ export default function IncidentHistory({
                   <span>{timeAgo}</span>
                   {incident.closedAt && (
                     <span>
-                      • Resolved {formatDistanceToNow(new Date(incident.closedAt), {
-                        addSuffix: true,
-                      })}
+                      • Resolved {relativeTimeFromNow(new Date(incident.closedAt))}
                     </span>
                   )}
                   {incident.status === 'closed' && (
@@ -157,7 +151,8 @@ export default function IncidentHistory({
                     </summary>
                     <div
                       className={styles.incidentBodyContent}
-                      dangerouslySetInnerHTML={{ __html: markdownToHtml(incident.body) }}
+                      // v1 bodies are sanitized HTML rendered at write time (ADR-005 §7)
+                      dangerouslySetInnerHTML={{ __html: incident.body }}
                     />
                   </details>
                 )}

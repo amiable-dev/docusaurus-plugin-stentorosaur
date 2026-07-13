@@ -1,23 +1,11 @@
 {
   "name": "@amiable-dev/docusaurus-plugin-stentorosaur",
-  "version": "0.21.10",
+  "version": "1.0.0",
   "description": "A Docusaurus plugin for displaying status monitoring dashboard powered by GitHub Issues and Actions, similar to Upptime",
   "main": "lib/index.js",
   "types": "src/plugin-status.d.ts",
-  "bin": {
-    "stentorosaur-update-status": "scripts/update-status.cjs",
-    "stentorosaur-monitor": "scripts/monitor.js",
-    "stentorosaur-notify": "scripts/notify.js",
-    "stentorosaur-setup-status-branch": "scripts/setup-status-branch.js",
-    "stentorosaur-migrate-to-status-branch": "scripts/migrate-to-status-branch.js",
-    "stentorosaur-cleanup-status-branch": "scripts/cleanup-status-branch.js",
-    "stentorosaur-bootstrap-summary": "scripts/bootstrap-summary.js",
-    "stentorosaur-init": "scripts/init.js",
-    "stentorosaur-config": "scripts/config.js"
-  },
   "files": [
     "lib",
-    "scripts",
     "templates",
     "src/plugin-status.d.ts"
   ],
@@ -44,11 +32,6 @@
     "build": "tsc --build && node copyUntypedFiles.js",
     "watch": "tsc --build --watch",
     "dev": "tsc --build --watch",
-    "postinstall": "node scripts/postinstall.js",
-    "update-status": "node scripts/update-status.js",
-    "setup-status-branch": "node scripts/setup-status-branch.js",
-    "migrate-to-status-branch": "node scripts/migrate-to-status-branch.js",
-    "cleanup-status-branch": "node scripts/cleanup-status-branch.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -58,16 +41,8 @@
     "@docusaurus/core": "^3.0.0",
     "@docusaurus/types": "^3.0.0",
     "@docusaurus/utils": "^3.0.0",
-    "@octokit/rest": "^20.0.2",
-    "axios": "^1.13.2",
-    "chrono-node": "^2.9.0",
-    "date-fns": "^2.30.0",
-    "dompurify": "^3.3.0",
     "fs-extra": "^11.1.1",
-    "marked": "^17.0.0",
-    "nodemailer": "^7.0.10",
-    "tslib": "^2.6.0",
-    "zod": "^4.1.12"
+    "tslib": "^2.6.0"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
@@ -76,10 +51,8 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
-    "@types/dompurify": "^3.0.5",
     "@types/fs-extra": "^11.0.4",
     "@types/jest": "^30.0.0",
-    "@types/nodemailer": "^7.0.3",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "jest": "^30.2.0",

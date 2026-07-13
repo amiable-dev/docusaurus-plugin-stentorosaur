@@ -13,7 +13,6 @@
 
 import React, { useState, useMemo } from 'react';
 import type { StatusCheckHistory } from '../../types';
-import { aggregateHistoricalData } from '../../historical-data';
 import { ExportButton } from '../components/ExportButton';
 import { SvgLineChart } from '../svg/SvgCharts';
 import type { LinePoint } from '../svg/SvgCharts';
@@ -73,7 +72,10 @@ export default function SLIChart({
     // Explicit temporal sort: the cumulative error-budget walk depends on
     // day insertion order (Council PR #88 r=1 — never rely on an upstream
     // function's unstated ordering).
-    const filteredHistory = [...aggregateHistoricalData(history, PERIOD_HOURS[activePeriod])]
+    const cutoff = Date.now() - PERIOD_HOURS[activePeriod] * 60 * 60 * 1000;
+    const filteredHistory = history
+      .filter(check => new Date(check.timestamp).getTime() >= cutoff)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     if (filteredHistory.length === 0) {
       return null;

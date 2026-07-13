@@ -90,3 +90,22 @@ export function formatResolutionInfo(
 
   return parts.length > 0 ? parts.join(' ') : undefined;
 }
+
+/**
+ * Native replacement for date-fns formatDistanceToNow(+addSuffix)
+ * (ADR-005 §11: date-fns → Intl). "3 hours ago" / "in 2 days".
+ */
+export function relativeTimeFromNow(date: Date, now: Date = new Date()): string {
+  const diffMs = date.getTime() - now.getTime();
+  const rtf = new Intl.RelativeTimeFormat('en-US', {numeric: 'always'});
+  const abs = Math.abs(diffMs);
+  const MINUTE = 60_000;
+  const HOUR = 60 * MINUTE;
+  const DAY = 24 * HOUR;
+  if (abs < MINUTE) return diffMs <= 0 ? 'less than a minute ago' : 'in less than a minute';
+  if (abs < HOUR) return rtf.format(Math.round(diffMs / MINUTE), 'minute');
+  if (abs < DAY) return rtf.format(Math.round(diffMs / HOUR), 'hour');
+  if (abs < 30 * DAY) return rtf.format(Math.round(diffMs / DAY), 'day');
+  if (abs < 365 * DAY) return rtf.format(Math.round(diffMs / (30 * DAY)), 'month');
+  return rtf.format(Math.round(diffMs / (365 * DAY)), 'year');
+}

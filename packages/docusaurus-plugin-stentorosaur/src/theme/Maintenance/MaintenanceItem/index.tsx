@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { relativeTimeFromNow } from '../../../time-utils';
 import type { ScheduledMaintenance } from '../../../types';
-import { markdownToHtml } from '../../../utils/markdown';
 import styles from './styles.module.css';
 
 interface MaintenanceItemProps {
@@ -46,11 +45,11 @@ export default function MaintenanceItem({
 
   const getTimeStatus = () => {
     if (maintenance.status === 'upcoming') {
-      return `Starts ${formatDistanceToNow(startDate, { addSuffix: true })}`;
+      return `Starts ${relativeTimeFromNow(startDate)}`;
     } else if (maintenance.status === 'in-progress') {
-      return `Started ${formatDistanceToNow(startDate, { addSuffix: true })}`;
+      return `Started ${relativeTimeFromNow(startDate)}`;
     } else {
-      return `Completed ${formatDistanceToNow(endDate, { addSuffix: true })}`;
+      return `Completed ${relativeTimeFromNow(endDate)}`;
     }
   };
 
@@ -90,7 +89,7 @@ export default function MaintenanceItem({
       {maintenance.description && (
         <div
           className={styles.description}
-          dangerouslySetInnerHTML={{ __html: markdownToHtml(maintenance.description) }}
+          dangerouslySetInnerHTML={{ __html: maintenance.description }}
         />
       )}
 
@@ -124,7 +123,7 @@ export default function MaintenanceItem({
                   </div>
                   <div
                     className={styles.commentBody}
-                    dangerouslySetInnerHTML={{ __html: markdownToHtml(comment.body) }}
+                    dangerouslySetInnerHTML={{ __html: comment.body }}
                   />
                 </div>
               ))}

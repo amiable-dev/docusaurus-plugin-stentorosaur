@@ -1,14 +1,15 @@
 /**
- * status/v1 → legacy StatusData adapter (ADR-005; epic #63 ticket #72).
+ * status/v1 → render-shape adapter (ADR-005; tickets #72/#77).
  *
- * The bridge that lets every existing theme component render the v1
- * contract unchanged: loadContent parses summary.json and adapts it to
- * the shape the components already consume. Pure and deterministic.
- * Dies at the #77 cutover when components consume v1 natively (#73).
+ * loadContent parses summary.json and adapts it to the StatusData shape
+ * the theme components consume. Pure and deterministic. Since the #77
+ * cutover this is the ONLY way StatusData is produced.
  */
 
+import {decodeDayRollups} from '@stentorosaur/core';
 import type {StatusSummary, StatusIncidentV1, SummaryEntity} from '@stentorosaur/core';
 import type {
+  EntityDisplay,
   ScheduledMaintenance,
   StatusData,
   StatusIncident,
@@ -18,6 +19,8 @@ import type {
 export interface AdapterOptions {
   /** e.g. https://github.com/owner/repo — used to reconstruct issue URLs */
   repoUrl: string;
+  /** Display metadata from plugin options, keyed by entity name */
+  entityDisplay?: EntityDisplay[];
 }
 
 function displayNameOf(entities: SummaryEntity[], name: string): string {
@@ -39,9 +42,8 @@ function toLegacyIncident(
     updatedAt: incident.closedAt ?? incident.createdAt,
     ...(incident.closedAt ? {closedAt: incident.closedAt} : {}),
     url: `${repoUrl}/issues/${incident.issueNumber}`,
-    // v1 bodies are sanitized HTML rendered at write time; the legacy
-    // markdown pipeline re-sanitizes on render (harmless double guard
-    // during the bridge period).
+    // v1 bodies are sanitized HTML rendered at write time (§7); the
+    // theme injects them directly.
     body: incident.bodyHtml,
     labels: [incident.severity, ...incident.entities],
     affectedSystems: incident.entities.map(name =>
@@ -63,17 +65,27 @@ export function summaryToStatusData(
     }
   }
 
-  const items: StatusItem[] = summary.entities.map(entity => ({
-    name: entity.name,
-    ...(entity.displayName ? {displayName: entity.displayName} : {}),
-    status: entity.status,
-    lastChecked: summary.generatedAt,
-    ...(entity.responseTimeMs.d1 !== null
-      ? {responseTime: entity.responseTimeMs.d1}
-      : {}),
-    uptime: `${entity.uptime.d90.toFixed(2)}%`,
-    incidentCount: openByEntity.get(entity.name) ?? 0,
-  }));
+  const displayByName = new Map(
+    (options.entityDisplay ?? []).map(display => [display.name, display])
+  );
+
+  const items: StatusItem[] = summary.entities.map(entity => {
+    const display = displayByName.get(entity.name);
+    const displayName = display?.displayName ?? entity.displayName;
+    return {
+      name: entity.name,
+      ...(displayName ? {displayName} : {}),
+      ...(display?.description ? {description: display.description} : {}),
+      status: entity.status,
+      lastChecked: summary.generatedAt,
+      ...(entity.responseTimeMs.d1 !== null
+        ? {responseTime: entity.responseTimeMs.d1}
+        : {}),
+      uptime: `${entity.uptime.d90.toFixed(2)}%`,
+      incidentCount: openByEntity.get(entity.name) ?? 0,
+      days: decodeDayRollups(entity),
+    };
+  });
 
   const incidents: StatusIncident[] = [
     ...summary.incidents.open,
@@ -106,6 +118,5 @@ export function summaryToStatusData(
     showServices: true,
     showIncidents: true,
     showPerformanceMetrics: true,
-    useDemoData: false,
   };
 }

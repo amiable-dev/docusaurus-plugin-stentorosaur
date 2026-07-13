@@ -1,58 +1,80 @@
 /**
- * Monorepo scaffold smoke tests (ADR-005, epic #63 ticket #64).
+ * Package layout smoke tests (ADR-005, tickets #64/#77).
  *
- * Guards two acceptance criteria:
- * 1. The plugin's version is injected from package.json at load time —
- *    the generated src/version.ts / scripts/generate-version.js hack is
- *    gone (ADR-005 §11 scope-cut table).
- * 2. The published package layout resolves from the new workspace
- *    location (main/bin/files entries point at real files).
+ * Guards:
+ * 1. pluginVersion is injected from package.json at load time (the
+ *    generated src/version.ts hack stays gone).
+ * 2. The published package layout resolves from the workspace location.
+ * 3. v1.0 cutover: no bin, no postinstall, no scripts/ directory —
+ *    the CLI lives in @stentorosaur/probe (ADR-005 §11).
  */
 
 import * as realFs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import type {LoadContext} from '@docusaurus/types';
 import type {PluginOptions} from '../src/types';
 import pluginStatusPage from '../src/index';
-
-jest.mock('../src/github-service');
-jest.mock('fs-extra');
 
 const pkgDir = path.resolve(__dirname, '..');
 const pkg = JSON.parse(
   realFs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8')
 );
 
-describe('version injection (no generated version.ts)', () => {
-  const mockContext = {
-    siteDir: '/test/site',
-    generatedFilesDir: '/test/site/.docusaurus',
-    baseUrl: '/',
-    siteConfig: {baseUrl: '/'} as any,
+const SUMMARY = {
+  schemaVersion: 1,
+  generatedAt: '2026-07-13T12:00:00.000Z',
+  generatedBy: 'test',
+  entities: [
+    {
+      name: 'api',
+      type: 'system',
+      status: 'up',
+      uptime: {d1: 100, d7: 100, d90: 100},
+      responseTimeMs: {d1: 42},
+      daysEnd: '2026-07-13',
+      days: [[100, 42, 'u']],
+    },
+  ],
+  incidents: {open: [], recent: []},
+  maintenance: {upcoming: [], inProgress: []},
+};
+
+function makeSite(): {siteDir: string; context: LoadContext} {
+  const siteDir = realFs.mkdtempSync(path.join(os.tmpdir(), 'layout-'));
+  const v1 = path.join(siteDir, 'status-data', 'status', 'v1');
+  realFs.mkdirSync(v1, {recursive: true});
+  realFs.writeFileSync(path.join(v1, 'summary.json'), JSON.stringify(SUMMARY));
+  realFs.mkdirSync(path.join(siteDir, '.docusaurus'), {recursive: true});
+  const context = {
+    siteDir,
+    generatedFilesDir: path.join(siteDir, '.docusaurus'),
+    siteConfig: {baseUrl: '/', organizationName: 'o', projectName: 'r'} as any,
   } as LoadContext;
+  return {siteDir, context};
+}
+
+describe('version injection (no generated version.ts)', () => {
+  let siteDir: string;
+  let context: LoadContext;
+  beforeEach(() => {
+    ({siteDir, context} = makeSite());
+  });
+  afterEach(() => {
+    realFs.rmSync(siteDir, {recursive: true, force: true});
+  });
 
   it('loadContent exposes pluginVersion matching package.json', async () => {
-    const options: PluginOptions = {
-      owner: 'test-owner',
-      repo: 'test-repo',
-      useDemoData: true,
-    };
-    const plugin = await pluginStatusPage(mockContext, options);
+    const plugin = await pluginStatusPage(context, {} as PluginOptions);
     const content = await plugin.loadContent!();
     expect(content.pluginVersion).toBe(pkg.version);
   });
 
   it('resolves the PACKAGE version, not the monorepo root version', async () => {
-    // Guards the resolution of require('../package.json') from src/ and
-    // lib/: both must land on the plugin package manifest, never the
-    // private workspace root (version 0.0.0).
     const rootPkg = JSON.parse(
-      realFs.readFileSync(
-        path.join(pkgDir, '..', '..', 'package.json'),
-        'utf8'
-      )
+      realFs.readFileSync(path.join(pkgDir, '..', '..', 'package.json'), 'utf8')
     );
-    const plugin = await pluginStatusPage(mockContext, {useDemoData: true, owner: 'o', repo: 'r'});
+    const plugin = await pluginStatusPage(context, {} as PluginOptions);
     const content = await plugin.loadContent!();
     expect(content.pluginVersion).not.toBe(rootPkg.version);
     expect(content.pluginVersion).toMatch(/^\d+\.\d+\.\d+/);
@@ -60,9 +82,7 @@ describe('version injection (no generated version.ts)', () => {
 
   it('generated version artifacts are gone', () => {
     expect(realFs.existsSync(path.join(pkgDir, 'src', 'version.ts'))).toBe(false);
-    expect(
-      realFs.existsSync(path.join(pkgDir, 'scripts', 'generate-version.js'))
-    ).toBe(false);
+    expect(realFs.existsSync(path.join(pkgDir, 'scripts', 'generate-version.js'))).toBe(false);
   });
 });
 
@@ -70,20 +90,16 @@ describe('package layout resolves from workspace location', () => {
   it('lives under packages/ in a workspace root', () => {
     expect(path.basename(path.dirname(pkgDir))).toBe('packages');
     const rootPkg = JSON.parse(
-      realFs.readFileSync(
-        path.join(pkgDir, '..', '..', 'package.json'),
-        'utf8'
-      )
+      realFs.readFileSync(path.join(pkgDir, '..', '..', 'package.json'), 'utf8')
     );
     expect(rootPkg.workspaces).toContain('packages/*');
     expect(rootPkg.private).toBe(true);
   });
 
-  it('every bin entry points at an existing executable script', () => {
-    for (const [name, rel] of Object.entries<string>(pkg.bin)) {
-      const binPath = path.join(pkgDir, rel);
-      expect(realFs.existsSync(binPath)).toBe(true);
-    }
+  it('v1.0 ships no bin, no postinstall, no scripts/ (ADR-005 §11)', () => {
+    expect(pkg.bin).toBeUndefined();
+    expect(pkg.scripts.postinstall).toBeUndefined();
+    expect(realFs.existsSync(path.join(pkgDir, 'scripts'))).toBe(false);
   });
 
   it('files whitelist entries exist in the package (lib may be unbuilt)', () => {
@@ -96,22 +112,5 @@ describe('package layout resolves from workspace location', () => {
   it('README and LICENSE ship with the package', () => {
     expect(realFs.existsSync(path.join(pkgDir, 'README.md'))).toBe(true);
     expect(realFs.existsSync(path.join(pkgDir, 'LICENSE'))).toBe(true);
-  });
-
-  it('postinstall script exists, is self-contained, and its Makefile template ships', () => {
-    // Council finding (PR #78 r=1): postinstall must not depend on the
-    // removed generate-version script, and everything it references at
-    // consumer-install time must be inside the published tarball.
-    const postinstallRel = (pkg.scripts.postinstall as string).replace(/^node\s+/, '');
-    const postinstallPath = path.join(pkgDir, postinstallRel);
-    expect(realFs.existsSync(postinstallPath)).toBe(true);
-    const src = realFs.readFileSync(postinstallPath, 'utf8');
-    expect(src).not.toMatch(/generate-version/);
-    expect(src).not.toMatch(/src\/version/);
-    // The only package-internal asset it references:
-    expect(realFs.existsSync(path.join(pkgDir, 'templates', 'Makefile.status'))).toBe(true);
-    // And templates/ is in the publish whitelist:
-    expect(pkg.files).toContain('templates');
-    expect(pkg.files).toContain('scripts');
   });
 });
