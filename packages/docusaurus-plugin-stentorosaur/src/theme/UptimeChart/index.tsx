@@ -1,39 +1,49 @@
 /**
- * Copyright (c) Your Organization
+ * Copyright (c) Amiable Development
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import annotationPlugin from 'chartjs-plugin-annotation';
-import { Bar } from 'react-chartjs-2';
-import type { StatusCheckHistory, StatusIncident, ScheduledMaintenance, ChartAnnotation } from '../../types';
-import { createAnnotations, filterAnnotationsBySystem } from '../../annotation-utils';
-import { useChartExport } from '../hooks/useChartExport';
+/**
+ * Uptime chart — inline SVG (ADR-005 §11, ticket #73; chart.js removed).
+ * Bar mode renders time-block uptime bars; heatmap mode renders a cell
+ * grid. Annotations (incidents/maintenance/custom) render as an
+ * accessible marker list below the chart instead of a canvas overlay.
+ */
+
+import React, { useState, useMemo, useCallback } from 'react';
+import type { ChartAnnotation, ScheduledMaintenance, StatusCheckHistory, StatusIncident } from '../../types';
+import { createAnnotations } from '../../annotation-utils';
 import { ExportButton } from '../components/ExportButton';
 import { formatDateForFilename } from '../../utils/csv';
+import { SvgUptimeBars } from '../svg/SvgCharts';
+import type { UptimeBarDatum } from '../svg/SvgCharts';
 import styles from './styles.module.css';
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  annotationPlugin
-);
+type TimePeriod = '24h' | '7d' | '30d' | '90d';
+
+const PERIOD_LABELS: Record<TimePeriod, string> = {
+  '24h': 'Last 24 Hours',
+  '7d': 'Last 7 Days',
+  '30d': 'Last 30 Days',
+  '90d': 'Last 90 Days',
+};
+
+const PERIOD_DAYS: Record<TimePeriod, number> = {
+  '24h': 1,
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+};
+
+interface TimeBlockUptime {
+  timestamp: string;
+  label: string;
+  uptime: number | null;
+  checks: number;
+  upChecks: number;
+}
 
 export interface UptimeChartProps {
   /** System name */
@@ -56,28 +66,83 @@ export interface UptimeChartProps {
   showPeriodSelector?: boolean;
 }
 
-type TimePeriod = '24h' | '7d' | '30d' | '90d';
+/** Bucket checks into time blocks (hourly/4-hourly/daily by period). */
+function calculateTimeBlockUptime(
+  history: StatusCheckHistory[],
+  activePeriod: TimePeriod
+): TimeBlockUptime[] {
+  const now = new Date();
+  let blockSizeMs: number;
+  let blockCount: number;
+  let formatLabel: (date: Date) => string;
 
-const PERIOD_LABELS: Record<TimePeriod, string> = {
-  '24h': '24 Hours',
-  '7d': '7 Days',
-  '30d': '30 Days',
-  '90d': '90 Days',
-};
+  if (activePeriod === '24h') {
+    blockSizeMs = 60 * 60 * 1000;
+    blockCount = 24;
+    formatLabel = date => {
+      const hour = date.getHours();
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      return `${hour % 12 || 12} ${ampm}`;
+    };
+  } else if (activePeriod === '7d') {
+    blockSizeMs = 4 * 60 * 60 * 1000;
+    blockCount = 42;
+    formatLabel = date => {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const hour = date.getHours();
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      return `${dayNames[date.getDay()]} ${hour % 12 || 12}${ampm}`;
+    };
+  } else {
+    blockSizeMs = 24 * 60 * 60 * 1000;
+    blockCount = PERIOD_DAYS[activePeriod];
+    formatLabel = date => date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
 
-const PERIOD_DAYS: Record<TimePeriod, number> = {
-  '24h': 1,
-  '7d': 7,
-  '30d': 30,
-  '90d': 90,
-};
+  const blocks: TimeBlockUptime[] = [];
+  for (let i = blockCount - 1; i >= 0; i--) {
+    const blockStart = new Date(now.getTime() - i * blockSizeMs);
+    if (activePeriod === '24h') {
+      blockStart.setMinutes(0, 0, 0);
+    } else if (activePeriod === '7d') {
+      blockStart.setHours(Math.floor(blockStart.getHours() / 4) * 4, 0, 0, 0);
+    } else {
+      blockStart.setHours(0, 0, 0, 0);
+    }
+    blocks.push({
+      timestamp: blockStart.toISOString(),
+      label: formatLabel(blockStart),
+      uptime: null,
+      checks: 0,
+      upChecks: 0,
+    });
+  }
 
-interface TimeBlockUptime {
-  timestamp: string; // ISO timestamp or date string
-  label: string; // Display label (e.g., "3 AM", "Mon 12 PM", "Jan 15")
-  uptime: number | null; // null indicates no data for this time block
-  checks: number;
-  upChecks: number;
+  for (const check of history) {
+    const t = new Date(check.timestamp).getTime();
+    for (const block of blocks) {
+      const start = new Date(block.timestamp).getTime();
+      if (t >= start && t < start + blockSizeMs) {
+        block.checks++;
+        if (check.status === 'up' || check.status === 'maintenance') {
+          block.upChecks++;
+        }
+        break;
+      }
+    }
+  }
+
+  for (const block of blocks) {
+    block.uptime = block.checks > 0 ? (block.upChecks / block.checks) * 100 : null;
+  }
+  return blocks;
+}
+
+function heatmapTone(uptime: number | null): string {
+  if (uptime === null) return styles.cellNoData ?? '';
+  if (uptime >= 99) return styles.cellOk ?? '';
+  if (uptime >= 95) return styles.cellWarn ?? '';
+  return styles.cellBad ?? '';
 }
 
 export default function UptimeChart({
@@ -87,586 +152,52 @@ export default function UptimeChart({
   maintenance = [],
   annotations,
   chartType = 'bar',
-  period = '30d',
+  period = '90d',
   height = 300,
-  showPeriodSelector = false,
+  showPeriodSelector = true,
 }: UptimeChartProps): JSX.Element {
   const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
-  const chartRef = useRef<ChartJS<'bar'>>(null);
-  const { exportPNG, exportJPEG } = useChartExport();
-  
-  // Use internal state only if period selector is shown, otherwise use prop
   const activePeriod = showPeriodSelector ? internalPeriod : period;
 
-  // Detect dark mode from document
-  useEffect(() => {
-    const checkDarkMode = () => {
-      setIsDarkTheme(document.documentElement.getAttribute('data-theme') === 'dark');
-    };
-    
-    checkDarkMode();
-    
-    // Watch for theme changes
-    const observer = new MutationObserver(checkDarkMode);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme'],
-    });
-    
-    return () => observer.disconnect();
-  }, []);
+  const blocks = useMemo(
+    () => calculateTimeBlockUptime(history, activePeriod),
+    [history, activePeriod]
+  );
 
-  // Calculate uptime by time blocks (hourly for 24h, 4-hour for 7d, daily for 30d/90d)
-  const calculateTimeBlockUptime = useCallback((): TimeBlockUptime[] => {
-    const now = new Date();
-    const blockData: Map<string, { upChecks: number; totalChecks: number }> = new Map();
+  const withData = blocks.filter(b => b.uptime !== null);
+  const overallUptime =
+    withData.length > 0
+      ? withData.reduce((sum, b) => sum + (b.uptime ?? 0), 0) / withData.length
+      : null;
 
-    // Determine granularity based on period
-    let blockSizeMs: number;
-    let blockCount: number;
-    let formatLabel: (timestamp: Date) => string;
-
-    if (activePeriod === '24h') {
-      // Hourly blocks for 24 hours
-      blockSizeMs = 60 * 60 * 1000; // 1 hour
-      blockCount = 24;
-      formatLabel = (date: Date) => {
-        const hour = date.getHours();
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour % 12 || 12;
-        return `${displayHour} ${ampm}`;
-      };
-    } else if (activePeriod === '7d') {
-      // 4-hour blocks for 7 days (42 blocks)
-      blockSizeMs = 4 * 60 * 60 * 1000; // 4 hours
-      blockCount = 42; // 7 days * 6 blocks per day
-      formatLabel = (date: Date) => {
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const hour = date.getHours();
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour % 12 || 12;
-        return `${dayNames[date.getDay()]} ${displayHour}${ampm}`;
-      };
-    } else {
-      // Daily blocks for 30d/90d (existing behavior)
-      blockSizeMs = 24 * 60 * 60 * 1000; // 1 day
-      blockCount = PERIOD_DAYS[activePeriod];
-      formatLabel = (date: Date) => {
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      };
-    }
-
-    // Initialize all time blocks
-    const blocks: TimeBlockUptime[] = [];
-    for (let i = blockCount - 1; i >= 0; i--) {
-      const blockStart = new Date(now.getTime() - i * blockSizeMs);
-      // Round down to block boundary
-      if (activePeriod === '24h') {
-        blockStart.setMinutes(0, 0, 0);
-      } else if (activePeriod === '7d') {
-        const hour = Math.floor(blockStart.getHours() / 4) * 4;
-        blockStart.setHours(hour, 0, 0, 0);
-      } else {
-        blockStart.setHours(0, 0, 0, 0);
-      }
-
-      const timestamp = blockStart.toISOString();
-      blockData.set(timestamp, { upChecks: 0, totalChecks: 0 });
-      blocks.push({
-        timestamp,
-        label: formatLabel(blockStart),
-        uptime: null,
-        checks: 0,
-        upChecks: 0,
-      });
-    }
-
-    // Count checks per time block
-    history.forEach(check => {
-      const checkTime = new Date(check.timestamp);
-
-      // Find which block this check belongs to
-      for (const block of blocks) {
-        const blockStart = new Date(block.timestamp);
-        const blockEnd = new Date(blockStart.getTime() + blockSizeMs);
-
-        if (checkTime >= blockStart && checkTime < blockEnd) {
-          const data = blockData.get(block.timestamp);
-          if (data) {
-            data.totalChecks++;
-            if (check.status === 'up' || check.status === 'maintenance') {
-              data.upChecks++;
-            }
-          }
-          break;
-        }
-      }
-    });
-
-    // Calculate uptime percentages
-    return blocks.map(block => {
-      const data = blockData.get(block.timestamp);
-      if (data) {
-        return {
-          ...block,
-          uptime: data.totalChecks > 0 ? (data.upChecks / data.totalChecks) * 100 : null,
-          checks: data.totalChecks,
-          upChecks: data.upChecks,
-        };
-      }
-      return block;
-    });
-  }, [history, activePeriod]);
-
-  const timeBlocks = useMemo(() => calculateTimeBlockUptime(), [calculateTimeBlockUptime]);
-
-  // Calculate overall uptime (exclude blocks with no data)
-  const overallUptime = useMemo(() => {
-    const blocksWithData = timeBlocks.filter(block => block.uptime !== null);
-    return blocksWithData.length > 0
-      ? blocksWithData.reduce((sum, block) => sum + (block.uptime || 0), 0) / blocksWithData.length
-      : null; // null if no data at all
-  }, [timeBlocks]);
-
-  // Get color based on uptime percentage
-  const getUptimeColor = useCallback((uptime: number | null): string => {
-    if (uptime === null) return isDarkTheme ? 'rgb(100, 100, 100)' : 'rgb(200, 200, 200)'; // Gray for no data
-    if (uptime >= 99) return isDarkTheme ? 'rgb(75, 192, 192)' : 'rgb(34, 197, 94)'; // Green
-    if (uptime >= 95) return 'rgb(255, 205, 86)'; // Yellow
-    return 'rgb(255, 99, 132)'; // Red
-  }, [isDarkTheme]);
-
-  // Create annotations from incidents and maintenance (backward compatibility + new system)
-  const allAnnotations = useMemo(() => {
-    // If annotations prop is provided, use it directly; otherwise convert legacy props
-    if (annotations) {
-      return annotations;
-    }
+  const resolvedAnnotations = useMemo<ChartAnnotation[]>(() => {
+    if (annotations) return annotations;
     return createAnnotations(incidents, maintenance);
   }, [annotations, incidents, maintenance]);
 
-  // Filter annotations relevant to this system and period
-  const relevantAnnotations = useMemo(() => {
-    if (timeBlocks.length === 0) return [];
+  const periodStartMs = Date.now() - PERIOD_DAYS[activePeriod] * 24 * 60 * 60 * 1000;
+  const visibleAnnotations = resolvedAnnotations.filter(
+    annotation => new Date(annotation.timestamp).getTime() >= periodStartMs
+  );
 
-    const periodStart = new Date(timeBlocks[0].timestamp);
-    const lastBlockStart = new Date(timeBlocks[timeBlocks.length - 1].timestamp);
-
-    // Calculate period end by adding one block duration to the last block start
-    const blockDuration = activePeriod === '24h' ? 60 * 60 * 1000 :
-                          activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
-                          24 * 60 * 60 * 1000;
-    const periodEnd = new Date(lastBlockStart.getTime() + blockDuration);
-
-    // Filter by system
-    const systemAnnotations = filterAnnotationsBySystem(allAnnotations, name);
-
-    // Filter by time period
-    return systemAnnotations.filter(annotation => {
-      const annotationDate = new Date(annotation.timestamp);
-      return annotationDate >= periodStart && annotationDate <= periodEnd;
-    });
-  }, [allAnnotations, name, timeBlocks, activePeriod]);
-
-  // Keep relevantIncidents for backward compatibility in export data
-  const relevantIncidents = useMemo(() => {
-    return relevantAnnotations
-      .filter(a => a.type === 'incident')
-      .map(a => {
-        // Convert annotation back to incident shape for export
-        const incident: Partial<StatusIncident> = {
-          id: parseInt(a.id.replace('incident-', '')) || 0,
-          title: a.title,
-          severity: a.severity as any || 'minor',
-          createdAt: a.timestamp,
-          affectedSystems: a.affectedSystems,
-        };
-        return incident as StatusIncident;
-      });
-  }, [relevantAnnotations]);
-
-  // Prepare data for CSV/JSON export
-  const exportableData = useMemo(() => {
-    return timeBlocks.map(block => {
-      // Find incidents for this time block
-      const blockStart = new Date(block.timestamp);
-      const blockEnd = new Date(blockStart.getTime() +
-        (activePeriod === '24h' ? 60 * 60 * 1000 :
-         activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
-         24 * 60 * 60 * 1000));
-
-      const blockIncidents = relevantIncidents.filter(incident => {
-        const incidentDate = new Date(incident.createdAt);
-        return incidentDate >= blockStart && incidentDate < blockEnd;
-      });
-
-      return {
+  const exportableData = useMemo(
+    () =>
+      blocks.map(block => ({
         timestamp: block.timestamp,
         label: block.label,
-        uptimePercent: block.uptime !== null ? parseFloat(block.uptime.toFixed(2)) : 'No data',
-        totalChecks: block.checks,
-        successfulChecks: block.upChecks,
-        failedChecks: block.checks - block.upChecks,
-        incidentCount: blockIncidents.length,
-        incidents: blockIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('; '),
-      };
-    });
-  }, [timeBlocks, relevantIncidents, activePeriod]);
+        uptimePercent: block.uptime === null ? null : parseFloat(block.uptime.toFixed(2)),
+        checks: block.checks,
+      })),
+    [blocks]
+  );
 
-  // Generate filename with date range
   const generateExportFilename = useCallback(() => {
-    if (timeBlocks.length === 0) return `${name}-uptime`;
-
-    const firstDate = new Date(timeBlocks[0].timestamp);
-    const lastDate = new Date(timeBlocks[timeBlocks.length - 1].timestamp);
     const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
+    if (blocks.length === 0) return `${systemSlug}-uptime`;
+    return `${systemSlug}-uptime-${formatDateForFilename(new Date(blocks[0].timestamp))}-to-${formatDateForFilename(new Date(blocks[blocks.length - 1].timestamp))}`;
+  }, [blocks, name]);
 
-    return `${systemSlug}-uptime-${formatDateForFilename(firstDate)}-to-${formatDateForFilename(lastDate)}`;
-  }, [timeBlocks, name]);
-
-  // Bar chart data (computed even if showing heatmap to maintain hook order)
-  const chartData = useMemo(() => ({
-    labels: timeBlocks.map(block => block.label),
-    datasets: [
-      {
-        label: 'Uptime %',
-        data: timeBlocks.map(block => block.uptime ?? 0), // Use 0 for chart rendering, will style as no-data
-        backgroundColor: timeBlocks.map(block => getUptimeColor(block.uptime)),
-        borderColor: timeBlocks.map(block => getUptimeColor(block.uptime)),
-        borderWidth: 1,
-        // Add pattern for no-data bars
-        borderDash: timeBlocks.map(block => block.uptime === null ? [5, 5] : []),
-      },
-    ],
-  }), [timeBlocks, getUptimeColor]);
-
-  // Create chart.js annotations from our annotation data (computed even if showing heatmap to maintain hook order)
-  const chartAnnotations = useMemo(() => {
-    const annotationMap: Record<string, any> = {};
-
-    relevantAnnotations.forEach((annotation, index) => {
-      const annotationDate = new Date(annotation.timestamp);
-
-      // Find which time block this annotation belongs to
-      const dataIndex = timeBlocks.findIndex(block => {
-        const blockStart = new Date(block.timestamp);
-        const blockEnd = new Date(blockStart.getTime() +
-          (activePeriod === '24h' ? 60 * 60 * 1000 :
-           activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
-           24 * 60 * 60 * 1000));
-        return annotationDate >= blockStart && annotationDate < blockEnd;
-      });
-
-      if (dataIndex !== -1) {
-        // Use color from annotation or fall back to defaults
-        const borderColor = annotation.color || 'rgba(107, 114, 128, 0.8)';
-        const icon = annotation.icon || '📌';
-
-        // For maintenance windows, show duration as a box instead of line
-        if (annotation.type === 'maintenance' && annotation.data?.end) {
-          const endDate = new Date(annotation.data.end);
-          const endIndex = timeBlocks.findIndex(block => {
-            const blockStart = new Date(block.timestamp);
-            const blockEnd = new Date(blockStart.getTime() +
-              (activePeriod === '24h' ? 60 * 60 * 1000 :
-               activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
-               24 * 60 * 60 * 1000));
-            return endDate >= blockStart && endDate < blockEnd;
-          });
-
-          // Create a box annotation for maintenance window
-          annotationMap[annotation.id] = {
-            type: 'box',
-            xMin: dataIndex,
-            xMax: endIndex !== -1 ? endIndex : dataIndex,
-            yMin: 0,
-            yMax: 100,
-            backgroundColor: borderColor.replace('0.8', '0.1'), // Very transparent background
-            borderColor: borderColor,
-            borderWidth: 2,
-            borderDash: [5, 5],
-            label: {
-              display: true,
-              content: icon,
-              position: 'start',
-              backgroundColor: borderColor,
-              color: 'white',
-              font: {
-                size: 10,
-              },
-            },
-            click: (ctx: any, event: any) => {
-              if (annotation.url) {
-                window.open(annotation.url, '_blank');
-              }
-            },
-          };
-        } else {
-          // Create a line annotation for incidents and point events
-          annotationMap[annotation.id] = {
-            type: 'line',
-            xMin: dataIndex,
-            xMax: dataIndex,
-            borderColor: borderColor,
-            borderWidth: 2,
-            borderDash: annotation.type === 'incident' ? [5, 5] : [2, 2],
-            label: {
-              display: true,
-              content: icon,
-              position: 'start',
-              backgroundColor: borderColor,
-              color: 'white',
-              font: {
-                size: 10,
-              },
-            },
-            click: (ctx: any, event: any) => {
-              if (annotation.url) {
-                window.open(annotation.url, '_blank');
-              }
-            },
-          };
-        }
-      }
-    });
-
-    return annotationMap;
-  }, [relevantAnnotations, timeBlocks, activePeriod]);
-
-  if (chartType === 'heatmap') {
-    return (
-      <div className={styles.chartContainer}>
-        <div className={styles.heatmapHeader}>
-          <h3 className={styles.chartTitle}>{name} - Uptime Heatmap</h3>
-          <div className={styles.exportButtons}>
-            <ExportButton
-              filename={generateExportFilename()}
-              data={exportableData}
-              columns={['timestamp', 'label', 'uptimePercent', 'totalChecks', 'successfulChecks', 'failedChecks', 'incidentCount', 'incidents']}
-              format="csv"
-              ariaLabel="Download uptime data as CSV"
-            />
-            <ExportButton
-              filename={generateExportFilename()}
-              data={exportableData}
-              format="json"
-              ariaLabel="Download uptime data as JSON"
-            />
-          </div>
-        </div>
-
-        <div className={styles.heatmapGrid}>
-          {timeBlocks.map((block) => {
-            const uptimePercent = block.uptime;
-            const color = getUptimeColor(uptimePercent);
-            const isNoData = uptimePercent === null;
-            const blockStart = new Date(block.timestamp);
-
-            // Check if this block has any incidents
-            const blockEnd = new Date(blockStart.getTime() +
-              (activePeriod === '24h' ? 60 * 60 * 1000 :
-               activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
-               24 * 60 * 60 * 1000));
-
-            const blockIncidents = relevantIncidents.filter(incident => {
-              const incidentDate = new Date(incident.createdAt);
-              return incidentDate >= blockStart && incidentDate < blockEnd;
-            });
-
-            // Check for maintenance windows
-            const blockMaintenances = relevantAnnotations
-              .filter(a => a.type === 'maintenance')
-              .filter(annotation => {
-                const annotationDate = new Date(annotation.timestamp);
-                return annotationDate >= blockStart && annotationDate < blockEnd;
-              });
-
-            const hasIncident = blockIncidents.length > 0;
-            const hasMaintenance = blockMaintenances.length > 0;
-            const incidentIcon = hasIncident && blockIncidents[0].severity === 'critical' ? '⚠️' : (hasIncident ? '📌' : '');
-            const maintenanceIcon = hasMaintenance ? '🔧' : '';
-
-            const tooltipText = isNoData
-              ? `${block.label}: No monitoring data`
-              : `${block.label}: ${uptimePercent.toFixed(2)}% uptime (${block.upChecks}/${block.checks} checks)${
-                  hasIncident ? '\n' + blockIncidents.map(i => `${i.severity.toUpperCase()}: ${i.title}`).join('\n') : ''
-                }${
-                  hasMaintenance ? '\n' + blockMaintenances.map(m => `MAINTENANCE: ${m.title}`).join('\n') : ''
-                }`;
-
-            return (
-              <div
-                key={block.timestamp}
-                className={styles.heatmapCell}
-                style={{ backgroundColor: color }}
-                title={tooltipText}
-              >
-                <span className={styles.heatmapDate}>
-                  {block.label}
-                </span>
-                {hasIncident && <span className={styles.incidentMarker}>{incidentIcon}</span>}
-                {hasMaintenance && <span className={styles.maintenanceMarker}>{maintenanceIcon}</span>}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className={styles.heatmapLegend}>
-          <span className={styles.legendLabel}>Uptime:</span>
-          <div className={styles.legendItem}>
-            <div className={styles.legendColor} style={{ backgroundColor: 'rgb(255, 99, 132)' }} />
-            <span>&lt; 95%</span>
-          </div>
-          <div className={styles.legendItem}>
-            <div className={styles.legendColor} style={{ backgroundColor: 'rgb(255, 205, 86)' }} />
-            <span>95-99%</span>
-          </div>
-          <div className={styles.legendItem}>
-            <div className={styles.legendColor} style={{ backgroundColor: isDarkTheme ? 'rgb(75, 192, 192)' : 'rgb(34, 197, 94)' }} />
-            <span>≥ 99%</span>
-          </div>
-          <div className={styles.legendItem}>
-            <div className={styles.legendColor} style={{ backgroundColor: isDarkTheme ? 'rgb(100, 100, 100)' : 'rgb(200, 200, 200)' }} />
-            <span>No data</span>
-          </div>
-        </div>
-
-        <div className={styles.stats}>
-          <div className={styles.stat}>
-            <span className={styles.statLabel}>Overall Uptime:</span>
-            <span className={styles.statValue}>
-              {overallUptime !== null ? `${overallUptime.toFixed(2)}%` : 'No data'}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Bar chart rendering
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
-    },
-    plugins: {
-      legend: {
-        display: false,
-      },
-      tooltip: {
-        enabled: true,
-        backgroundColor: isDarkTheme ? 'rgba(28, 30, 33, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-        titleColor: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        bodyColor: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        borderColor: isDarkTheme ? '#444' : '#ccc',
-        borderWidth: 1,
-        callbacks: {
-          label: (context: any) => {
-            const dataIndex = context.dataIndex;
-            const block = timeBlocks[dataIndex];
-
-            // Handle no data case
-            if (block.uptime === null) {
-              return ['No monitoring data available'];
-            }
-
-            const blockStart = new Date(block.timestamp);
-            const blockEnd = new Date(blockStart.getTime() +
-              (activePeriod === '24h' ? 60 * 60 * 1000 :
-               activePeriod === '7d' ? 4 * 60 * 60 * 1000 :
-               24 * 60 * 60 * 1000));
-
-            const blockIncidents = relevantIncidents.filter(incident => {
-              const incidentDate = new Date(incident.createdAt);
-              return incidentDate >= blockStart && incidentDate < blockEnd;
-            });
-
-            // Filter annotations for this block (incidents + maintenance)
-            const blockAnnotations = relevantAnnotations.filter(annotation => {
-              const annotationDate = new Date(annotation.timestamp);
-              return annotationDate >= blockStart && annotationDate < blockEnd;
-            });
-
-            const lines = [
-              `Uptime: ${block.uptime.toFixed(2)}%`,
-              `Successful: ${block.upChecks}/${block.checks} checks`,
-            ];
-
-            if (blockIncidents.length > 0) {
-              lines.push('');
-              lines.push('📌 Incidents:');
-              blockIncidents.forEach(incident => {
-                lines.push(`  ${incident.severity.toUpperCase()}: ${incident.title}`);
-              });
-            }
-
-            // Add maintenance windows section
-            const blockMaintenances = blockAnnotations.filter(a => a.type === 'maintenance');
-            if (blockMaintenances.length > 0) {
-              lines.push('');
-              lines.push('🔧 Maintenance:');
-              blockMaintenances.forEach(maint => {
-                lines.push(`  ${maint.title}`);
-                if (maint.data?.start && maint.data?.end) {
-                  const startTime = new Date(maint.data.start).toLocaleTimeString();
-                  const endTime = new Date(maint.data.end).toLocaleTimeString();
-                  lines.push(`    ${startTime} - ${endTime}`);
-                }
-              });
-            }
-
-            return lines;
-          },
-        },
-      },
-      title: {
-        display: true,
-        text: `${name} - ${activePeriod === '24h' ? 'Hourly' : activePeriod === '7d' ? '4-Hour Block' : 'Daily'} Uptime`,
-        color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-      },
-      annotation: {
-        annotations: chartAnnotations,
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 100,
-        title: {
-          display: true,
-          text: 'Uptime %',
-          color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        },
-        ticks: {
-          color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-          callback: (value: any) => `${value}%`,
-        },
-        grid: {
-          color: isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-        },
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Date',
-          color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-        },
-        ticks: {
-          color: isDarkTheme ? '#e3e3e3' : '#1c1e21',
-          maxRotation: 45,
-          minRotation: 45,
-        },
-        grid: {
-          color: isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-        },
-      },
-    },
-  };
-
-  if (timeBlocks.length === 0) {
+  if (history.length === 0) {
     return (
       <div className={styles.noData}>
         <p>No uptime data available for the selected period.</p>
@@ -674,11 +205,20 @@ export default function UptimeChart({
     );
   }
 
+  const bars: UptimeBarDatum[] = blocks.map(block => ({
+    label: block.label,
+    uptime: block.uptime,
+    title:
+      block.uptime === null
+        ? `${block.label}: no data`
+        : `${block.label}: ${block.uptime.toFixed(2)}% uptime (${block.upChecks}/${block.checks} checks)`,
+  }));
+
   return (
     <div className={styles.chartContainer}>
       {showPeriodSelector && (
         <div className={styles.periodSelector}>
-          {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map((p) => (
+          {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map(p => (
             <button
               key={p}
               className={`${styles.periodButton} ${internalPeriod === p ? styles.active : ''}`}
@@ -689,40 +229,21 @@ export default function UptimeChart({
           ))}
         </div>
       )}
+
       <div className={styles.chartHeader}>
         <div className={styles.stats}>
           <div className={styles.stat}>
-            <span className={styles.statLabel}>Average Uptime:</span>
+            <span className={styles.statLabel}>Overall Uptime:</span>
             <span className={styles.statValue}>
-              {overallUptime !== null ? `${overallUptime.toFixed(2)}%` : 'No data'}
-            </span>
-          </div>
-          <div className={styles.stat}>
-            <span className={styles.statLabel}>Total Checks:</span>
-            <span className={styles.statValue}>
-              {timeBlocks.reduce((sum, block) => sum + block.checks, 0)}
+              {overallUptime === null ? 'n/a' : `${overallUptime.toFixed(2)}%`}
             </span>
           </div>
         </div>
         <div className={styles.exportButtons}>
-          <button
-            className={styles.exportButton}
-            onClick={() => exportPNG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-uptime`)}
-            title="Export as PNG"
-          >
-            PNG
-          </button>
-          <button
-            className={styles.exportButton}
-            onClick={() => exportJPEG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-uptime`)}
-            title="Export as JPEG"
-          >
-            JPG
-          </button>
           <ExportButton
             filename={generateExportFilename()}
             data={exportableData}
-            columns={['timestamp', 'label', 'uptimePercent', 'totalChecks', 'successfulChecks', 'failedChecks', 'incidentCount', 'incidents']}
+            columns={['timestamp', 'label', 'uptimePercent', 'checks']}
             format="csv"
             ariaLabel="Download uptime data as CSV"
           />
@@ -735,9 +256,43 @@ export default function UptimeChart({
         </div>
       </div>
 
-      <div className={styles.chart} style={{ height: `${height}px` }}>
-        <Bar ref={chartRef} data={chartData} options={options} />
-      </div>
+      {chartType === 'heatmap' ? (
+        <div
+          className={styles.heatmapGrid}
+          role="img"
+          aria-label={`Uptime heatmap for ${name}, ${PERIOD_LABELS[activePeriod]}`}
+        >
+          {blocks.map((block, i) => (
+            <span
+              key={i}
+              data-testid="heatmap-cell"
+              className={`${styles.heatmapCell ?? ''} ${heatmapTone(block.uptime)}`}
+              title={bars[i].title}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className={styles.chart}>
+          <SvgUptimeBars
+            bars={bars}
+            height={height}
+            ariaLabel={`Uptime chart for ${name}, ${PERIOD_LABELS[activePeriod]}: ${
+              overallUptime === null ? 'no data' : `${overallUptime.toFixed(2)}% overall`
+            }`}
+          />
+        </div>
+      )}
+
+      {visibleAnnotations.length > 0 && (
+        <ul className={styles.annotationList} aria-label="Chart annotations">
+          {visibleAnnotations.map((annotation, i) => (
+            <li key={i} data-testid="chart-annotation">
+              <span className={styles.annotationType}>{annotation.type}</span>{' '}
+              {annotation.title} — {new Date(annotation.timestamp).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

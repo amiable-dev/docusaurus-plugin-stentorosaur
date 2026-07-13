@@ -1,0 +1,75 @@
+/* Shared SVG chart theming (ADR-005 #73) — CSS variables replace the
+ * chart.js dark-mode MutationObserver: html[data-theme] does the work. */
+
+.chart {
+  display: block;
+}
+
+.grid {
+  stroke: var(--ifm-color-emphasis-200);
+  stroke-width: 1;
+}
+
+.axis {
+  fill: var(--ifm-color-emphasis-600);
+  font-size: 11px;
+  font-family: var(--ifm-font-family-base);
+}
+
+.line {
+  stroke: var(--ifm-color-primary);
+  stroke-width: 2;
+}
+
+.area {
+  fill: var(--ifm-color-primary);
+  opacity: 0.12;
+}
+
+.point {
+  fill: var(--ifm-color-primary);
+}
+
+.point.ok {
+  fill: var(--ifm-color-success);
+}
+
+.point.warn {
+  fill: var(--ifm-color-warning);
+}
+
+.point.bad {
+  fill: var(--ifm-color-danger);
+}
+
+.threshold {
+  stroke: var(--ifm-color-danger);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+
+.thresholdLabel {
+  fill: var(--ifm-color-danger);
+  font-size: 11px;
+  font-family: var(--ifm-font-family-base);
+}
+
+.bar {
+  rx: 1;
+}
+
+.bar.ok {
+  fill: var(--ifm-color-success);
+}
+
+.bar.warn {
+  fill: var(--ifm-color-warning);
+}
+
+.bar.bad {
+  fill: var(--ifm-color-danger);
+}
+
+.bar.noData {
+  fill: var(--ifm-color-emphasis-200);
+}

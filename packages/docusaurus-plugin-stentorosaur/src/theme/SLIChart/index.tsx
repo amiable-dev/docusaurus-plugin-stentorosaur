@@ -1,43 +1,39 @@
 /**
- * Copyright (c) Your Organization
+ * Copyright (c) Amiable Development
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
+/**
+ * SLI/SLO compliance chart — inline SVG (ADR-005 §11, ticket #73;
+ * chart.js removed). Daily SLI values against the SLO target line, or
+ * remaining error budget in budget mode. Math ported unchanged.
+ */
+
+import React, { useState, useMemo } from 'react';
 import type { StatusCheckHistory } from '../../types';
 import { aggregateHistoricalData } from '../../historical-data';
-import { useChartExport } from '../hooks/useChartExport';
 import { ExportButton } from '../components/ExportButton';
-import { formatDateForFilename } from '../../utils/csv';
+import { SvgLineChart } from '../svg/SvgCharts';
+import type { LinePoint } from '../svg/SvgCharts';
 import styles from './styles.module.css';
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+type TimePeriod = '24h' | '7d' | '30d' | '90d';
+
+const PERIOD_LABELS: Record<TimePeriod, string> = {
+  '24h': 'Last 24 Hours',
+  '7d': 'Last 7 Days',
+  '30d': 'Last 30 Days',
+  '90d': 'Last 90 Days',
+};
+
+const PERIOD_HOURS: Record<TimePeriod, number> = {
+  '24h': 24,
+  '7d': 168,
+  '30d': 720,
+  '90d': 2160,
+};
 
 export interface SLIChartProps {
   /** System name */
@@ -56,68 +52,26 @@ export interface SLIChartProps {
   sloTarget?: number;
 }
 
-type TimePeriod = '24h' | '7d' | '30d' | '90d';
-
-const PERIOD_LABELS: Record<TimePeriod, string> = {
-  '24h': '24 Hours',
-  '7d': '7 Days',
-  '30d': '30 Days',
-  '90d': '90 Days',
-};
-
-const PERIOD_HOURS: Record<TimePeriod, number> = {
-  '24h': 24,
-  '7d': 24 * 7,
-  '30d': 24 * 30,
-  '90d': 24 * 90,
-};
-
 export default function SLIChart({
   name,
   history,
-  period = '7d',
+  period = '30d',
   height = 300,
   showPeriodSelector = true,
   showErrorBudget = false,
   sloTarget = 99.9,
 }: SLIChartProps): JSX.Element {
   const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(period);
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
-  const chartRef = useRef<ChartJS<'line' | 'bar'>>(null);
-  const { exportPNG, exportJPEG } = useChartExport();
-  
-  // Use internal state only if period selector is shown, otherwise use prop
   const activePeriod = showPeriodSelector ? internalPeriod : period;
 
-  // Detect dark mode from document
-  useEffect(() => {
-    const checkDarkMode = () => {
-      setIsDarkTheme(document.documentElement.getAttribute('data-theme') === 'dark');
-    };
-    
-    checkDarkMode();
-    const observer = new MutationObserver(checkDarkMode);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme'],
-    });
-    
-    return () => observer.disconnect();
-  }, []);
-
-  // Calculate SLI/SLO data
   const chartData = useMemo(() => {
-    const periodHours = PERIOD_HOURS[activePeriod];
-    const filteredHistory = aggregateHistoricalData(history, periodHours);
-
+    const filteredHistory = aggregateHistoricalData(history, PERIOD_HOURS[activePeriod]);
     if (filteredHistory.length === 0) {
       return null;
     }
 
-    // Group by day
     const dailyData = new Map<string, { total: number; successful: number }>();
-    
-    filteredHistory.forEach((check) => {
+    filteredHistory.forEach(check => {
       const date = new Date(check.timestamp).toLocaleDateString();
       const existing = dailyData.get(date) || { total: 0, successful: 0 };
       existing.total++;
@@ -127,42 +81,26 @@ export default function SLIChart({
       dailyData.set(date, existing);
     });
 
-    // Convert to arrays
     const labels: string[] = [];
     const sliValues: number[] = [];
     const errorBudgetValues: number[] = [];
-    
-    // Calculate error budget for the entire period
-    // Error budget is the allowed failure percentage (e.g., 0.1% for 99.9% SLO)
-    const allowedError = 100 - sloTarget; // e.g., 0.1% for 99.9% SLO
-    
-    // Calculate total allowed downtime for the period
+
+    const allowedError = 100 - sloTarget;
     const totalChecks = filteredHistory.length;
     const allowedDowntimeChecks = (allowedError / 100) * totalChecks;
-    
-    // Track cumulative error consumption over time
     let cumulativeFailedChecks = 0;
-    let checkIndex = 0;
-    
+
     dailyData.forEach((data, date) => {
       labels.push(date);
-      const sli = (data.successful / data.total) * 100;
-      sliValues.push(sli);
-      
-      // Add failed checks from this day to cumulative total
-      const failedChecksThisDay = data.total - data.successful;
-      cumulativeFailedChecks += failedChecksThisDay;
-      checkIndex += data.total;
-      
-      // Calculate remaining error budget as percentage
-      // Remaining budget = (allowed downtime - actual downtime) / allowed downtime * 100
-      const budgetRemaining = allowedDowntimeChecks > 0 
-        ? Math.max(0, ((allowedDowntimeChecks - cumulativeFailedChecks) / allowedDowntimeChecks) * 100)
-        : 100;
+      sliValues.push((data.successful / data.total) * 100);
+      cumulativeFailedChecks += data.total - data.successful;
+      const budgetRemaining =
+        allowedDowntimeChecks > 0
+          ? Math.max(0, ((allowedDowntimeChecks - cumulativeFailedChecks) / allowedDowntimeChecks) * 100)
+          : 100;
       errorBudgetValues.push(budgetRemaining);
     });
 
-    // Prepare exportable data
     const exportData = labels.map((date, index) => ({
       date,
       sliPercent: parseFloat(sliValues[index].toFixed(2)),
@@ -170,13 +108,7 @@ export default function SLIChart({
       sloTarget: parseFloat(sloTarget.toFixed(2)),
     }));
 
-    return {
-      labels,
-      sliValues,
-      errorBudgetValues,
-      sloTarget,
-      exportData,
-    };
+    return { labels, sliValues, errorBudgetValues, sloTarget, exportData };
   }, [history, activePeriod, sloTarget]);
 
   if (!chartData) {
@@ -187,188 +119,74 @@ export default function SLIChart({
     );
   }
 
-  // Generate filename with date range
-  const generateExportFilename = () => {
-    if (!chartData.exportData || chartData.exportData.length === 0) {
-      return `${name}-${showErrorBudget ? 'error-budget' : 'sli'}`;
-    }
-    
-    const firstDate = chartData.exportData[0].date;
-    const lastDate = chartData.exportData[chartData.exportData.length - 1].date;
-    const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
-    const metric = showErrorBudget ? 'error-budget' : 'sli';
-    
-    // Convert localized date strings to Date objects for formatting
-    const firstDateObj = new Date(firstDate);
-    const lastDateObj = new Date(lastDate);
-    
-    return `${systemSlug}-${metric}-${formatDateForFilename(firstDateObj)}-to-${formatDateForFilename(lastDateObj)}`;
-  };
+  const values = showErrorBudget ? chartData.errorBudgetValues : chartData.sliValues;
+  const points: LinePoint[] = chartData.labels.map((label, i) => ({
+    label,
+    value: values[i],
+    tone: showErrorBudget
+      ? values[i] > 25 ? 'ok' : values[i] > 0 ? 'warn' : 'bad'
+      : values[i] >= sloTarget ? 'ok' : 'bad',
+    title: `${label}: ${values[i].toFixed(2)}%${showErrorBudget ? ' budget remaining' : ' SLI'}`,
+  }));
 
-  const textColor = isDarkTheme ? '#e3e3e3' : '#1c1e21';
-  const gridColor = isDarkTheme ? '#2e2e2e' : '#e0e0e0';
-  const targetColor = isDarkTheme ? '#ff6b6b' : '#ff4444';
-  const goodColor = isDarkTheme ? '#51cf66' : '#2eb875';
-  const warningColor = isDarkTheme ? '#ffd93d' : '#ffaa00';
-
-  const data = {
-    labels: chartData.labels,
-    datasets: showErrorBudget
-      ? [
-          {
-            label: 'Error Budget Remaining (%)',
-            data: chartData.errorBudgetValues,
-            backgroundColor: chartData.errorBudgetValues.map((val) =>
-              val > 50 ? `${goodColor}80` : val > 20 ? `${warningColor}80` : `${targetColor}80`
-            ),
-            borderColor: chartData.errorBudgetValues.map((val) =>
-              val > 50 ? goodColor : val > 20 ? warningColor : targetColor
-            ),
-            borderWidth: 2,
-          },
-        ]
-      : [
-          {
-            label: 'SLI (%)',
-            data: chartData.sliValues,
-            borderColor: goodColor,
-            backgroundColor: `${goodColor}20`,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: chartData.sliValues.map((val) =>
-              val >= chartData.sloTarget ? goodColor : targetColor
-            ),
-            pointBorderColor: chartData.sliValues.map((val) =>
-              val >= chartData.sloTarget ? goodColor : targetColor
-            ),
-            pointRadius: 4,
-            pointHoverRadius: 6,
-          },
-          {
-            label: `SLO Target (${chartData.sloTarget}%)`,
-            data: Array(chartData.labels.length).fill(chartData.sloTarget),
-            borderColor: targetColor,
-            borderWidth: 2,
-            borderDash: [5, 5],
-            pointRadius: 0,
-            fill: false,
-          },
-        ],
-  };
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top' as const,
-        labels: {
-          color: textColor,
-          font: {
-            size: 12,
-          },
-        },
-      },
-      tooltip: {
-        mode: 'index' as const,
-        intersect: false,
-        callbacks: {
-          label: (context: any) => {
-            const label = context.dataset.label || '';
-            const value = context.parsed.y.toFixed(2);
-            return `${label}: ${value}%`;
-          },
-        },
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 100,
-        ticks: {
-          color: textColor,
-          callback: (value: any) => `${value}%`,
-        },
-        grid: {
-          color: gridColor,
-        },
-      },
-      x: {
-        ticks: {
-          color: textColor,
-          maxRotation: 45,
-          minRotation: 0,
-        },
-        grid: {
-          color: gridColor,
-        },
-      },
-    },
-  };
+  const latest = values[values.length - 1] ?? 0;
+  const filenameBase = `${name.toLowerCase().replace(/\s+/g, '-')}-${showErrorBudget ? 'error-budget' : 'sli'}`;
 
   return (
     <div className={styles.chartContainer}>
-      <div className={styles.sliChart}>
-        {showPeriodSelector && (
-          <div className={styles.periodSelector}>
-            {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map((p) => (
-              <button
-                key={p}
-                className={`${styles.periodButton} ${internalPeriod === p ? styles.active : ''}`}
-                onClick={() => setInternalPeriod(p)}
-              >
-                {PERIOD_LABELS[p]}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className={styles.chartHeader}>
-          <div className={styles.exportButtons}>
+      {showPeriodSelector && (
+        <div className={styles.periodSelector}>
+          {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map(p => (
             <button
-              className={styles.exportButton}
-              onClick={() => exportPNG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-${showErrorBudget ? 'error-budget' : 'sli'}`)}
-              title="Export as PNG"
+              key={p}
+              className={`${styles.periodButton} ${internalPeriod === p ? styles.active : ''}`}
+              onClick={() => setInternalPeriod(p)}
             >
-              PNG
+              {PERIOD_LABELS[p]}
             </button>
-            <button
-              className={styles.exportButton}
-              onClick={() => exportJPEG(chartRef.current, `${name.toLowerCase().replace(/\s+/g, '-')}-${showErrorBudget ? 'error-budget' : 'sli'}`)}
-              title="Export as JPEG"
-            >
-              JPG
-            </button>
-            <ExportButton
-              filename={generateExportFilename()}
-              data={chartData.exportData}
-              columns={['date', 'sliPercent', 'errorBudgetRemaining', 'sloTarget']}
-              format="csv"
-              ariaLabel={`Download ${showErrorBudget ? 'error budget' : 'SLI'} data as CSV`}
-            />
-            <ExportButton
-              filename={generateExportFilename()}
-              data={chartData.exportData}
-              format="json"
-              ariaLabel={`Download ${showErrorBudget ? 'error budget' : 'SLI'} data as JSON`}
-            />
-          </div>
-        </div>
-      <div className={styles.chart} style={{ height: `${height}px` }}>
-        {showErrorBudget ? (
-          <Bar ref={chartRef as any} data={data} options={options} />
-        ) : (
-          <Line ref={chartRef as any} data={data} options={options} />
-        )}
-      </div>
-      {showErrorBudget && (
-        <div className={styles.budgetInfo}>
-          <p className={styles.budgetNote}>
-            Error budget shows cumulative remaining tolerance for downtime over the selected period relative to SLO target ({sloTarget}%).
-            Green (&gt;50%) = healthy, Yellow (20-50%) = caution, Red (&lt;20%) = critical.
-          </p>
+          ))}
         </div>
       )}
+
+      <div className={styles.chartHeader}>
+        <div className={styles.stats}>
+          <div className={styles.stat}>
+            <span className={styles.statLabel}>
+              {showErrorBudget ? 'Error Budget Remaining:' : 'Current SLI:'}
+            </span>
+            <span className={styles.statValue}>{latest.toFixed(2)}%</span>
+          </div>
+          <div className={styles.stat}>
+            <span className={styles.statLabel}>SLO Target:</span>
+            <span className={styles.statValue}>{sloTarget}%</span>
+          </div>
+        </div>
+        <div className={styles.exportButtons}>
+          <ExportButton
+            filename={filenameBase}
+            data={chartData.exportData}
+            columns={['date', 'sliPercent', 'errorBudgetRemaining', 'sloTarget']}
+            format="csv"
+            ariaLabel="Download SLI data as CSV"
+          />
+          <ExportButton
+            filename={filenameBase}
+            data={chartData.exportData}
+            format="json"
+            ariaLabel="Download SLI data as JSON"
+          />
+        </div>
+      </div>
+
+      <div className={styles.chart}>
+        <SvgLineChart
+          points={points}
+          height={height}
+          yMax={100}
+          yFormat={v => `${v.toFixed(1)}%`}
+          thresholds={showErrorBudget ? [] : [{value: sloTarget, label: `SLO ${sloTarget}%`}]}
+          ariaLabel={`${showErrorBudget ? 'Error budget' : 'SLI compliance'} chart for ${name}, ${PERIOD_LABELS[activePeriod]}: latest ${latest.toFixed(2)}% against a ${sloTarget}% target`}
+        />
       </div>
     </div>
   );
