@@ -57,7 +57,8 @@ export async function fetchStatusIssues(
       const batch = (await res.json()) as Array<IssuePayload & {pull_request?: unknown}>;
       for (const issue of batch) {
         if (issue.pull_request) continue; // PRs surface in the issues API
-        byNumber.set(issue.number, issue);
+        // Normalize at the I/O boundary: transforms assume labels exist.
+        byNumber.set(issue.number, {...issue, labels: issue.labels ?? []});
       }
       hasMorePages = batch.length === 100;
       page++;

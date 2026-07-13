@@ -37,13 +37,16 @@ export function regenerateDerived(rootDir: string, options: RegenerateOptions): 
     windowDays = 90,
   } = options;
 
+  const generatedAtMs = Date.parse(generatedAt);
+  if (Number.isNaN(generatedAtMs)) {
+    throw new Error(
+      `regenerateDerived: generatedAt is not a parseable ISO timestamp: '${generatedAt}'`
+    );
+  }
+
   const details = readAllEntityDetails(rootDir);
   const currentReadings = details.flatMap(d => d.readings);
-  const archiveReadings = readArchiveReadings(
-    rootDir,
-    windowDays,
-    Date.parse(generatedAt)
-  );
+  const archiveReadings = readArchiveReadings(rootDir, windowDays, generatedAtMs);
   const {incidents, maintenance} = readIncidentInputs(rootDir);
 
   const summary = buildSummary({

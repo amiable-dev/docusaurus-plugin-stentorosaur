@@ -205,3 +205,40 @@ describe('fetchStatusIssues', () => {
     ).rejects.toThrow(/HTTP 403/);
   });
 });
+
+describe('Council r=1 regression guards', () => {
+  it('regenerateDerived throws on unparseable generatedAt instead of silent NaN cutoffs', () => {
+    expect(() => regenerateDerived(tmp, {...REGEN, generatedAt: 'not-a-date'})).toThrow(/generatedAt/);
+  });
+
+  it('archive lines with valid JSON but wrong shape are skipped', () => {
+    const dir = path.join(tmp, 'status', 'v1', 'archives', '2026', '07');
+    fs.mkdirSync(dir, {recursive: true});
+    fs.writeFileSync(
+      path.join(dir, 'history-2026-07-12.jsonl'),
+      [
+        JSON.stringify({t: Date.parse(NOW) - 3600_000, svc: 'api', state: 'up', code: 200, lat: 10}),
+        JSON.stringify({t: 'yesterday', svc: 'api'}), // wrong shape, valid JSON
+        JSON.stringify({totally: 'unrelated'}),
+        '{corrupt',
+      ].join('\n')
+    );
+    const {readArchiveReadings} = require('../src/archives');
+    const readings = readArchiveReadings(tmp, 90, Date.parse(NOW));
+    expect(readings).toHaveLength(1);
+    expect(readings[0].lat).toBe(10);
+  });
+
+  it('issues without a labels array are normalized at the fetch boundary', async () => {
+    const fetchImpl = (async () =>
+      new Response(JSON.stringify([{...issue({number: 9}), labels: undefined}]), {status: 200})
+    ) as typeof fetch;
+    const issues = await fetchStatusIssues({
+      owner: 'o', repo: 'r', statusLabel: 'status', maintenanceLabels: [], fetchImpl,
+    });
+    expect(issues[0].labels).toEqual([]);
+    // And the transform pipeline consumes it without throwing:
+    const counts = writeIssueInputs(tmp, issues, {entities: ENTITIES, maintenanceLabels: ['maintenance'], now: new Date(NOW)});
+    expect(counts.incidents).toBe(1);
+  });
+});

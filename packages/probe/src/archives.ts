@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import {compactReadingSchema} from '@stentorosaur/core';
 import type {CompactReading} from '@stentorosaur/core';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -38,9 +39,11 @@ export function readArchiveReadings(
     for (const line of content.split('\n')) {
       if (!line.trim()) continue;
       try {
-        const reading = JSON.parse(line) as CompactReading;
-        if (typeof reading.t === 'number' && reading.t >= cutoff) {
-          readings.push(reading);
+        // Schema-validated per line: a malformed reading (wrong shape,
+        // not just bad JSON) is skipped, never handed to buildSummary.
+        const parsed = compactReadingSchema.safeParse(JSON.parse(line));
+        if (parsed.success && parsed.data.t >= cutoff) {
+          readings.push(parsed.data);
         }
       } catch {
         // One corrupt line must not lose the day.
