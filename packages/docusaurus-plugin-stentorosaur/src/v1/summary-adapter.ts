@@ -64,7 +64,8 @@ export function summaryToStatusData(
   }
 
   const items: StatusItem[] = summary.entities.map(entity => ({
-    name: entity.displayName || entity.name,
+    name: entity.name,
+    ...(entity.displayName ? {displayName: entity.displayName} : {}),
     status: entity.status,
     lastChecked: summary.generatedAt,
     ...(entity.responseTimeMs.d1 !== null

@@ -143,6 +143,32 @@ describe('useStatusSummary (§4 protocol)', () => {
     expect(result.current.source).toBe('snapshot'); // still never hard-failed
   });
 
+  it('never polls faster than the cache TTL even if refreshMs is smaller', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(summary(), {headers: {etag: 'W/"v1"'}}))
+      .mockResolvedValueOnce(makeResponse(null, {status: 304}));
+
+    renderHook(() =>
+      useStatusSummary({
+        snapshot,
+        dataUrl: 'https://x.example/summary.json',
+        refreshMs: 1_000,
+        jitter: () => 0,
+      })
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      jest.advanceTimersByTime(300_000 - 1);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(1);
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  });
+
   it('backs off with growing delay on network failure', async () => {
     // Real timers + injected small backoff constants (the fake-timer
     // rejection path deadlocks React's act scheduling in this setup).

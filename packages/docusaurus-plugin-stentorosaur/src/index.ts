@@ -399,6 +399,11 @@ export default async function pluginStatus(
       {
         let v1Summary: StatusSummary | null = null;
         const localV1 = path.join(siteDir, dataPath, 'status', 'v1', 'summary.json');
+        const runtimeDataUrl = options.dataUrl
+          ? (/^https?:\/\//.test(options.dataUrl)
+            ? options.dataUrl
+            : normalizeUrl([siteConfig.baseUrl, options.dataUrl]))
+          : undefined;
         if (options.dataUrl && /^https?:\/\//.test(options.dataUrl)) {
           try {
             const response = await fetch(options.dataUrl, {
@@ -433,10 +438,11 @@ export default async function pluginStatus(
             showServices,
             showIncidents,
             showPerformanceMetrics,
+            fetchUrl: options.fetchUrl,
             statusCardLayout: options.statusCardLayout,
             pluginVersion: PLUGIN_VERSION,
             v1Summary,
-            ...(options.dataUrl ? {dataUrl: options.dataUrl} : {}),
+            ...(runtimeDataUrl ? {dataUrl: runtimeDataUrl} : {}),
             repoUrl,
           };
           await fs.ensureDir(statusDataDir);

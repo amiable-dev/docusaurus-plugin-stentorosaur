@@ -50,7 +50,7 @@ export function useStatusSummary(
   options: UseStatusSummaryOptions
 ): UseStatusSummaryResult {
   const {snapshot, dataUrl, jitter} = options;
-  const refreshMs = Math.max(options.refreshMs ?? DEFAULT_REFRESH_MS, 1);
+  const refreshMs = Math.max(options.refreshMs ?? DEFAULT_REFRESH_MS, DEFAULT_REFRESH_MS);
   const backoffBaseMs = options.backoffBaseMs ?? BACKOFF_BASE_MS;
   const backoffCapMs = options.backoffCapMs ?? BACKOFF_CAP_MS;
 

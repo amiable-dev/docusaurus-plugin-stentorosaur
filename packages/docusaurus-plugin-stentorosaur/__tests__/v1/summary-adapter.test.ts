@@ -87,7 +87,8 @@ describe('summaryToStatusData', () => {
   it('maps entities to StatusItems with displayName, status, uptime, latency', () => {
     const data = summaryToStatusData(fixtureSummary(), {repoUrl: 'https://github.com/o/r'});
     expect(data.items).toHaveLength(2);
-    const api = data.items.find(i => i.name === 'API')!;
+    const api = data.items.find(i => i.name === 'api')!;
+    expect(api.displayName).toBe('API');
     expect(api.status).toBe('down');
     expect(api.uptime).toBe('99.95%'); // d90, matching legacy all-time semantics
     expect(api.responseTime).toBe(120);

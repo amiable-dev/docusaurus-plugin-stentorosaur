@@ -60,6 +60,7 @@ export default function StatusItem({
   heatmapDays,
 }: Props): JSX.Element {
   const config = statusConfig[item.status];
+  const label = item.displayName || item.name;
 
   // Determine days to show: use prop if provided, otherwise 90 if dataBaseUrl, else 14
   const daysToShow = heatmapDays ?? (dataBaseUrl ? 90 : 14);
@@ -142,7 +143,7 @@ export default function StatusItem({
           >
             {config.icon}
           </span>
-          <h3>{item.name}</h3>
+          <h3>{label}</h3>
         </div>
         <div className={styles.statusLabel} style={{color: config.color}}>
           {config.label}

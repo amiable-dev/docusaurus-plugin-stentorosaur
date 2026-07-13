@@ -24,6 +24,15 @@ export interface Props {
   readonly statusData: StatusData;
 }
 
+const V1_SUMMARY_SUFFIX = '/status/v1/summary.json';
+
+function deriveV1HistoryBaseUrl(dataUrl?: string): string | undefined {
+  if (!dataUrl || !dataUrl.endsWith(V1_SUMMARY_SUFFIX)) {
+    return undefined;
+  }
+  return dataUrl.slice(0, -V1_SUMMARY_SUFFIX.length);
+}
+
 /**
  * status/v1 live bridge (ADR-005 par-4, ticket #72): snapshot-first render
  * via useStatusSummary, adapted to the legacy shape the inner page
@@ -36,16 +45,22 @@ function V1LiveStatusPage({statusData}: Props): JSX.Element {
     [statusData.v1Summary]
   );
   const {summary} = useStatusSummary({snapshot, dataUrl: statusData.dataUrl});
+  const fetchUrl = React.useMemo(
+    () => statusData.fetchUrl ?? deriveV1HistoryBaseUrl(statusData.dataUrl),
+    [statusData.dataUrl, statusData.fetchUrl]
+  );
   const adapted = React.useMemo<StatusData>(
     () => ({
       ...summaryToStatusData(summary, {repoUrl: statusData.repoUrl ?? ''}),
       showServices: statusData.showServices,
       showIncidents: statusData.showIncidents,
       showPerformanceMetrics: statusData.showPerformanceMetrics,
+      fetchUrl,
+      dataSource: statusData.dataSource,
       statusCardLayout: statusData.statusCardLayout,
       pluginVersion: statusData.pluginVersion,
     }),
-    [summary, statusData]
+    [fetchUrl, summary, statusData]
   );
   return <StatusPageInner statusData={adapted} />;
 }
@@ -285,6 +300,7 @@ function StatusPageInner({statusData}: Props): JSX.Element {
               <SystemCard
                 key={item.name}
                 name={item.name}
+                displayName={item.displayName}
                 status={item.status}
                 expandable
                 onExpandChange={showPerformanceMetrics && hasSystemData(item.name)

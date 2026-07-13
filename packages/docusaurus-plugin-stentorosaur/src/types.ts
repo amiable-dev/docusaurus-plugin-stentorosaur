@@ -120,6 +120,7 @@ export interface SystemStatusFile {
 
 export interface StatusItem {
   name: string;
+  displayName?: string;
   description?: string;
   status: StatusItemStatus;
   lastChecked?: string;
