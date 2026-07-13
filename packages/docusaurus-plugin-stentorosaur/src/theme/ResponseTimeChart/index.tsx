@@ -91,10 +91,10 @@ export default function ResponseTimeChart({
   );
 
   const generateExportFilename = useCallback(() => {
-    if (filteredData.length === 0) return `${name}-response-time`;
+    const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
+    if (filteredData.length === 0) return `${systemSlug}-response-time`;
     const firstDate = new Date(filteredData[0].timestamp);
     const lastDate = new Date(filteredData[filteredData.length - 1].timestamp);
-    const systemSlug = name.toLowerCase().replace(/\s+/g, '-');
     return `${systemSlug}-response-time-${formatDateForFilename(firstDate)}-to-${formatDateForFilename(lastDate)}`;
   }, [filteredData, name]);
 

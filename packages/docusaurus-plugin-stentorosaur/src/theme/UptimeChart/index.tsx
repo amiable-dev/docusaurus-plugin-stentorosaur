@@ -180,10 +180,12 @@ export default function UptimeChart({
     return createAnnotations(incidents, maintenance);
   }, [annotations, incidents, maintenance]);
 
-  const periodStartMs = Date.now() - PERIOD_DAYS[activePeriod] * 24 * 60 * 60 * 1000;
-  const visibleAnnotations = resolvedAnnotations.filter(
-    annotation => new Date(annotation.timestamp).getTime() >= periodStartMs
-  );
+  const visibleAnnotations = useMemo(() => {
+    const periodStartMs = Date.now() - PERIOD_DAYS[activePeriod] * 24 * 60 * 60 * 1000;
+    return resolvedAnnotations.filter(
+      annotation => new Date(annotation.timestamp).getTime() >= periodStartMs
+    );
+  }, [resolvedAnnotations, activePeriod]);
 
   const exportableData = useMemo(
     () =>
@@ -293,7 +295,9 @@ export default function UptimeChart({
           {visibleAnnotations.map((annotation, i) => (
             <li key={i} data-testid="chart-annotation">
               <span className={styles.annotationType}>{annotation.type}</span>{' '}
-              {annotation.title} — {new Date(annotation.timestamp).toLocaleString()}
+              {annotation.title} —{' '}
+              {new Date(annotation.timestamp).toLocaleString('en-US', {timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short'})}{' '}
+              UTC
             </li>
           ))}
         </ul>

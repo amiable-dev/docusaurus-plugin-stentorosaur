@@ -75,12 +75,29 @@ export function SvgLineChart({
     x: xScale(i, points.length),
     y: p.value === null ? null : yScale(p.value, lo, hi, height),
   }));
-  const drawn = coords.filter((c): c is typeof c & {y: number} => c.y !== null);
-  const linePath = drawn.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  // Split into SEGMENTS at null points: bridging a gap would render a
+  // line straight through missing data, misrepresenting outages
+  // (Council PR #88 r=3).
+  type Coord = (typeof coords)[number] & {y: number};
+  const segments: Coord[][] = [];
+  let current: Coord[] = [];
+  for (const c of coords) {
+    if (c.y === null) {
+      if (current.length > 0) segments.push(current);
+      current = [];
+    } else {
+      current.push(c as Coord);
+    }
+  }
+  if (current.length > 0) segments.push(current);
+
   const baseline = yScale(lo, lo, hi, height);
-  const areaPath = drawn.length > 1
-    ? `${linePath} L${drawn[drawn.length - 1].x.toFixed(1)},${baseline.toFixed(1)} L${drawn[0].x.toFixed(1)},${baseline.toFixed(1)} Z`
-    : '';
+  const toLinePath = (seg: Coord[]) =>
+    seg.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  const toAreaPath = (seg: Coord[]) =>
+    seg.length > 1
+      ? `${toLinePath(seg)} L${seg[seg.length - 1].x.toFixed(1)},${baseline.toFixed(1)} L${seg[0].x.toFixed(1)},${baseline.toFixed(1)} Z`
+      : '';
 
   const ticks = [lo, lo + (hi - lo) / 3, lo + (2 * (hi - lo)) / 3, hi];
   // Sparse x labels: first, middle, last
@@ -124,8 +141,15 @@ export function SvgLineChart({
           </text>
         </g>
       ))}
-      {area && areaPath && <path className={styles.area} d={areaPath} />}
-      {linePath && <path className={styles.line} d={linePath} fill="none" />}
+      {area &&
+        segments.map((seg, i) =>
+          toAreaPath(seg) ? <path key={`a-${i}`} className={styles.area} d={toAreaPath(seg)} /> : null
+        )}
+      {segments.map((seg, i) =>
+        seg.length > 1 ? (
+          <path key={`l-${i}`} className={styles.line} d={toLinePath(seg)} fill="none" />
+        ) : null
+      )}
       {coords.map((c, i) =>
         c.y === null ? null : (
           <circle
