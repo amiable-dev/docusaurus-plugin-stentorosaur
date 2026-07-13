@@ -7,6 +7,7 @@
  *   stentorosaur probe              run checks, write + push (§5 retry)
  *   stentorosaur update-incidents   sync issues, write + push (§5 retry)
  *   stentorosaur regenerate         §7 re-render from raw/ + rebuild
+ *   stentorosaur migrate            one-time legacy → status/v1 (#75)
  *
  * probe/update-incidents/regenerate operate on a git worktree of the
  * data branch (the workflow templates check it out first) or any dir
@@ -23,6 +24,8 @@ import {pushWithRegenerateRetry} from './git-writer';
 import {regenerateDerived} from './regenerate';
 import {reRenderFromRaw} from './regenerate-from-raw';
 import {fetchStatusIssues, writeIssueInputs} from './update-incidents';
+import {migrateHistoricalData, planMigration} from './migrate';
+import type {MigrationReport} from './migrate';
 import {parseSummary} from '@stentorosaur/core';
 import type {StentorosaurConfig} from '@stentorosaur/core';
 
@@ -31,11 +34,21 @@ interface CliOptions {
   workdir: string;
   branch?: string;
   push: boolean;
+  /** migrate: legacy status-data directory */
+  from: string;
+  /** migrate: plan only, write nothing */
+  dryRun: boolean;
 }
 
 function parseArgs(argv: string[]): {command: string; options: CliOptions} {
   const [command = 'help', ...rest] = argv;
-  const options: CliOptions = {config: process.cwd(), workdir: process.cwd(), push: true};
+  const options: CliOptions = {
+    config: process.cwd(),
+    workdir: process.cwd(),
+    push: true,
+    from: 'status-data',
+    dryRun: false,
+  };
   const takeValue = (flag: string, i: number): string => {
     const value = rest[i];
     if (value === undefined || value.startsWith('--')) {
@@ -56,6 +69,12 @@ function parseArgs(argv: string[]): {command: string; options: CliOptions} {
         break;
       case '--no-push':
         options.push = false;
+        break;
+      case '--from':
+        options.from = takeValue('--from', ++i);
+        break;
+      case '--dry-run':
+        options.dryRun = true;
         break;
       default:
         throw new Error(`unknown flag: ${rest[i]}`);
@@ -268,6 +287,121 @@ async function cmdRegenerate(options: CliOptions): Promise<number> {
   return 0;
 }
 
+/**
+ * .monitorrc.json systems → stentorosaur.config.js scaffold (ADR-005
+ * Migration Phase 1: config conversion half of `stentorosaur migrate`).
+ * Owner/repo aren't recorded in .monitorrc.json, so they land as
+ * placeholders the user must fill in before the data migration runs.
+ */
+function monitorrcToConfigSource(monitorrcPath: string): string {
+  const rc = JSON.parse(fs.readFileSync(monitorrcPath, 'utf8')) as {
+    systems?: Array<{
+      system?: string;
+      url?: string;
+      method?: string;
+      timeout?: number;
+      expectedCodes?: number[];
+      maxResponseTime?: number;
+    }>;
+  };
+  const entities = (rc.systems ?? [])
+    .filter(s => s.system)
+    .map(s => ({
+      name: s.system!,
+      type: 'system' as const,
+      ...(s.url
+        ? {
+            probe: {
+              url: s.url,
+              ...(s.method && s.method !== 'GET' ? {method: s.method} : {}),
+              ...(s.timeout ? {timeout: s.timeout} : {}),
+              ...(s.expectedCodes ? {expectedCodes: s.expectedCodes} : {}),
+              ...(s.maxResponseTime ? {maxResponseTime: s.maxResponseTime} : {}),
+            },
+          }
+        : {}),
+    }));
+  const config = {
+    owner: 'OWNER',
+    repo: 'REPO',
+    dataBranch: 'status-data',
+    entities,
+    site: {title: 'System Status'},
+  };
+  return (
+    '// Migrated from .monitorrc.json by `stentorosaur migrate`.\n' +
+    '// FILL IN owner/repo before running the data migration.\n\n' +
+    `/** @type {import('@stentorosaur/core').StentorosaurConfigInput} */\n` +
+    `module.exports = ${JSON.stringify(config, null, 2)};\n`
+  );
+}
+
+async function cmdMigrate(options: CliOptions): Promise<number> {
+  const legacyDir = path.resolve(options.from);
+
+  // Config half first: no stentorosaur config yet + a .monitorrc.json
+  // present → convert it, then stop so the user fills in owner/repo.
+  if (!findConfigFile(options.workdir)) {
+    const monitorrc = path.join(path.dirname(legacyDir), '.monitorrc.json');
+    const fallback = path.join(options.workdir, '.monitorrc.json');
+    const rcPath = fs.existsSync(monitorrc) ? monitorrc : fs.existsSync(fallback) ? fallback : null;
+    if (rcPath) {
+      const target = path.join(options.workdir, 'stentorosaur.config.js');
+      fs.writeFileSync(target, monitorrcToConfigSource(rcPath));
+      console.log(`converted ${rcPath} → ${target}`);
+      console.log('Fill in owner/repo, then re-run `stentorosaur migrate` for the data migration.');
+      return 1;
+    }
+    console.error("no stentorosaur config and no .monitorrc.json found — run 'stentorosaur init' first");
+    return 1;
+  }
+
+  const config = await loadConfig(options.config);
+  if (!fs.existsSync(legacyDir)) {
+    console.error(`legacy status-data directory not found: ${legacyDir} (use --from <dir>)`);
+    return 1;
+  }
+
+  const migrateOpts = {
+    legacyDir,
+    entities: config.entities.map(({name, type, displayName}) => ({
+      name,
+      type,
+      ...(displayName ? {displayName} : {}),
+    })),
+    siteTitle: config.site.title,
+    siteUrl: config.site.url ?? `https://github.com/${config.owner}/${config.repo}`,
+    onWarn: (message: string) => console.warn(`  ⚠ ${message}`),
+  };
+
+  if (options.dryRun) {
+    const plan = planMigration({...migrateOpts, targetDir: options.workdir, generatedAt: new Date().toISOString()});
+    const r = plan.report;
+    console.log(`dry run — nothing written. Plan from ${legacyDir}:`);
+    console.log(`  sources: ${r.sources.join(', ') || '(none found)'}`);
+    console.log(`  ${r.readingsMigrated} readings across ${plan.days.size} days (${r.synthesizedDays} days synthesized from daily-summary.json)`);
+    if (r.corruptLines > 0) console.log(`  ${r.corruptLines} corrupt lines will be skipped`);
+    if (r.ghostEntities.length > 0)
+      console.log(`  ghost entities in data but not config (archived, not summarized): ${r.ghostEntities.join(', ')}`);
+    console.log(`  would write ${plan.archiveFiles.length} archive files + ${plan.entityFiles.length} entity details + summary.json:`);
+    for (const f of [...plan.archiveFiles, ...plan.entityFiles]) console.log(`    ${f}`);
+    return 0;
+  }
+
+  let report: MigrationReport | null = null;
+  await withDataBranch(options, config, 'migrate: legacy status-data → status/v1', async (dir, generatedAt) => {
+    report = migrateHistoricalData({...migrateOpts, targetDir: dir, generatedAt});
+  });
+  if (report) {
+    const r: MigrationReport = report;
+    console.log(`migrated ${r.readingsMigrated} readings (${r.synthesizedDays} days synthesized, ${r.corruptLines} corrupt lines skipped)`);
+    if (r.ghostEntities.length > 0)
+      console.log(`ghost entities preserved in archives only: ${r.ghostEntities.join(', ')}`);
+  }
+  console.log('legacy files were not modified — remove status-data/ after verifying the site renders.');
+  return 0;
+}
+
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   try {
     const {command, options} = parseArgs(argv);
@@ -282,8 +416,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return await cmdUpdateIncidents(options);
       case 'regenerate':
         return await cmdRegenerate(options);
+      case 'migrate':
+        return await cmdMigrate(options);
       default:
-        console.log('usage: stentorosaur <init|doctor|probe|update-incidents|regenerate> [--config <file-or-dir>] [--workdir <dir>] [--branch <name>] [--no-push]');
+        console.log('usage: stentorosaur <init|doctor|probe|update-incidents|regenerate|migrate> [--config <file-or-dir>] [--workdir <dir>] [--branch <name>] [--no-push] [--from <legacy-dir>] [--dry-run]');
         return command === 'help' ? 0 : 1;
     }
   } catch (error) {
