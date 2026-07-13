@@ -53,7 +53,7 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
   const [systemFiles, setSystemFiles] = useState<Map<string, SystemStatusFile>>(new Map());
   const [activeSystem, setActiveSystem] = useState<string | null>(null);
 
-  const config = DEFAULT_CONFIG;
+  const config = statusData.uptimeConfig ?? DEFAULT_CONFIG;
   const sectionTitles = {
     'active-incidents': '🚨 Active Incidents',
     'live-status': '📊 Live System Status',

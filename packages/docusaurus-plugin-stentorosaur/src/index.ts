@@ -123,6 +123,7 @@ export default async function pluginStatus(
         showIncidents,
         showPerformanceMetrics,
         statusCardLayout: options.statusCardLayout,
+        uptimeConfig: options.uptimeConfig,
         pluginVersion: PLUGIN_VERSION,
         v1Summary: summary,
         dataUrl: runtimeDataUrl,

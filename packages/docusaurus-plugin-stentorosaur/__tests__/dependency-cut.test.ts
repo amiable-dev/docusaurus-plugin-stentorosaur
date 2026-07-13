@@ -21,6 +21,7 @@ const BANNED_DEPS = [
   'dompurify',
   '@octokit/rest',
   'chrono-node',
+  'zod',
 ];
 
 function walk(dir: string, files: string[] = []): string[] {

@@ -171,6 +171,8 @@ export interface StatusData {
   showIncidents?: boolean;
   showPerformanceMetrics?: boolean;
   statusCardLayout?: 'minimal' | 'detailed';
+  /** Section layout for the 'upptime' view */
+  uptimeConfig?: UptimeStatusPageConfig;
   /** Injected from package.json at load time (ADR-005 §11) */
   pluginVersion?: string;
   /** The raw v1 summary snapshot embedded at build time (§4) */

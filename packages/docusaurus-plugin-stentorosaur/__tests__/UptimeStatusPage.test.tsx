@@ -86,4 +86,27 @@ describe('UptimeStatusPage (v1)', () => {
     expect(screen.queryByText('🔧 Scheduled Maintenance')).not.toBeInTheDocument();
     expect(screen.queryByText('📜 Past Incidents')).not.toBeInTheDocument();
   });
+
+  it('respects uptimeConfig from statusData — disabled section is not rendered', () => {
+    // live-status disabled: the system cards section should not appear
+    render(
+      <UptimeStatusPage
+        statusData={makeStatusData(summary, {
+          uptimeConfig: {
+            sections: [
+              {id: 'active-incidents', enabled: true},
+              {id: 'live-status', enabled: false},
+              {id: 'charts', enabled: true},
+              {id: 'scheduled-maintenance', enabled: true},
+              {id: 'past-maintenance', enabled: true},
+              {id: 'past-incidents', enabled: true},
+            ],
+          },
+        })}
+      />
+    );
+    expect(screen.queryByText('📊 Live System Status')).not.toBeInTheDocument();
+    // sections still enabled should render normally
+    expect(screen.getByText('🚨 Active Incidents')).toBeInTheDocument();
+  });
 });
