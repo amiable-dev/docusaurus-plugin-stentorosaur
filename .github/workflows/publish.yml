@@ -46,11 +46,6 @@ jobs:
         # Skip-if-published keeps release runs green after the §1b
         # bootstrap already shipped this version.
         working-directory: packages/core
-        env:
-          # TEMPORARY (runbook §1b/§1c): granular token for the first
-          # publish; remove this env once trusted publishing is
-          # configured for @stentorosaur/core.
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           if npm view "@stentorosaur/core@$VERSION" version >/dev/null 2>&1; then
@@ -61,9 +56,6 @@ jobs:
 
       - name: Publish @stentorosaur/probe to npm
         working-directory: packages/probe
-        env:
-          # TEMPORARY (runbook §1b/§1c) — see the core step.
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           if npm view "@stentorosaur/probe@$VERSION" version >/dev/null 2>&1; then
