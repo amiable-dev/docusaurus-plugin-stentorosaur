@@ -3,6 +3,9 @@ name: Publish to npm
 on:
   release:
     types: [published]
+  # Bootstrap first-publish of the @stentorosaur/* packages (release
+  # runbook §1b): publishes core+probe only, never the plugin.
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -38,13 +41,38 @@ jobs:
       - name: Publish @stentorosaur/core to npm
         # Core publishes FIRST: if this fails (e.g. npm org not configured),
         # nothing downstream ships with an unresolvable dependency.
+        # Skip-if-published keeps release runs green after the §1b
+        # bootstrap already shipped this version.
         working-directory: packages/core
-        run: npm publish --access public
+        env:
+          # TEMPORARY (runbook §1b/§1c): granular token for the first
+          # publish; remove this env once trusted publishing is
+          # configured for @stentorosaur/core.
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@stentorosaur/core@$VERSION" version >/dev/null 2>&1; then
+            echo "@stentorosaur/core@$VERSION already on the registry — skipping"
+          else
+            npm publish --access public
+          fi
 
       - name: Publish @stentorosaur/probe to npm
         working-directory: packages/probe
-        run: npm publish --access public
+        env:
+          # TEMPORARY (runbook §1b/§1c) — see the core step.
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@stentorosaur/probe@$VERSION" version >/dev/null 2>&1; then
+            echo "@stentorosaur/probe@$VERSION already on the registry — skipping"
+          else
+            npm publish --access public
+          fi
 
       - name: Publish plugin to npm
+        # Releases only — a workflow_dispatch bootstrap must never ship
+        # the plugin (1.0.0 becoming `latest` is the release's job).
+        if: github.event_name == 'release'
         working-directory: packages/docusaurus-plugin-stentorosaur
         run: npm publish --access public
