@@ -117,3 +117,29 @@ Fixes discovered here go to `main` as normal PRs before the release.
    the pinned `@stentorosaur/probe@0.1.0` in the three workflow
    templates resolves; then announce (the notifications gap +
    incidents.atom substitute is documented in MIGRATION_1.0.md).
+
+---
+
+## 4. Deprecation of the 0.x line (deferred — do NOT do at release)
+
+The plugin keeps its npm name, so there is nothing to deprecate at
+release time: semver stops `^0.x` users from auto-upgrading, and the
+npm package page shows the v1 README, which opens with the
+"Upgrading from 0.x?" migration callout. Running `npm deprecate` now
+would print install-time warnings on versions we still support
+(`v0.22-maintenance`, critical fixes for 90 days) — contradicting the
+support promise.
+
+**~90 days after the v1.0.0 release date** (i.e. when the
+v0.22-maintenance window closes):
+
+```bash
+npm deprecate @amiable-dev/docusaurus-plugin-stentorosaur@"<1.0.0" \
+  "0.x is end-of-life. Upgrade preserves your history: https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/blob/main/docs/setup/MIGRATION_1.0.md"
+```
+
+This warns at install time for every 0.x version (the only channel
+that reaches users who never visit npmjs.com). If a critical fix ships
+on `v0.22-maintenance` during the window, exclude that version range
+or re-run the deprecation afterwards. Requires npm auth with publish
+rights on the package — same account as step 1.
