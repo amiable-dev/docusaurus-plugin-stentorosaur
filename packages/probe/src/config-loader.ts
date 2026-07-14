@@ -29,7 +29,11 @@ export function findConfigFile(dir: string): string | null {
 
 export async function loadConfig(fileOrDir: string): Promise<StentorosaurConfig> {
   const stat = fs.statSync(fileOrDir, {throwIfNoEntry: false});
-  const file = stat?.isDirectory() ? findConfigFile(fileOrDir) : fileOrDir;
+  // Absolute from here on: jiti requires an absolute module path, and a
+  // relative --config like '.' would otherwise reach it verbatim
+  // (found by the release-runbook §2 validation).
+  const found = stat?.isDirectory() ? findConfigFile(fileOrDir) : fileOrDir;
+  const file = found ? path.resolve(found) : null;
   if (!file || !fs.existsSync(file)) {
     throw new Error(
       `no stentorosaur config found${stat?.isDirectory() ? ` in ${fileOrDir}` : `: ${fileOrDir}`} — run 'stentorosaur init' to create one`

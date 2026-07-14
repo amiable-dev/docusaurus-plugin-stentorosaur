@@ -67,6 +67,20 @@ export default defineConfig({owner: 'o', repo: 'r', entities: [{name: 'api', typ
   });
 });
 
+describe('loadConfig with a relative path (runbook §2 regression)', () => {
+  it('resolves relative --config directories before handing to jiti', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), VALID_CONFIG);
+    const prev = process.cwd();
+    try {
+      process.chdir(tmp);
+      const config = await loadConfig('.');
+      expect(config.owner).toBe('o');
+    } finally {
+      process.chdir(prev);
+    }
+  });
+});
+
 describe('stentorosaur init', () => {
   it('scaffolds a config and refuses to overwrite', async () => {
     expect(await main(['init', '--workdir', tmp])).toBe(0);
