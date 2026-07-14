@@ -399,14 +399,25 @@ function monitorrcToConfigSource(monitorrcPath: string): string {
 async function cmdMigrate(options: CliOptions): Promise<number> {
   const legacyDir = path.resolve(options.from);
 
+  // Config detection must respect --config, which typically points at
+  // the SITE while --workdir points at the data-branch worktree — a
+  // workdir-only check made split invocations impossible (found by the
+  // release-runbook §2 validation).
+  const configStat = fs.statSync(options.config, {throwIfNoEntry: false});
+  const configDir = configStat?.isDirectory() ? options.config : path.dirname(options.config);
+  const hasConfig = configStat?.isFile() || findConfigFile(configDir) !== null;
+
   // Config half first: no stentorosaur config yet + a .monitorrc.json
   // present → convert it, then stop so the user fills in owner/repo.
-  if (!findConfigFile(options.workdir)) {
-    const monitorrc = path.join(path.dirname(legacyDir), '.monitorrc.json');
-    const fallback = path.join(options.workdir, '.monitorrc.json');
-    const rcPath = fs.existsSync(monitorrc) ? monitorrc : fs.existsSync(fallback) ? fallback : null;
+  if (!hasConfig) {
+    const candidates = [
+      path.join(configDir, '.monitorrc.json'),
+      path.join(options.workdir, '.monitorrc.json'),
+      path.join(path.dirname(legacyDir), '.monitorrc.json'),
+    ];
+    const rcPath = candidates.find(c => fs.existsSync(c)) ?? null;
     if (rcPath) {
-      const target = path.join(options.workdir, 'stentorosaur.config.js');
+      const target = path.join(configDir, 'stentorosaur.config.js');
       fs.writeFileSync(target, monitorrcToConfigSource(rcPath));
       console.log(`converted ${rcPath} → ${target}`);
       console.log('Fill in owner/repo, then re-run `stentorosaur migrate` for the data migration.');
