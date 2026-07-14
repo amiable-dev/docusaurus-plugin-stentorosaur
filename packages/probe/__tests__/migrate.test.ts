@@ -444,6 +444,34 @@ describe('stentorosaur migrate (CLI)', () => {
   });
 });
 
+describe('stentorosaur migrate (CLI) — split --config/--workdir (runbook §2 regression)', () => {
+  it('loads the config from --config when --workdir is a bare data worktree', async () => {
+    const {main} = await import('../src/cli');
+    buildV021Fixture(legacy);
+    // Config lives with the SITE (target); the data worktree (a second
+    // temp dir standing in for the checked-out data branch) has none.
+    const worktree = fs.mkdtempSync(path.join(os.tmpdir(), 'migrate-worktree-'));
+    try {
+      fs.writeFileSync(
+        path.join(target, 'stentorosaur.config.js'),
+        `module.exports = {owner: 'o', repo: 'r', entities: [
+          {name: 'api', type: 'system'},
+          {name: 'web', type: 'system'},
+        ]};`
+      );
+      const code = await main([
+        'migrate', '--config', target, '--workdir', worktree, '--from', legacy, '--no-push',
+      ]);
+      expect(code).toBe(0);
+      expect(fs.existsSync(path.join(worktree, 'status', 'v1', 'summary.json'))).toBe(true);
+      // And no config was scaffolded into the data worktree.
+      expect(fs.existsSync(path.join(worktree, 'stentorosaur.config.js'))).toBe(false);
+    } finally {
+      fs.rmSync(worktree, {recursive: true, force: true});
+    }
+  });
+});
+
 describe('collectLegacyData sources', () => {
   it('reads gzipped archives, current.json, and systems/*.json together', () => {
     const dayStart = NOW - (NOW % DAY_MS);

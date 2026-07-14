@@ -100,12 +100,19 @@ function StatusPageInner({
     () => summaryToStatusData(summary, {repoUrl}),
     [summary, repoUrl]
   );
-  // Display metadata (descriptions) comes from the build-time adapt.
+  // Display metadata (displayName/description from plugin options) is
+  // applied at BUILD time onto statusData.items; the live re-adapt from
+  // the summary must not lose it (found by the runbook §2 validation —
+  // cards fell back to raw entity names).
   const items = useMemo(
     () =>
       adapted.items.map(item => {
         const buildItem = statusData.items.find(i => i.name === item.name);
-        return {...item, description: buildItem?.description};
+        return {
+          ...item,
+          displayName: item.displayName ?? buildItem?.displayName,
+          description: buildItem?.description,
+        };
       }),
     [adapted.items, statusData.items]
   );

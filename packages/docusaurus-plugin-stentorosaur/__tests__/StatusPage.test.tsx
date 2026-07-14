@@ -92,6 +92,20 @@ describe('StatusPage (v1)', () => {
     expect(screen.getByText('Scheduled Maintenance')).toBeInTheDocument();
   });
 
+  it('keeps plugin-options display names across the live re-adapt (§2 regression)', () => {
+    // The summary itself has NO displayName (data plane without one);
+    // the build-time statusData.items carry it from plugin options.
+    const plain = makeSummary({entities: [{name: 'workflow'}]});
+    render(
+      <StatusPage
+        statusData={makeStatusData(plain, {
+          items: [{name: 'workflow', displayName: 'Workflow', status: 'up'}],
+        })}
+      />
+    );
+    expect(screen.getByText('Workflow')).toBeInTheDocument();
+  });
+
   it('uses the title/description from the plugin options', () => {
     render(
       <StatusPage

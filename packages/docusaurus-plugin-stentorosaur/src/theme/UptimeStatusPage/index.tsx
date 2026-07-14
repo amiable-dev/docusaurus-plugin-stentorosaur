@@ -47,7 +47,20 @@ export default function UptimeStatusPage({statusData}: Props): JSX.Element {
   } = statusData || {};
 
   const adapted = useMemo(() => summaryToStatusData(summary, {repoUrl}), [summary, repoUrl]);
-  const {items, incidents, maintenance} = adapted;
+  // Preserve build-time display metadata across the live re-adapt (§2).
+  const items = useMemo(
+    () =>
+      adapted.items.map(item => {
+        const buildItem = statusData.items.find(i => i.name === item.name);
+        return {
+          ...item,
+          displayName: item.displayName ?? buildItem?.displayName,
+          description: buildItem?.description,
+        };
+      }),
+    [adapted.items, statusData.items]
+  );
+  const {incidents, maintenance} = adapted;
 
   const v1Base = useMemo(() => deriveV1BaseUrl(statusData.dataUrl), [statusData.dataUrl]);
   const [systemFiles, setSystemFiles] = useState<Map<string, SystemStatusFile>>(new Map());
