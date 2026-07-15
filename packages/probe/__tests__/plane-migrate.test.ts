@@ -209,6 +209,37 @@ describe('zero-loss details', () => {
     expect(store.keys().some(k => k.endsWith('.gz'))).toBe(false);
   });
 
+  it('a corrupt target-side .gz never aborts r2 → git (Council r=1)', async () => {
+    const store = new MemoryObjectStore();
+    const body = `${JSON.stringify(reading('api', '2026-07-01T10:00:00.000Z'))}\n`;
+    await store.put(`${V1}/archives/2026/07/history-2026-07-01.jsonl`, body);
+
+    const backDir = path.join(tmp, 'back');
+    const gzFile = `${archiveFile(backDir, '2026-07-01')}.gz`;
+    fs.mkdirSync(path.dirname(gzFile), {recursive: true});
+    fs.writeFileSync(gzFile, 'not actually gzip');
+
+    const warnings: string[] = [];
+    const report = await migrateR2ToGit(store, backDir, {onWarn: m => warnings.push(m)});
+    expect(warnings.join(' ')).toMatch(/unreadable .*\.gz treated as absent/);
+    expect(report.created).toEqual([`${V1}/archives/2026/07/history-2026-07-01.jsonl`]);
+    expect(fs.readFileSync(archiveFile(backDir, '2026-07-01'), 'utf8')).toBe(body);
+    expect(fs.readFileSync(gzFile, 'utf8')).toBe('not actually gzip'); // left for inspection
+  });
+
+  it('warns about a plain+gz pair in either readdir order (Council r=1)', async () => {
+    const sourceDir = path.join(tmp, 'source');
+    const body = `${JSON.stringify(reading('api', '2026-07-01T10:00:00.000Z'))}\n`;
+    // Plain sorts BEFORE .gz alphabetically — the previously-silent order.
+    seedGitDay(sourceDir, '2026-07-01', [reading('api', '2026-07-01T10:00:00.000Z')]);
+    fs.writeFileSync(`${archiveFile(sourceDir, '2026-07-01')}.gz`, zlib.gzipSync('{"stale":1}\n'));
+
+    const warnings: string[] = [];
+    const tree = collectGitTree(sourceDir, m => warnings.push(m));
+    expect(warnings.join(' ')).toMatch(/both plain and gzipped/);
+    expect(tree.get(`${V1}/archives/2026/07/history-2026-07-01.jsonl`)).toBe(body); // plain won
+  });
+
   it('divergent archives merge by (svc, t) with deterministic order', async () => {
     const sourceDir = path.join(tmp, 'source');
     seedGitDay(sourceDir, '2026-07-01', [

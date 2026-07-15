@@ -105,11 +105,12 @@ export function collectGitTree(
           .relative(workdir, path.join(dir, match[1]))
           .split(path.sep)
           .join('/');
-        if (bodies.has(key) && !match[2]) {
+        if (bodies.has(key)) {
           // Both .jsonl and .jsonl.gz for one day: plain wins (fresher).
+          // Warn in BOTH visit orders (Council PR #109 r=1) — readdir
+          // order is not guaranteed.
           onWarn(`${key} exists both plain and gzipped — using the plain file`);
-        } else if (bodies.has(key)) {
-          continue;
+          if (match[2]) continue; // plain already loaded; skip the gz
         }
         try {
           bodies.set(
@@ -245,14 +246,32 @@ export async function migrateR2ToGit(
     }
   }
 
-  const fileOf = (key: string) => path.join(workdir, ...key.split('/'));
+  const fileOf = (key: string) => {
+    // Defense-in-depth (Council PR #109 r=1): every key that reaches
+    // here is regex-whitelisted, but a path write must never depend on
+    // that staying true.
+    const parts = key.split('/');
+    if (parts.some(p => p === '' || p === '.' || p === '..')) {
+      throw new Error(`refusing unsafe key path: ${key}`);
+    }
+    return path.join(workdir, ...parts);
+  };
   const readFile: ReadTarget = async key => {
     const file = fileOf(key);
     if (fs.existsSync(file)) return fs.readFileSync(file, 'utf8');
     // A gzipped-only day on the git side still counts as the target
     // content — merge into it and write plain (the .gz is left alone).
     if (key.endsWith('.jsonl') && fs.existsSync(`${file}.gz`)) {
-      return zlib.gunzipSync(fs.readFileSync(`${file}.gz`)).toString('utf8');
+      try {
+        return zlib.gunzipSync(fs.readFileSync(`${file}.gz`)).toString('utf8');
+      } catch (error) {
+        // Corrupt .gz must not abort the migration (Council PR #109
+        // r=1, never-fatal rule): treat the target as absent — the
+        // plain .jsonl gets written from source, the .gz stays for
+        // manual inspection.
+        onWarn(`unreadable ${key}.gz treated as absent (left in place): ${String(error).slice(0, 120)}`);
+        return null;
+      }
     }
     return null;
   };
