@@ -40,7 +40,9 @@
   },
   "dependencies": {
     "@stentorosaur/core": "^0.1.0",
-    "jiti": "^2.4.0"
+    "jiti": "^2.4.0",
+    "aws4fetch": "^1.0.20",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
