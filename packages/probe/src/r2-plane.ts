@@ -167,8 +167,8 @@ export async function regenerateDerivedR2(
     throw new Error(`regenerateDerivedR2: generatedAt is not parseable: '${generatedAt}'`);
   }
 
-  let entityWritesSkipped = 0;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let entityWritesSkipped = 0;
     // ── read the full input set (fresh each attempt, §5 purity) ──
     const summaryBefore = await store.get(`${V1}/summary.json`);
     const allReadings = await readAllReadings(store, windowDays, generatedAtMs, onWarn);

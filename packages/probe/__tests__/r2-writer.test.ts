@@ -144,6 +144,35 @@ describe('regenerateDerivedR2 — §3 write-order consistency (council condition
     expect(puts[puts.length - 1]).toBe('status/v1/summary.json');
   });
 
+  it('entityWritesSkipped reflects only the winning attempt, not accumulated across retries', async () => {
+    const store = new MemoryObjectStore();
+    await seedBatch(store, [reading('api', 1000), reading('web', 900)]);
+    await regenerateDerivedR2(store, REGEN_OPTS); // first run writes entities
+
+    // Second run: entities are skippable (unchanged readings). We force one
+    // retry by bumping the summary etag behind the regenerator's back.
+    const originalGet = store.get.bind(store);
+    let sabotaged = false;
+    jest.spyOn(store, 'get').mockImplementation(async key => {
+      const result = await originalGet(key);
+      if (key === 'status/v1/summary.json' && !sabotaged) {
+        sabotaged = true;
+        await store.put('status/v1/summary.json', result!.body); // bumps etag, forces retry
+      }
+      return result;
+    });
+
+    const outcome = await regenerateDerivedR2(store, {
+      ...REGEN_OPTS,
+      generatedAt: new Date(NOW + 60_000).toISOString(),
+    });
+
+    // Two attempts fired; entities were skipped in each. The count must be
+    // 2 (one skip per entity on the winning attempt), not 4.
+    expect(outcome.attempts).toBe(2);
+    expect(outcome.entityWritesSkipped).toBe(2);
+  });
+
   it('folds day archives AND uncompacted batches into the rollups', async () => {
     const store = new MemoryObjectStore();
     // Yesterday's compacted archive:
