@@ -8,13 +8,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {parseSummary} from '@stentorosaur/core';
 import {PreconditionFailedError} from '../src/object-store';
-import {
+import workerDefault, {
   BindingObjectStore,
   runWorkerProbeR2,
   serveStatusV1,
   type R2BucketLike,
   type WorkerEnv,
 } from '../src/worker';
+import {COMPACTION_STATE_KEY} from '../src/r2-compaction';
 
 const NOW = Date.parse('2026-07-15T12:00:00.000Z');
 
@@ -22,6 +23,7 @@ const NOW = Date.parse('2026-07-15T12:00:00.000Z');
  * precondition failure, like the actual binding). */
 class FakeR2Bucket implements R2BucketLike {
   readonly objects = new Map<string, {body: string; etag: string}>();
+  lastPutOptions: {onlyIf?: {etagMatches?: string; etagDoesNotMatch?: string}} | undefined;
   private etagCounter = 0;
 
   async get(key: string) {
@@ -35,6 +37,7 @@ class FakeR2Bucket implements R2BucketLike {
     value: string,
     options?: {onlyIf?: {etagMatches?: string; etagDoesNotMatch?: string}}
   ) {
+    this.lastPutOptions = options;
     const existing = this.objects.get(key);
     if (options?.onlyIf?.etagMatches && existing?.etag !== options.onlyIf.etagMatches) {
       return null; // the binding signals precondition failure with null
@@ -105,6 +108,19 @@ describe('BindingObjectStore', () => {
     const {etag} = await store.put('k', 'body');
     expect(await store.get('k')).toEqual({body: 'body', etag});
   });
+
+  it('merges ifMatch and ifNoneMatch into ONE onlyIf object (Council PR #107 regression)', async () => {
+    const bucket = new FakeR2Bucket();
+    const store = new BindingObjectStore(bucket);
+    await store.put('k', 'v1', {ifMatch: '"a"', ifNoneMatch: '*'}).catch(() => {
+      // The put itself may fail the precondition — the assertion is
+      // about what reached the binding, not the outcome.
+    });
+    expect(bucket.lastPutOptions?.onlyIf).toEqual({etagMatches: '"a"', etagDoesNotMatch: '*'});
+
+    await store.put('unconditional', 'v');
+    expect(bucket.lastPutOptions?.onlyIf).toBeUndefined();
+  });
 });
 
 describe('runWorkerProbeR2 (Profile C probe cycle)', () => {
@@ -150,6 +166,55 @@ describe('runWorkerProbeR2 (Profile C probe cycle)', () => {
     await expect(
       runWorkerProbeR2({...r2Env(bucket), ENTITIES: 'not valid json'}, {fetchImpl, now: NOW})
     ).rejects.toThrow(/ENTITIES/);
+
+    // Strict string validation (Council PR #107): truthy non-strings
+    // must be rejected, not passed through to the summary schema.
+    await expect(
+      runWorkerProbeR2(
+        {...r2Env(bucket), ENTITIES: '[{"name": 123, "type": "system"}]'},
+        {fetchImpl, now: NOW}
+      )
+    ).rejects.toThrow(/ENTITIES/);
+  });
+});
+
+describe('worker.scheduled cron selection (ticket #101)', () => {
+  it('the COMPACTION_CRON trigger compacts; other triggers probe', async () => {
+    const bucket = new FakeR2Bucket();
+    // A closed, buffered day (well in the past relative to real now).
+    await bucket.put(
+      'status/v1/readings/2026-01-02T10-00-00-000Z-r1.json',
+      JSON.stringify([{t: Date.parse('2026-01-02T10:00:00Z'), svc: 'api', state: 'up', code: 200, lat: 5}])
+    );
+    const env = {...r2Env(bucket), COMPACTION_CRON: '17 1 * * *'};
+
+    await workerDefault.scheduled({cron: '17 1 * * *'}, env);
+    expect(bucket.objects.has('status/v1/readings/2026-01-02T10-00-00-000Z-r1.json')).toBe(false);
+    expect(bucket.objects.has('status/v1/archives/2026/01/history-2026-01-02.jsonl')).toBe(true);
+    expect(bucket.objects.has(COMPACTION_STATE_KEY)).toBe(true);
+    // The compaction pass must NOT have run the probe.
+    expect(bucket.objects.has('status/v1/summary.json')).toBe(false);
+  });
+
+  it('logs and rethrows a failed pass (council condition 3 observability)', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const broken = {
+        list: async () => {
+          throw new Error('bucket exploded');
+        },
+      } as unknown as R2BucketLike;
+      const env = {...r2Env(broken), COMPACTION_CRON: '17 1 * * *'};
+      await expect(workerDefault.scheduled({cron: '17 1 * * *'}, env)).rejects.toThrow(
+        'bucket exploded'
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('scheduled(17 1 * * *) failed'),
+        expect.any(Error)
+      );
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });
 
@@ -185,10 +250,12 @@ describe('serveStatusV1 (serving route)', () => {
     const bucket = new FakeR2Bucket();
     expect((await served(bucket, 'https://s.test/secrets.txt')).status).toBe(404);
     expect((await served(bucket, 'https://s.test/status/v1/missing.json')).status).toBe(404);
-    expect(
-      (await served(bucket, 'https://s.test/status/v1/summary.json', {method: 'POST', body: 'x'}))
-        .status
-    ).toBe(405);
+    const post = await served(bucket, 'https://s.test/status/v1/summary.json', {
+      method: 'POST',
+      body: 'x',
+    });
+    expect(post.status).toBe(405);
+    expect(post.headers.get('allow')).toBe('GET, HEAD, OPTIONS');
     expect(
       (await served(bucket, 'https://s.test/status/v1/summary.json', {method: 'OPTIONS'})).status
     ).toBe(204);

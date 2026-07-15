@@ -130,6 +130,99 @@ describe('stentorosaur doctor', () => {
   });
 });
 
+describe('stentorosaur doctor (r2 mode, ticket #101)', () => {
+  const realFetch = global.fetch;
+  afterEach(() => {
+    (global as any).fetch = realFetch; // the probe tests need the real one
+  });
+
+  const R2_CONFIG = `module.exports = {owner: 'o', repo: 'r',
+    entities: [{name: 'api', type: 'system'}],
+    dataPlane: {kind: 'r2', bucket: 'status',
+      endpoint: 'https://acc.r2.cloudflarestorage.com',
+      publicBaseUrl: 'https://status.example.com/'}};`; // trailing slash on purpose
+
+  const freshSummary = JSON.stringify({
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    generatedBy: 'test',
+    entities: [],
+    incidents: {open: [], recent: []},
+    maintenance: {upcoming: [], inProgress: []},
+  });
+
+  function mockPlane(state: {status: number; body?: string}) {
+    const calls: string[] = [];
+    (global as any).fetch = jest.fn(async (url: string) => {
+      calls.push(url);
+      if (url.endsWith('/summary.json')) {
+        return {ok: true, status: 200, text: async () => freshSummary, headers: {get: () => null}};
+      }
+      return {
+        ok: state.status >= 200 && state.status < 300,
+        status: state.status,
+        text: async () => state.body ?? '',
+        headers: {get: () => null},
+      };
+    });
+    return calls;
+  }
+
+  it('polls publicBaseUrl (normalized) and warns when the last compaction success is >48h old', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), R2_CONFIG);
+    const staleState = JSON.stringify({
+      schemaVersion: 1,
+      lastRun: new Date().toISOString(),
+      lastSuccess: new Date(Date.now() - 72 * 3600_000).toISOString(),
+      archivedDays: [],
+      deletedBatches: 0,
+    });
+    const calls = mockPlane({status: 200, body: staleState});
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(await main(['doctor', '--config', tmp])).toBe(0); // warn, never fail
+      expect(calls).toContain('https://status.example.com/status/v1/summary.json');
+      expect(calls).toContain('https://status.example.com/status/v1/compaction-state.json');
+      expect(warnSpy.mock.calls.flat().join(' ')).toMatch(/compaction success was \d+h ago/);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('reports compaction healthy when lastSuccess is fresh', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), R2_CONFIG);
+    mockPlane({
+      status: 200,
+      body: JSON.stringify({
+        schemaVersion: 1,
+        lastRun: new Date().toISOString(),
+        lastSuccess: new Date().toISOString(),
+        archivedDays: ['2026-07-13'],
+        deletedBatches: 288,
+      }),
+    });
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      expect(await main(['doctor', '--config', tmp])).toBe(0);
+      expect(logSpy.mock.calls.flat().join(' ')).toMatch(/compaction healthy/);
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it('warns (without failing) when compaction has never run', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), R2_CONFIG);
+    mockPlane({status: 404});
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(await main(['doctor', '--config', tmp])).toBe(0);
+      expect(warnSpy.mock.calls.flat().join(' ')).toMatch(/no compaction-state\.json yet/);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+});
+
 describe('stentorosaur probe --no-push (local pipeline)', () => {
   it('checks entities, writes details/archives, regenerates a valid summary', async () => {
     const server = http.createServer((_req, res) => {

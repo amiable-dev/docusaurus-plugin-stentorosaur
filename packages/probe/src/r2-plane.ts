@@ -13,8 +13,9 @@
  * - readings land as ONE immutable batch object per run under
  *   status/v1/readings/ (R2 cannot append); the daily compaction cron
  *   (ticket #101) folds them into the standard archives/ JSONL
- * - rollups read day archives (bounded) plus the CURRENT day's batches
- *   (≤ one day of runs) — never the full batch history
+ * - rollups read day archives (bounded) plus the not-yet-compacted
+ *   batches inside the compaction buffer (≤ 2 days of runs) — never the
+ *   full batch history
  */
 
 // Workers-safe imports ONLY (ticket #100): this module runs inside the
@@ -134,7 +135,14 @@ async function readAllReadings(
   const batchCutoffMs = nowMs - 2 * DAY_MS;
   for (const key of batchKeys) {
     const stamp = key.match(/readings\/(\d{4}-\d{2}-\d{2})T/)?.[1];
-    if (stamp && Date.parse(`${stamp}T00:00:00Z`) < batchCutoffMs) continue;
+    if (!stamp) {
+      // A key that doesn't carry a run timestamp was not written by the
+      // probe — skip WITHOUT a GET (Council PR #106 polish; the
+      // compactor quarantines these the same way).
+      onWarn(`unrecognized batch key ${key} skipped`);
+      continue;
+    }
+    if (Date.parse(`${stamp}T00:00:00Z`) < batchCutoffMs) continue;
     const object = await store.get(key);
     if (!object) continue;
     try {
@@ -218,7 +226,9 @@ export async function regenerateDerivedR2(
         .sort((a, b) => a.t - b.t);
       // Content-hash guard (council condition 4): identical readings →
       // skip the class-A write. generatedAt is excluded from the hash
-      // (it changes every run by definition).
+      // (it changes every run by definition). The hash covers ONLY the
+      // readings array — if the detail payload ever grows more fields,
+      // they must join the hash or their changes will be skipped.
       const payload = JSON.stringify({
         schemaVersion: 1,
         generatedAt,

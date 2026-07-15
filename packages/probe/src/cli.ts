@@ -27,8 +27,9 @@ import {reRenderFromRaw} from './regenerate-from-raw';
 import {fetchStatusIssues, transformIssueInputs, writeIssueInputs} from './update-incidents';
 import {migrateHistoricalData, planMigration} from './migrate';
 import type {MigrationReport} from './migrate';
-import {R2ObjectStore} from './object-store';
+import {R2ObjectStore, normalizeBaseUrl} from './object-store';
 import type {ObjectStore} from './object-store';
+import {compactionStateSchema} from './r2-compaction';
 import {V1, regenerateDerivedR2, writeReadingsBatch} from './r2-plane';
 import {reRenderFromRawR2} from './r2-raw-rerender';
 import {parseProbeDispatch, parseSummary} from '@stentorosaur/core';
@@ -225,11 +226,18 @@ async function cmdDoctor(options: CliOptions): Promise<number> {
   ok(`${config.entities.length} entities (${probed} probed, ${config.entities.length - probed} issue-tracked only)`);
 
   // Data plane: summary reachable and fresh?
-  const summaryUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.dataBranch}/status/v1/summary.json`;
+  const r2Plane = config.dataPlane.kind === 'r2' ? config.dataPlane : null;
+  const summaryUrl = r2Plane
+    ? `${normalizeBaseUrl(r2Plane.publicBaseUrl)}/status/v1/summary.json`
+    : `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.dataBranch}/status/v1/summary.json`;
   try {
     const response = await fetch(summaryUrl, {headers: {accept: 'application/json'}});
     if (response.status === 404) {
-      bad(`no summary.json on the '${config.dataBranch}' branch yet (probe not run, or private repo — private repos use the build-time snapshot only, ADR-005 §9)`);
+      bad(
+        r2Plane
+          ? `no summary.json at ${summaryUrl} yet (probe not run, or publicBaseUrl misconfigured)`
+          : `no summary.json on the '${config.dataBranch}' branch yet (probe not run, or private repo — private repos use the build-time snapshot only, ADR-005 §9)`
+      );
     } else if (!response.ok) {
       bad(`summary fetch: HTTP ${response.status}`);
     } else {
@@ -246,6 +254,35 @@ async function cmdDoctor(options: CliOptions): Promise<number> {
     }
   } catch (error) {
     bad(`data plane unreachable: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  // r2 mode: compaction health (ticket #101 — council condition 3: a
+  // silently-stalled compactor must surface somewhere an operator looks).
+  if (r2Plane) {
+    const stateUrl = `${normalizeBaseUrl(r2Plane.publicBaseUrl)}/status/v1/compaction-state.json`;
+    try {
+      const response = await fetch(stateUrl, {headers: {accept: 'application/json'}});
+      if (response.status === 404) {
+        console.warn('  ⚠ no compaction-state.json yet — has the daily compaction cron run? (wrangler-r2.toml [triggers] + COMPACTION_CRON)');
+      } else if (!response.ok) {
+        console.warn(`  ⚠ compaction-state fetch: HTTP ${response.status}`);
+      } else {
+        const state = compactionStateSchema.parse(JSON.parse(await response.text()));
+        const STALE_MS = 48 * 3600_000;
+        if (!state.lastSuccess) {
+          console.warn(`  ⚠ compaction has never succeeded (last run ${state.lastRun}) — check the Worker cron logs`);
+        } else if (Date.now() - Date.parse(state.lastSuccess) > STALE_MS) {
+          // WARNING, not failure (same rule as summary staleness): a
+          // paused Worker shouldn't flap CI that runs doctor.
+          const ageHours = Math.round((Date.now() - Date.parse(state.lastSuccess)) / 3600_000);
+          console.warn(`  ⚠ last compaction success was ${ageHours}h ago (>48h) — readings/ batches are piling up; check the Worker cron`);
+        } else {
+          ok(`compaction healthy (last success ${state.lastSuccess})`);
+        }
+      }
+    } catch (error) {
+      console.warn(`  ⚠ compaction-state unreachable: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   console.log(failures === 0 ? '\ndoctor: all checks passed' : `\ndoctor: ${failures} problem(s) found`);
@@ -380,7 +417,9 @@ async function cmdRegenerate(options: CliOptions): Promise<number> {
   const config = await loadConfig(options.config);
   if (config.dataPlane.kind === 'r2') {
     await withR2Plane(config, async (store, generatedAt) => {
-      const counts = await reRenderFromRawR2(store, new Date(generatedAt));
+      const counts = await reRenderFromRawR2(store, new Date(generatedAt), 3, message =>
+        console.warn(`  ⚠ ${message}`)
+      );
       console.log(`re-rendered ${counts.incidents} incident and ${counts.maintenance} maintenance bodies from raw/`);
     });
     return 0;

@@ -21,6 +21,8 @@ import type {CompactReading, EntityRef, ProbeDispatchPayload} from '@stentorosau
 import type {ObjectStore, PutOptions, StoredObject} from './object-store';
 import {PreconditionFailedError} from './object-store';
 import {V1, regenerateDerivedR2, writeReadingsBatch} from './r2-plane';
+import {compactReadingsR2} from './r2-compaction';
+import type {CompactionResult} from './r2-compaction';
 
 export const DISPATCH_EVENT_TYPE = 'stentorosaur-probe';
 
@@ -44,6 +46,11 @@ export interface WorkerEnv {
   ENTITIES?: string;
   SITE_TITLE?: string;
   SITE_URL?: string;
+  /** Cron expression that selects the daily compaction pass (ticket
+   * #101). Must match one of wrangler.toml's [triggers] crons; when the
+   * firing event's cron equals it, scheduled() compacts instead of
+   * probing. Unset → compaction never runs (backward compatible). */
+  COMPACTION_CRON?: string;
 }
 
 /**
@@ -88,9 +95,14 @@ export class BindingObjectStore implements ObjectStore {
   }
 
   async put(key: string, body: string, options: PutOptions = {}): Promise<{etag: string}> {
+    // ONE merged onlyIf object (Council PR #107): sequential spreads of
+    // whole onlyIf objects would let ifNoneMatch clobber ifMatch.
+    const onlyIf = {
+      ...(options.ifMatch ? {etagMatches: options.ifMatch} : {}),
+      ...(options.ifNoneMatch ? {etagDoesNotMatch: options.ifNoneMatch} : {}),
+    };
     const result = await this.bucket.put(key, body, {
-      ...(options.ifMatch ? {onlyIf: {etagMatches: options.ifMatch}} : {}),
-      ...(options.ifNoneMatch ? {onlyIf: {etagDoesNotMatch: options.ifNoneMatch}} : {}),
+      ...(options.ifMatch || options.ifNoneMatch ? {onlyIf} : {}),
       httpMetadata: {contentType: options.contentType ?? 'application/json'},
     });
     if (result === null) throw new PreconditionFailedError(key);
@@ -170,17 +182,20 @@ export interface DispatchOptions {
 export async function sendRepositoryDispatch(options: DispatchOptions): Promise<void> {
   const {owner, repo, token, payload, eventType = DISPATCH_EVENT_TYPE} = options;
   const fetchFn = options.fetchImpl ?? (fetch as FetchLike);
-  const response = await fetchFn(`https://api.github.com/repos/${owner}/${repo}/dispatches`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${token}`,
-      accept: 'application/vnd.github+json',
-      'content-type': 'application/json',
-      'user-agent': 'stentorosaur-worker',
-      'x-github-api-version': '2022-11-28',
-    },
-    body: JSON.stringify({event_type: eventType, client_payload: payload}),
-  });
+  const response = await fetchFn(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: 'application/vnd.github+json',
+        'content-type': 'application/json',
+        'user-agent': 'stentorosaur-worker',
+        'x-github-api-version': '2022-11-28',
+      },
+      body: JSON.stringify({event_type: eventType, client_payload: payload}),
+    }
+  );
   if (response.status !== 204) {
     let detail = '';
     try {
@@ -207,10 +222,13 @@ function entitiesOf(env: WorkerEnv, targets: CheckTarget[]): EntityRef[] {
         `ENTITIES must be a JSON array of {name, type, displayName?}: ${err instanceof Error ? err.message : String(err)}`
       );
     }
-    if (
-      !Array.isArray(parsed) ||
-      (parsed as unknown[]).some(e => !(e as EntityRef)?.name || !(e as EntityRef)?.type)
-    ) {
+    // Strict string checks (Council PR #107): truthiness would let a
+    // non-string like {name: 123} through to the summary schema.
+    const wellFormed = (e: unknown): boolean => {
+      const ref = e as Partial<EntityRef>;
+      return typeof ref?.name === 'string' && ref.name.length > 0 && typeof ref?.type === 'string';
+    };
+    if (!Array.isArray(parsed) || !(parsed as unknown[]).every(wellFormed)) {
       throw new Error('ENTITIES must be a JSON array of {name, type, displayName?}');
     }
     return parsed as EntityRef[];
@@ -261,7 +279,10 @@ export async function serveStatusV1(request: Request, env: WorkerEnv): Promise<R
     return new Response(null, {status: 204, headers: CORS_HEADERS});
   }
   if (request.method !== 'GET' && request.method !== 'HEAD') {
-    return new Response('method not allowed', {status: 405, headers: CORS_HEADERS});
+    return new Response('method not allowed', {
+      status: 405,
+      headers: {...CORS_HEADERS, allow: 'GET, HEAD, OPTIONS'},
+    });
   }
   if (!env.STATUS_BUCKET) {
     return new Response('no bucket bound', {status: 404, headers: CORS_HEADERS});
@@ -311,16 +332,50 @@ export async function runWorkerProbe(env: WorkerEnv, deps: WorkerDeps = {}): Pro
 }
 
 /**
+ * Daily compaction pass through the bucket binding (ticket #101):
+ * fold closed-day readings/ batches into archives/ with the §5
+ * verify-before-delete contract.
+ */
+export async function runWorkerCompactionR2(
+  env: WorkerEnv,
+  deps: WorkerDeps = {}
+): Promise<CompactionResult> {
+  if (!env.STATUS_BUCKET) {
+    throw new Error('runWorkerCompactionR2 requires the STATUS_BUCKET binding');
+  }
+  return compactReadingsR2(new BindingObjectStore(env.STATUS_BUCKET), {
+    nowMs: deps.now ?? Date.now(),
+    onWarn: message => console.warn(`compaction: ${message}`),
+  });
+}
+
+/**
  * Default export in the Workers module shape: wrangler wires
- * `scheduled` to the cron trigger in wrangler.toml.
+ * `scheduled` to the cron triggers in wrangler.toml.
  */
 const worker = {
-  async scheduled(_event: unknown, env: WorkerEnv): Promise<void> {
-    // Binding present → Profile C direct write; absent → §6 dispatch.
-    if (env.STATUS_BUCKET) {
-      await runWorkerProbeR2(env);
-    } else {
-      await runWorkerProbe(env);
+  async scheduled(event: unknown, env: WorkerEnv): Promise<void> {
+    const cron = (event as {cron?: string} | null | undefined)?.cron;
+    try {
+      // Binding present → Profile C direct write; absent → §6 dispatch.
+      // Within Profile C the firing cron selects the pass: the trigger
+      // matching COMPACTION_CRON compacts, every other trigger probes.
+      if (env.STATUS_BUCKET) {
+        if (env.COMPACTION_CRON && cron === env.COMPACTION_CRON) {
+          await runWorkerCompactionR2(env);
+        } else {
+          await runWorkerProbeR2(env);
+        }
+      } else {
+        await runWorkerProbe(env);
+      }
+    } catch (error) {
+      // Log before rethrowing (Council PR #107): the rethrow marks the
+      // cron invocation failed for Workers observability, the log makes
+      // `wrangler tail` useful — compaction failures MUST surface
+      // (council condition 3).
+      console.error(`stentorosaur scheduled(${cron ?? 'unknown cron'}) failed:`, error);
+      throw error;
     }
   },
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
