@@ -39,6 +39,18 @@ export interface ObjectStore {
   delete(key: string): Promise<void>;
 }
 
+/** Minimal XML entity decoding for S3 ListObjects keys — our keys are
+ * generated ASCII, but a foreign object in the bucket must not corrupt
+ * the listing (Council PR #106 r=1). */
+function decodeXmlEntities(value: string): string {
+  return value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
 /** Strip trailing slashes — endpoint/publicBaseUrl are not normalized
  * at the schema (Council PR #105 note); every join happens here. */
 export function normalizeBaseUrl(url: string): string {
@@ -112,7 +124,7 @@ export class R2ObjectStore implements ObjectStore {
       if (!response.ok) throw new Error(`LIST ${prefix}: HTTP ${response.status}`);
       const xml = await response.text();
       for (const match of xml.matchAll(/<Key>([^<]+)<\/Key>/g)) {
-        keys.push(match[1]);
+        keys.push(decodeXmlEntities(match[1]));
       }
       const next = xml.match(/<NextContinuationToken>([^<]+)<\/NextContinuationToken>/);
       token = next?.[1];

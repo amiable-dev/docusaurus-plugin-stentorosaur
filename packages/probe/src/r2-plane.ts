@@ -125,16 +125,26 @@ async function readAllReadings(
     }
   }
   // Batches not yet compacted (today, plus yesterday inside the
-  // compaction buffer) — list is bounded by the compaction cadence.
+  // compaction buffer). The read set is BOUNDED explicitly: batch keys
+  // embed their run timestamp, so anything older than the rollup window
+  // (e.g. compaction-orphaned strays) is skipped without a GET.
   const batchKeys = await store.list(`${V1}/readings/`);
+  const cutoffMs = nowMs - windowDays * DAY_MS;
   for (const key of batchKeys) {
+    const stamp = key.match(/readings\/(\d{4}-\d{2}-\d{2})T/)?.[1];
+    if (stamp && Date.parse(`${stamp}T00:00:00Z`) < cutoffMs - DAY_MS) continue;
     const object = await store.get(key);
     if (!object) continue;
-    const parsed = readingsArraySchema.safeParse(JSON.parse(object.body));
-    if (parsed.success) {
-      parsed.data.forEach(add);
-    } else {
-      onWarn(`malformed batch ${key} skipped`);
+    try {
+      const parsed = readingsArraySchema.safeParse(JSON.parse(object.body));
+      if (parsed.success) {
+        parsed.data.forEach(add);
+      } else {
+        onWarn(`malformed batch ${key} skipped`);
+      }
+    } catch (error) {
+      // A corrupt object must not crash the regenerator (Council r=1).
+      onWarn(`unparseable batch ${key} skipped: ${String(error)}`);
     }
   }
   return [...byKey.values()];
@@ -260,42 +270,61 @@ export async function regenerateDerivedR2(
  */
 export async function reRenderFromRawR2(
   store: ObjectStore,
-  now: Date
+  now: Date,
+  maxRetries = 3
 ): Promise<{incidents: number; maintenance: number}> {
   const rawKeys = await store.list(`${V1}/raw/`);
   const raws = new Map<number, string>();
   for (const key of rawKeys) {
     const object = await store.get(key);
     if (!object) continue;
-    const parsed = rawIncidentBodySchema.safeParse(JSON.parse(object.body));
-    if (parsed.success) raws.set(parsed.data.issueNumber, parsed.data.bodyMarkdown);
+    try {
+      const parsed = rawIncidentBodySchema.safeParse(JSON.parse(object.body));
+      if (parsed.success) raws.set(parsed.data.issueNumber, parsed.data.bodyMarkdown);
+    } catch {
+      // A corrupt raw object must not abort the runbook (Council r=1).
+    }
   }
 
-  const incidentsObj = await store.get(`${V1}/inputs/incidents.json`);
-  const maintenanceObj = await store.get(`${V1}/inputs/maintenance.json`);
-  const incidents = incidentsObj ? incidentsFileSchema.parse(JSON.parse(incidentsObj.body)) : [];
-  const maintenance = maintenanceObj
-    ? maintenanceFileSchema.parse(JSON.parse(maintenanceObj.body))
-    : [];
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const incidentsObj = await store.get(`${V1}/inputs/incidents.json`);
+    const maintenanceObj = await store.get(`${V1}/inputs/maintenance.json`);
+    const incidents = incidentsObj ? incidentsFileSchema.parse(JSON.parse(incidentsObj.body)) : [];
+    const maintenance = maintenanceObj
+      ? maintenanceFileSchema.parse(JSON.parse(maintenanceObj.body))
+      : [];
 
-  let incidentCount = 0;
-  const nextIncidents = incidents.map(incident => {
-    const raw = raws.get(incident.issueNumber);
-    if (raw === undefined) return incident;
-    incidentCount++;
-    return {...incident, bodyHtml: renderMarkdownToSafeHtml(raw)};
-  });
+    let incidentCount = 0;
+    const nextIncidents = incidents.map(incident => {
+      const raw = raws.get(incident.issueNumber);
+      if (raw === undefined) return incident;
+      incidentCount++;
+      return {...incident, bodyHtml: renderMarkdownToSafeHtml(raw)};
+    });
 
-  let maintenanceCount = 0;
-  const nextMaintenance = maintenance.map(window => {
-    const raw = raws.get(window.issueNumber);
-    if (raw === undefined) return window;
-    maintenanceCount++;
-    const {content} = extractFrontmatter(raw, now);
-    return {...window, bodyHtml: renderMarkdownToSafeHtml(content)};
-  });
+    let maintenanceCount = 0;
+    const nextMaintenance = maintenance.map(window => {
+      const raw = raws.get(window.issueNumber);
+      if (raw === undefined) return window;
+      maintenanceCount++;
+      const {content} = extractFrontmatter(raw, now);
+      return {...window, bodyHtml: renderMarkdownToSafeHtml(content)};
+    });
 
-  await store.put(`${V1}/inputs/incidents.json`, JSON.stringify(nextIncidents));
-  await store.put(`${V1}/inputs/maintenance.json`, JSON.stringify(nextMaintenance));
-  return {incidents: incidentCount, maintenance: maintenanceCount};
+    try {
+      // Conditional on the versions we read — a concurrent incident
+      // sync must not be clobbered by the runbook (Council r=1); lose
+      // the race, re-read, re-render.
+      await store.put(`${V1}/inputs/incidents.json`, JSON.stringify(nextIncidents), {
+        ...(incidentsObj ? {ifMatch: incidentsObj.etag} : {ifNoneMatch: '*' as const}),
+      });
+      await store.put(`${V1}/inputs/maintenance.json`, JSON.stringify(nextMaintenance), {
+        ...(maintenanceObj ? {ifMatch: maintenanceObj.etag} : {ifNoneMatch: '*' as const}),
+      });
+      return {incidents: incidentCount, maintenance: maintenanceCount};
+    } catch (error) {
+      if (!(error instanceof PreconditionFailedError)) throw error;
+    }
+  }
+  throw new Error(`re-render commit failed after ${maxRetries} attempts (write contention)`);
 }

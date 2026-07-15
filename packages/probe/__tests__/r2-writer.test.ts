@@ -193,6 +193,28 @@ describe('regenerateDerivedR2 — §3 write-order consistency (council condition
     expect(api.days.length).toBeGreaterThanOrEqual(2); // both days present
   });
 
+  it('a corrupt batch object never crashes the regenerator (Council r=1)', async () => {
+    const store = new MemoryObjectStore();
+    await seedBatch(store, [reading('api', 1000)]);
+    await store.put('status/v1/readings/2026-07-15T11-00-00-000Z-bad.json', 'NOT JSON');
+    const warnings: string[] = [];
+    await regenerateDerivedR2(store, {...REGEN_OPTS, onWarn: w => warnings.push(w)});
+    const summary = parseSummary(JSON.parse((await store.get('status/v1/summary.json'))!.body));
+    expect(summary.entities.find(e => e.name === 'api')!.status).toBe('up');
+    expect(warnings.some(w => /unparseable batch/.test(w))).toBe(true);
+  });
+
+  it('skips batch objects older than the rollup window without fetching them', async () => {
+    const store = new MemoryObjectStore();
+    await seedBatch(store, [reading('api', 1000)]);
+    // A compaction-orphaned stray from far outside the window:
+    await store.put('status/v1/readings/2020-01-01T00-00-00-000Z-old.json', '[]');
+    store.ops.length = 0;
+    await regenerateDerivedR2(store, REGEN_OPTS);
+    const gets = store.ops.filter(o => o.op === 'get').map(o => o.key);
+    expect(gets).not.toContain('status/v1/readings/2020-01-01T00-00-00-000Z-old.json');
+  });
+
   it('dedupes readings present in BOTH an archive and an uncompacted batch (compaction window)', async () => {
     const store = new MemoryObjectStore();
     const r = reading('api', 1000);
