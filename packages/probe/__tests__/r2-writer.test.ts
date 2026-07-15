@@ -356,6 +356,29 @@ describe('CLI routing for the r2 data plane', () => {
   });
 });
 
+describe('reRenderFromRawR2 hardening (Council r=2)', () => {
+  it('aborts with an actionable error on malformed inputs instead of wiping them', async () => {
+    const store = new MemoryObjectStore();
+    await store.put('status/v1/inputs/incidents.json', 'NOT JSON');
+    await expect(reRenderFromRawR2(store, new Date(NOW))).rejects.toThrow(/refusing to re-render/);
+    // The corrupt object is untouched — nothing was rewritten.
+    expect((await store.get('status/v1/inputs/incidents.json'))!.body).toBe('NOT JSON');
+  });
+
+  it('writes maintenance before incidents (incidents = runbook commit point)', async () => {
+    const store = new MemoryObjectStore();
+    await store.put('status/v1/inputs/incidents.json', '[]');
+    await store.put('status/v1/inputs/maintenance.json', '[]');
+    store.ops.length = 0;
+    await reRenderFromRawR2(store, new Date(NOW));
+    const puts = store.ops.filter(o => o.op === 'put').map(o => o.key);
+    expect(puts).toEqual([
+      'status/v1/inputs/maintenance.json',
+      'status/v1/inputs/incidents.json',
+    ]);
+  });
+});
+
 describe('normalizeBaseUrl (Council PR #105 note)', () => {
   it('strips trailing slashes so URL joins are unambiguous', () => {
     expect(normalizeBaseUrl('https://x.r2.cloudflarestorage.com/')).toBe(

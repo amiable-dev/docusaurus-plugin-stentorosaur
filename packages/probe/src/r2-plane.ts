@@ -129,10 +129,15 @@ async function readAllReadings(
   // embed their run timestamp, so anything older than the rollup window
   // (e.g. compaction-orphaned strays) is skipped without a GET.
   const batchKeys = await store.list(`${V1}/readings/`);
-  const cutoffMs = nowMs - windowDays * DAY_MS;
+  // Batches only exist inside the compaction buffer (today + yesterday
+  // + the 1h fence, ticket #101); anything older is a compaction
+  // orphan whose day is already archived — skip without a GET. This is
+  // the ≤-one-day-of-runs bound from the header, NOT windowDays
+  // (Council r=2).
+  const batchCutoffMs = nowMs - 2 * DAY_MS;
   for (const key of batchKeys) {
     const stamp = key.match(/readings\/(\d{4}-\d{2}-\d{2})T/)?.[1];
-    if (stamp && Date.parse(`${stamp}T00:00:00Z`) < cutoffMs - DAY_MS) continue;
+    if (stamp && Date.parse(`${stamp}T00:00:00Z`) < batchCutoffMs) continue;
     const object = await store.get(key);
     if (!object) continue;
     try {
@@ -286,13 +291,28 @@ export async function reRenderFromRawR2(
     }
   }
 
+  const parseInputsOrAbort = <T>(
+    object: {body: string} | null,
+    schema: z.ZodType<T[]>,
+    key: string
+  ): T[] => {
+    if (!object) return [];
+    try {
+      return schema.parse(JSON.parse(object.body));
+    } catch (error) {
+      // ABORT, do not fall back (Council r=2): the runbook REWRITES the
+      // inputs — proceeding with [] would silently wipe real incidents.
+      throw new Error(
+        `refusing to re-render: ${key} is malformed (fix or delete it first): ${String(error).slice(0, 200)}`
+      );
+    }
+  };
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const incidentsObj = await store.get(`${V1}/inputs/incidents.json`);
     const maintenanceObj = await store.get(`${V1}/inputs/maintenance.json`);
-    const incidents = incidentsObj ? incidentsFileSchema.parse(JSON.parse(incidentsObj.body)) : [];
-    const maintenance = maintenanceObj
-      ? maintenanceFileSchema.parse(JSON.parse(maintenanceObj.body))
-      : [];
+    const incidents = parseInputsOrAbort(incidentsObj, incidentsFileSchema, `${V1}/inputs/incidents.json`);
+    const maintenance = parseInputsOrAbort(maintenanceObj, maintenanceFileSchema, `${V1}/inputs/maintenance.json`);
 
     let incidentCount = 0;
     const nextIncidents = incidents.map(incident => {
@@ -313,18 +333,24 @@ export async function reRenderFromRawR2(
 
     try {
       // Conditional on the versions we read — a concurrent incident
-      // sync must not be clobbered by the runbook (Council r=1); lose
-      // the race, re-read, re-render.
-      await store.put(`${V1}/inputs/incidents.json`, JSON.stringify(nextIncidents), {
-        ...(incidentsObj ? {ifMatch: incidentsObj.etag} : {ifNoneMatch: '*' as const}),
-      });
+      // sync must not be clobbered (Council r=1). Two objects cannot
+      // commit atomically (Council r=2): maintenance is written FIRST
+      // and incidents LAST, and the whole runbook is idempotent — if
+      // retries exhaust between the two writes, simply re-running
+      // converges (each attempt re-reads both and re-renders from the
+      // immutable raw/ set).
       await store.put(`${V1}/inputs/maintenance.json`, JSON.stringify(nextMaintenance), {
         ...(maintenanceObj ? {ifMatch: maintenanceObj.etag} : {ifNoneMatch: '*' as const}),
+      });
+      await store.put(`${V1}/inputs/incidents.json`, JSON.stringify(nextIncidents), {
+        ...(incidentsObj ? {ifMatch: incidentsObj.etag} : {ifNoneMatch: '*' as const}),
       });
       return {incidents: incidentCount, maintenance: maintenanceCount};
     } catch (error) {
       if (!(error instanceof PreconditionFailedError)) throw error;
     }
   }
-  throw new Error(`re-render commit failed after ${maxRetries} attempts (write contention)`);
+  throw new Error(
+    `re-render commit failed after ${maxRetries} attempts (write contention) — the runbook is idempotent, re-run to converge`
+  );
 }
