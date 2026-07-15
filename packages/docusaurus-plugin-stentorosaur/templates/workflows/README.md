@@ -2,7 +2,18 @@
 
 This directory contains GitHub Actions workflow templates for monitoring your services and updating your status page.
 
-## Architecture Overview
+> ⚠️ **Start here if you're on plugin ≥ 1.0** (the current release): skip
+> straight to [status/v1 templates](#statusv1-templates-adr-005--plugin--022)
+> below. Everything between here and that section describes the
+> **pre-1.0 architecture** (`monitor-systems.yml`, `current.json`,
+> `.monitorrc.json`) — kept only for historical reference and for
+> anyone still mid-migration. It is superseded by ADR-005 (the
+> single `status/v1` contract) and, for zero-Actions deployments, by
+> ADR-006 Profile C below. New setups should use the `*-v1.yml`
+> templates and `stentorosaur.config.js`, not the workflows described
+> immediately below.
+
+## Architecture Overview (legacy, pre-1.0)
 
 The optimized architecture decouples **data collection** from **site builds**, enabling 5-minute monitoring at low cost:
 
