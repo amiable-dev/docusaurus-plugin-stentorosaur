@@ -44,7 +44,7 @@ class FakeR2Bucket implements R2BucketLike {
     }
     const etag = `"b${++this.etagCounter}"`;
     this.objects.set(key, {body: value, etag});
-    return {};
+    return {httpEtag: etag, text: async () => value};
   }
 
   async list({prefix, cursor}: {prefix: string; cursor?: string}) {
@@ -145,6 +145,10 @@ describe('runWorkerProbeR2 (Profile C probe cycle)', () => {
 
     await expect(
       runWorkerProbeR2({...r2Env(bucket), ENTITIES: '[{"nope": true}]'}, {fetchImpl, now: NOW})
+    ).rejects.toThrow(/ENTITIES/);
+
+    await expect(
+      runWorkerProbeR2({...r2Env(bucket), ENTITIES: 'not valid json'}, {fetchImpl, now: NOW})
     ).rejects.toThrow(/ENTITIES/);
   });
 });

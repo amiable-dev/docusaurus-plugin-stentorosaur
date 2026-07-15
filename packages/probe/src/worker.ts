@@ -63,7 +63,7 @@ export interface R2BucketLike {
       onlyIf?: {etagMatches?: string; etagDoesNotMatch?: string};
       httpMetadata?: {contentType?: string};
     }
-  ): Promise<unknown | null>;
+  ): Promise<R2ObjectLike | null>;
   list(options: {
     prefix: string;
     cursor?: string;
@@ -94,8 +94,7 @@ export class BindingObjectStore implements ObjectStore {
       httpMetadata: {contentType: options.contentType ?? 'application/json'},
     });
     if (result === null) throw new PreconditionFailedError(key);
-    const written = await this.bucket.get(key);
-    return {etag: written?.httpEtag ?? ''};
+    return {etag: result.httpEtag};
   }
 
   async list(prefix: string): Promise<string[]> {
@@ -200,11 +199,16 @@ export interface WorkerProbeResult {
 
 function entitiesOf(env: WorkerEnv, targets: CheckTarget[]): EntityRef[] {
   if (env.ENTITIES) {
-    const parsed = JSON.parse(env.ENTITIES) as EntityRef[];
-    if (!Array.isArray(parsed) || parsed.some(e => !e?.name || !e?.type)) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(env.ENTITIES);
+    } catch {
       throw new Error('ENTITIES must be a JSON array of {name, type, displayName?}');
     }
-    return parsed;
+    if (!Array.isArray(parsed) || (parsed as EntityRef[]).some(e => !e?.name || !e?.type)) {
+      throw new Error('ENTITIES must be a JSON array of {name, type, displayName?}');
+    }
+    return parsed as EntityRef[];
   }
   return targets.map(t => ({name: t.system, type: 'system' as const}));
 }
