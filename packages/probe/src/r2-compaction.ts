@@ -89,8 +89,9 @@ interface DayPlan {
  * lines are PRESERVED verbatim (compaction never destroys data), then
  * the (svc, t)-deduped union of archive readings and batch readings —
  * archive wins on collision — sorted by (t, svc), one JSON per line.
+ * Shared with the plane migration (ticket #102): merging is merging.
  */
-function mergeArchiveBytes(
+export function mergeArchiveBytes(
   existingBody: string | null,
   batchReadings: CompactReading[]
 ): string {
