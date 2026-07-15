@@ -361,7 +361,14 @@ const worker = {
       // Within Profile C the firing cron selects the pass: the trigger
       // matching COMPACTION_CRON compacts, every other trigger probes.
       if (env.STATUS_BUCKET) {
-        if (env.COMPACTION_CRON && cron === env.COMPACTION_CRON) {
+        const pass =
+          env.COMPACTION_CRON && cron === env.COMPACTION_CRON ? 'compaction' : 'probe';
+        // One line per run so a COMPACTION_CRON/[triggers] mismatch is
+        // visible in `wrangler tail`: a misconfigured compaction cron
+        // shows up as this log never saying 'compaction' (Copilot PR
+        // #108) — the silent fallback is otherwise probe-shaped.
+        console.log(`stentorosaur scheduled: ${pass} pass (cron ${cron ?? 'unknown'})`);
+        if (pass === 'compaction') {
           await runWorkerCompactionR2(env);
         } else {
           await runWorkerProbeR2(env);

@@ -189,7 +189,7 @@ describe('stentorosaur doctor (r2 mode, ticket #101)', () => {
     }
   });
 
-  it('reports compaction healthy when lastSuccess is fresh', async () => {
+  it('reports compaction healthy when lastSuccess is fresh, and surfaces quarantined batches', async () => {
     fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), R2_CONFIG);
     mockPlane({
       status: 200,
@@ -199,14 +199,18 @@ describe('stentorosaur doctor (r2 mode, ticket #101)', () => {
         lastSuccess: new Date().toISOString(),
         archivedDays: ['2026-07-13'],
         deletedBatches: 288,
+        batchesLeft: 2,
       }),
     });
     const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       expect(await main(['doctor', '--config', tmp])).toBe(0);
       expect(logSpy.mock.calls.flat().join(' ')).toMatch(/compaction healthy/);
+      expect(warnSpy.mock.calls.flat().join(' ')).toMatch(/2 quarantined batch object/);
     } finally {
       logSpy.mockRestore();
+      warnSpy.mockRestore();
     }
   });
 

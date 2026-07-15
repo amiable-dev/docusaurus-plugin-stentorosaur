@@ -269,6 +269,9 @@ describe('malformed inputs are quarantined, never destroyed', () => {
     expect(await store.get(good)).toBeNull();
     expect(await store.get(badKey)).not.toBeNull();
     expect((await store.get(ARCHIVE_0713))!.body.trim().split('\n')).toHaveLength(1);
+    // Quarantine count is PERSISTED so doctor can see it without
+    // tailing Worker logs (Copilot PR #108).
+    expect((await readCompactionState(store))?.batchesLeft).toBe(1);
   });
 });
 

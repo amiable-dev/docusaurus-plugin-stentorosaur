@@ -43,6 +43,10 @@ export const compactionStateSchema = z.object({
   lastSuccess: z.string().nullable(),
   archivedDays: z.array(z.string()),
   deletedBatches: z.number(),
+  /** Quarantined batches (malformed key/content) still in readings/ —
+   * persisted so doctor can spot accumulating garbage without
+   * `wrangler tail` (Copilot PR #108). Defaulted for older states. */
+  batchesLeft: z.number().default(0),
 });
 export type CompactionState = z.infer<typeof compactionStateSchema>;
 
@@ -232,6 +236,7 @@ export async function compactReadingsR2(
     lastSuccess: result.failedDays.length === 0 ? nowIso : (priorState?.lastSuccess ?? null),
     archivedDays: result.archivedDays,
     deletedBatches: result.deletedBatches,
+    batchesLeft: result.batchesLeft,
   };
   await store.put(COMPACTION_STATE_KEY, JSON.stringify(state));
 

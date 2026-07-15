@@ -279,6 +279,9 @@ async function cmdDoctor(options: CliOptions): Promise<number> {
         } else {
           ok(`compaction healthy (last success ${state.lastSuccess})`);
         }
+        if (state.batchesLeft > 0) {
+          console.warn(`  ⚠ ${state.batchesLeft} quarantined batch object(s) in readings/ (malformed key or content) — inspect and remove manually`);
+        }
       }
     } catch (error) {
       console.warn(`  ⚠ compaction-state unreachable: ${error instanceof Error ? error.message : String(error)}`);
