@@ -325,7 +325,9 @@ export async function migrateR2ToGit(
     const mergedBody = mergeArchiveBytes(existing, readings);
     if (mergedBody !== (existing ?? '')) {
       if (!report.created.includes(key) && !report.merged.includes(key)) {
-        report.merged.push(key);
+        // A fold-only day (no prior file, no copy-phase entry) is a
+        // CREATE, not a merge (Council PR #109 polish).
+        (existing === null ? report.created : report.merged).push(key);
       }
       if (!dryRun) await writeFile(key, mergedBody);
     }

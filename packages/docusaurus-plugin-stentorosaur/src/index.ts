@@ -172,12 +172,20 @@ export default async function pluginStatus(
       // Per-entity history pages (/status/history/<slug>) — deep-linkable
       // charts over status/v1/entities/<slug>.json. PerformanceMetrics
       // links here; the routes were dropped by mistake at the #77
-      // cutover (v1.0.1).
+      // cutover (v1.0.1). The runtime dataUrl rides along so the page
+      // fetches details from the same base the summary came from —
+      // Profile C builds have NO local snapshot to fall back on
+      // (ticket #103).
+      const historyConfigId = await createData(
+        'history-config.json',
+        JSON.stringify({dataUrl: content.dataUrl})
+      );
       for (const item of content.items) {
         addRoute({
           path: normalizeUrl([baseUrl, 'status', 'history', entitySlug(item.name)]),
           component: '@theme/StatusHistory',
           exact: true,
+          modules: {config: historyConfigId},
         });
       }
     },

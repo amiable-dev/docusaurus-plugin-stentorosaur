@@ -12,15 +12,21 @@ import UptimeChart from '../UptimeChart';
 import SLIChart from '../SLIChart';
 import type { SystemStatusFile } from '../../types';
 import { parseEntityDetail } from '@stentorosaur/core';
-import { detailToSystemFile } from '../StatusPage';
+import { detailToSystemFile, deriveV1BaseUrl } from '../StatusPage';
 import styles from './styles.module.css';
 
 export interface Props {
   readonly dataPath?: string;
+  /** Route-injected {dataUrl} — the runtime summary URL the plugin
+   * resolved at build time (ticket #103: on Profile C there is no
+   * local snapshot in the build, so the entity detail must be fetched
+   * from the dataUrl's directory, exactly like the drill-down). */
+  readonly config?: {readonly dataUrl?: string};
 }
 
 export default function StatusHistory({
   dataPath = 'status-data',
+  config,
 }: Props = {}): JSX.Element {
   const [systemData, setSystemData] = useState<SystemStatusFile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,8 +44,11 @@ export default function StatusHistory({
           throw new Error('System name not found in URL');
         }
 
-        // v1 (ADR-005): per-entity detail from the published snapshot.
-        const response = await fetch(`/${dataPath}/status/v1/entities/${systemName}.json`);
+        // v1 (ADR-005): per-entity detail from the dataUrl's directory
+        // (works on snapshot deployments AND Profile C serving routes);
+        // falls back to the published-snapshot path.
+        const v1Base = deriveV1BaseUrl(config?.dataUrl) ?? `/${dataPath}/status/v1`;
+        const response = await fetch(`${v1Base}/entities/${systemName}.json`);
         if (!response.ok) {
           throw new Error(`Failed to load data: ${response.statusText}`);
         }
@@ -53,7 +62,7 @@ export default function StatusHistory({
     }
 
     loadSystemData();
-  }, [dataPath]);
+  }, [dataPath, config]);
 
   if (loading) {
     return (

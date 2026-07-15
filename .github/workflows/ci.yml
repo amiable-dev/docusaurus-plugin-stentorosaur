@@ -69,10 +69,17 @@ jobs:
             packages/docusaurus-plugin-stentorosaur/templates/workflows/*.yml
 
   e2e:
-    name: Pipeline e2e (fixture site)
+    name: Pipeline e2e (fixture site, ${{ matrix.profile }})
     runs-on: ubuntu-latest
     # Council follow-up (PR #81): bound a hung docusaurus build
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # git = ADR-005 data-branch profile; r2 = ADR-006 Profile C
+        # (Worker probe → bucket → serveStatusV1 route). Both legs run
+        # the SAME Playwright spec — identical DOM invariants.
+        profile: [git, r2]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -92,15 +99,16 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Run pipeline e2e
-        # monitor.js → mock endpoints → status-data → docusaurus build →
-        # Playwright DOM assertions (ADR-005 Phase 0 regression harness)
-        run: npm run test:e2e
+      - name: Run pipeline e2e (${{ matrix.profile }})
+        # probe engine → mock endpoints → data plane → docusaurus build →
+        # Playwright DOM assertions (ADR-005 Phase 0 regression harness;
+        # ADR-006 Profile C leg on the r2 profile)
+        run: ${{ matrix.profile == 'r2' && 'npm run test:e2e:r2' || 'npm run test:e2e' }}
 
       - name: Upload Playwright report on failure
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.profile }}
           path: playwright-report/
           retention-days: 7
