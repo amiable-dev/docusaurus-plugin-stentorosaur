@@ -81,11 +81,6 @@ export interface UpdateIncidentInputsOptions {
   now: Date;
 }
 
-/**
- * Transform fetched issues into on-branch inputs. Pure orchestration of
- * core transforms plus file writes — callable from tests with fixture
- * issue payloads (no network).
- */
 /** Pure transform half — shared by the git and r2 writers (#99). */
 export function transformIssueInputs(
   issues: IssuePayload[],
