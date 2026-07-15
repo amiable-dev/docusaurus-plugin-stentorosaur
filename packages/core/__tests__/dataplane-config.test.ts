@@ -62,6 +62,20 @@ describe('dataPlane config block (ADR-006 §6)', () => {
     ).toThrow(/https/);
   });
 
+  it('rejects a non-https endpoint (credentials travel over it)', () => {
+    expect(() =>
+      parseConfig({
+        ...BASE,
+        dataPlane: {
+          kind: 'r2',
+          bucket: 'status',
+          endpoint: 'http://a.r2.cloudflarestorage.com',
+          publicBaseUrl: 'https://s.example.com',
+        },
+      })
+    ).toThrow(/https/);
+  });
+
   it('rejects an unknown kind', () => {
     expect(() => parseConfig({...BASE, dataPlane: {kind: 's3'}})).toThrow();
   });

@@ -68,8 +68,9 @@ Absent means the git data branch (Profiles A/B) exactly as documented
 above. Opting into the R2 object-storage profile:
 
 ```js
+// absent → the whole block defaults to {kind: 'git'}
 dataPlane: {
-  kind: 'r2',                 // default: 'git'
+  kind: 'r2',
   bucket: 'status',
   endpoint: 'https://<account>.r2.cloudflarestorage.com', // S3 API (CLI writes)
   publicBaseUrl: 'https://status.example.com',            // what dataUrl points at (https only)

@@ -41,8 +41,14 @@ export const dataPlaneSchema = z
         kind: z.literal('r2'),
         /** R2 bucket name */
         bucket: z.string().min(1),
-        /** S3-compatible API endpoint (CLI writes) */
-        endpoint: z.string().url(),
+        /** S3-compatible API endpoint (CLI writes) — https only:
+         * R2 credentials travel over it (Copilot PR #105 r=1) */
+        endpoint: z
+          .string()
+          .url()
+          .refine(u => u.startsWith('https://'), {
+            message: 'endpoint must be https (credentials travel over it)',
+          }),
         /** Public base the plugin's dataUrl points at — the client
          * polls it, so https only (ADR-006 §2) */
         publicBaseUrl: z
@@ -86,6 +92,7 @@ export const stentorosaurConfigSchema = z.object({
     .optional(),
 });
 
+export type DataPlane = z.infer<typeof dataPlaneSchema>;
 export type StentorosaurConfig = z.infer<typeof stentorosaurConfigSchema>;
 export type StentorosaurConfigInput = z.input<typeof stentorosaurConfigSchema>;
 
