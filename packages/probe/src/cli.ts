@@ -24,9 +24,12 @@ import type {CheckTarget} from './check';
 import {pushWithRegenerateRetry} from './git-writer';
 import {regenerateDerived} from './regenerate';
 import {reRenderFromRaw} from './regenerate-from-raw';
-import {fetchStatusIssues, writeIssueInputs} from './update-incidents';
+import {fetchStatusIssues, transformIssueInputs, writeIssueInputs} from './update-incidents';
 import {migrateHistoricalData, planMigration} from './migrate';
 import type {MigrationReport} from './migrate';
+import {R2ObjectStore} from './object-store';
+import type {ObjectStore} from './object-store';
+import {regenerateDerivedR2, reRenderFromRawR2, writeReadingsBatch} from './r2-plane';
 import {parseProbeDispatch, parseSummary} from '@stentorosaur/core';
 import type {CompactReading, StentorosaurConfig} from '@stentorosaur/core';
 
@@ -101,6 +104,55 @@ function regenOptions(config: StentorosaurConfig, generatedAt: string) {
     siteTitle: config.site.title,
     siteUrl: config.site.url ?? `https://github.com/${config.owner}/${config.repo}`,
   };
+}
+
+/** Test seam: cli tests inject a MemoryObjectStore here. */
+export let makeObjectStore = (config: StentorosaurConfig): ObjectStore => {
+  const plane = config.dataPlane;
+  if (plane.kind !== 'r2') throw new Error('makeObjectStore called for a non-r2 data plane');
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error(
+      'dataPlane.kind is r2 but R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY are not set'
+    );
+  }
+  return new R2ObjectStore({
+    endpoint: plane.endpoint,
+    bucket: plane.bucket,
+    accessKeyId,
+    secretAccessKey,
+  });
+};
+
+export function setObjectStoreFactory(factory: typeof makeObjectStore): void {
+  makeObjectStore = factory;
+}
+
+/** The r2-plane counterpart of withDataBranch: one clock read, batch
+ * write, then the §3 ordered regenerate with summary-last commit. */
+async function withR2Plane(
+  config: StentorosaurConfig,
+  writeInputs: (store: ObjectStore, generatedAt: string) => Promise<void>
+): Promise<void> {
+  const store = makeObjectStore(config);
+  const generatedAt = new Date().toISOString();
+  await writeInputs(store, generatedAt);
+  const result = await regenerateDerivedR2(store, {
+    generatedAt,
+    generatedBy: 'stentorosaur-cli',
+    entities: config.entities.map(({name, type, displayName}) => ({
+      name,
+      type,
+      ...(displayName ? {displayName} : {}),
+    })),
+    siteTitle: config.site.title,
+    siteUrl: config.site.url ?? `https://github.com/${config.owner}/${config.repo}`,
+    onWarn: message => console.warn(`  ⚠ ${message}`),
+  });
+  if (result.attempts > 1) {
+    console.log(`  summary committed after ${result.attempts} attempts`);
+  }
 }
 
 const CONFIG_TEMPLATE = `// stentorosaur.config.js — single source of truth for the probe, the
@@ -258,9 +310,15 @@ async function cmdProbe(options: CliOptions): Promise<number> {
   }
   const readings = await runChecks(targets);
 
-  await withDataBranch(options, config, `probe: ${readings.length} checks`, async (dir, generatedAt) => {
-    writeReadings(dir, readings, generatedAt);
-  });
+  if (config.dataPlane.kind === 'r2') {
+    await withR2Plane(config, async (store, generatedAt) => {
+      await writeReadingsBatch(store, readings, generatedAt, Math.random().toString(36).slice(2, 8));
+    });
+  } else {
+    await withDataBranch(options, config, `probe: ${readings.length} checks`, async (dir, generatedAt) => {
+      writeReadings(dir, readings, generatedAt);
+    });
+  }
   for (const reading of readings) {
     console.log(`  ${reading.state === 'up' ? '✓' : '✗'} ${reading.svc}: ${reading.state} (${reading.code} in ${reading.lat}ms)`);
   }
@@ -283,20 +341,48 @@ async function cmdUpdateIncidents(options: CliOptions): Promise<number> {
   });
 
   let counts = {incidents: 0, maintenance: 0, skipped: 0};
-  await withDataBranch(options, config, `issues: sync ${issues.length} issues`, async (dir, generatedAt) => {
-    counts = writeIssueInputs(dir, issues, {
-      entities: config.entities,
-      maintenanceLabels: config.incidents.maintenanceLabels,
-      labelScheme: config.labelScheme,
-      now: new Date(generatedAt),
+  if (config.dataPlane.kind === 'r2') {
+    await withR2Plane(config, async (store, generatedAt) => {
+      const transformed = transformIssueInputs(issues, {
+        entities: config.entities,
+        maintenanceLabels: config.incidents.maintenanceLabels,
+        labelScheme: config.labelScheme,
+        now: new Date(generatedAt),
+      });
+      for (const raw of transformed.raws) {
+        await store.put(`status/v1/raw/${raw.issueNumber}.json`, JSON.stringify(raw));
+      }
+      await store.put('status/v1/inputs/incidents.json', JSON.stringify(transformed.incidents));
+      await store.put('status/v1/inputs/maintenance.json', JSON.stringify(transformed.maintenance));
+      counts = {
+        incidents: transformed.incidents.length,
+        maintenance: transformed.maintenance.length,
+        skipped: transformed.skipped,
+      };
     });
-  });
+  } else {
+    await withDataBranch(options, config, `issues: sync ${issues.length} issues`, async (dir, generatedAt) => {
+      counts = writeIssueInputs(dir, issues, {
+        entities: config.entities,
+        maintenanceLabels: config.incidents.maintenanceLabels,
+        labelScheme: config.labelScheme,
+        now: new Date(generatedAt),
+      });
+    });
+  }
   console.log(`synced ${counts.incidents} incidents, ${counts.maintenance} maintenance windows (${counts.skipped} skipped)`);
   return 0;
 }
 
 async function cmdRegenerate(options: CliOptions): Promise<number> {
   const config = await loadConfig(options.config);
+  if (config.dataPlane.kind === 'r2') {
+    await withR2Plane(config, async (store, generatedAt) => {
+      const counts = await reRenderFromRawR2(store, new Date(generatedAt));
+      console.log(`re-rendered ${counts.incidents} incident and ${counts.maintenance} maintenance bodies from raw/`);
+    });
+    return 0;
+  }
   await withDataBranch(options, config, 'regenerate: re-render from raw provenance (§7)', async (dir, generatedAt) => {
     const counts = reRenderFromRaw(dir, new Date(generatedAt));
     console.log(`re-rendered ${counts.incidents} incident and ${counts.maintenance} maintenance bodies from raw/`);

@@ -15,4 +15,6 @@ export * from './compact';
 export * from './config-loader';
 export * from './regenerate-from-raw';
 export * from './migrate';
+export * from './object-store';
+export * from './r2-plane';
 export * from './cli';

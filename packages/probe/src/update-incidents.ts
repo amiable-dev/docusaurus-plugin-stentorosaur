@@ -6,7 +6,13 @@
 
 import {LabelParser, isMaintenanceIssue, issueToIncidentV1} from '@stentorosaur/core';
 import {issueToMaintenanceV1, renderMarkdownToSafeHtml} from '@stentorosaur/core/server';
-import type {EntityRef, LabelScheme} from '@stentorosaur/core';
+import type {
+  EntityRef,
+  LabelScheme,
+  MaintenanceWindowV1,
+  RawIncidentBody,
+  StatusIncidentV1,
+} from '@stentorosaur/core';
 import type {IssuePayload} from '@stentorosaur/core';
 import {writeIncidentInputs, writeRawIssueBody} from './inputs';
 
@@ -80,21 +86,27 @@ export interface UpdateIncidentInputsOptions {
  * core transforms plus file writes — callable from tests with fixture
  * issue payloads (no network).
  */
-export function writeIssueInputs(
-  rootDir: string,
+/** Pure transform half — shared by the git and r2 writers (#99). */
+export function transformIssueInputs(
   issues: IssuePayload[],
   options: UpdateIncidentInputsOptions
-): {incidents: number; maintenance: number; skipped: number} {
+): {
+  incidents: StatusIncidentV1[];
+  maintenance: MaintenanceWindowV1[];
+  raws: RawIncidentBody[];
+  skipped: number;
+} {
   const {entities, maintenanceLabels, labelScheme, now} = options;
   const labelParser = new LabelParser(labelScheme);
   const ctx = {entities, labelParser, renderHtml: renderMarkdownToSafeHtml};
 
-  const incidents = [];
-  const maintenance = [];
+  const incidents: StatusIncidentV1[] = [];
+  const maintenance: MaintenanceWindowV1[] = [];
+  const raws: RawIncidentBody[] = [];
   let skipped = 0;
 
   for (const issue of issues) {
-    writeRawIssueBody(rootDir, {
+    raws.push({
       schemaVersion: 1,
       issueNumber: issue.number,
       updatedAt: issue.updated_at,
@@ -113,7 +125,18 @@ export function writeIssueInputs(
       incidents.push(issueToIncidentV1(issue, ctx));
     }
   }
+  return {incidents, maintenance, raws, skipped};
+}
 
+export function writeIssueInputs(
+  rootDir: string,
+  issues: IssuePayload[],
+  options: UpdateIncidentInputsOptions
+): {incidents: number; maintenance: number; skipped: number} {
+  const {incidents, maintenance, raws, skipped} = transformIssueInputs(issues, options);
+  for (const raw of raws) {
+    writeRawIssueBody(rootDir, raw);
+  }
   writeIncidentInputs(rootDir, incidents, maintenance);
   return {incidents: incidents.length, maintenance: maintenance.length, skipped};
 }
