@@ -62,6 +62,29 @@ module.exports = {
 };
 ```
 
+### `dataPlane` (optional — ADR-006 Profile C)
+
+Absent means the git data branch (Profiles A/B) exactly as documented
+above. Opting into the R2 object-storage profile:
+
+```js
+dataPlane: {
+  kind: 'r2',                 // default: 'git'
+  bucket: 'status',
+  endpoint: 'https://<account>.r2.cloudflarestorage.com', // S3 API (CLI writes)
+  publicBaseUrl: 'https://status.example.com',            // what dataUrl points at (https only)
+},
+```
+
+All three r2 fields are required together; extra fields on the git
+profile are rejected (typos fail loudly instead of silently keeping
+git). **Budget** (ADR-006 §1): class-A writes/month ≈
+`runs_per_day × (N_entities + 3) × 30` — at 5-min cadence with 10
+entities ≈ 112k (11% of R2's 1M free tier); 1-min cadence with 25
+entities breaches it, which is why unchanged entity details are
+skipped by content hash. Serve `publicBaseUrl` behind a Cloudflare
+custom domain, never bare workers.dev (ADR-006 §2).
+
 Validate any time with `npx stentorosaur doctor`.
 
 ## Plugin options (`docusaurus.config.js`)

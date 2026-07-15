@@ -26,11 +26,43 @@ export const configEntitySchema = z.object({
   probe: probeTargetSchema.optional(),
 });
 
+/**
+ * Data-plane profile selection (ADR-006 §6). Absent → Profile A/B (git
+ * data branch) exactly as before. A discriminated union so the r2
+ * fields are REQUIRED when selected and REJECTED on the git profile —
+ * a typo'd or half-configured profile must fail loudly, never fall
+ * back silently.
+ */
+export const dataPlaneSchema = z
+  .discriminatedUnion('kind', [
+    z.object({kind: z.literal('git')}).strict(),
+    z
+      .object({
+        kind: z.literal('r2'),
+        /** R2 bucket name */
+        bucket: z.string().min(1),
+        /** S3-compatible API endpoint (CLI writes) */
+        endpoint: z.string().url(),
+        /** Public base the plugin's dataUrl points at — the client
+         * polls it, so https only (ADR-006 §2) */
+        publicBaseUrl: z
+          .string()
+          .url()
+          .refine(u => u.startsWith('https://'), {
+            message: 'publicBaseUrl must be https (clients poll it)',
+          }),
+      })
+      .strict(),
+  ])
+  .default({kind: 'git'});
+
 export const stentorosaurConfigSchema = z.object({
   owner: z.string().min(1),
   repo: z.string().min(1),
-  /** Data branch name (default status-data) */
+  /** Data branch name (default status-data) — Profile A/B */
   dataBranch: z.string().min(1).default('status-data'),
+  /** Data-plane profile (ADR-006); default git */
+  dataPlane: dataPlaneSchema,
   entities: z.array(configEntitySchema).min(1),
   incidents: z
     .object({
