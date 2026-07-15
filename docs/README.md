@@ -1,122 +1,34 @@
 # Documentation Index
 
-This directory contains comprehensive documentation for the Docusaurus Status Plugin (Stentorosaur).
+Documentation for the Stentorosaur plugin, v1 (ADR-005 architecture).
+A hosted doc site is tracked in
+[#95](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues/95).
 
-## Quick Access
+## Start here
 
-**New to the project?** Start with the root-level documentation:
-- [README.md](../README.md) - Project overview and installation
-- [QUICKSTART.md](../QUICKSTART.md) - Get started in 5 minutes
-- [CONTRIBUTING.md](../CONTRIBUTING.md) - How to contribute
-- [CHANGELOG.md](../CHANGELOG.md) - Version history
+- [README](../packages/docusaurus-plugin-stentorosaur/README.md) — overview, features, options
+- [QUICKSTART](../QUICKSTART.md) — new site in ~10 minutes
+- [MIGRATION_1.0](./setup/MIGRATION_1.0.md) — upgrading from 0.x (history preserved)
+- [CHANGELOG](../CHANGELOG.md)
 
-## Directory Structure
+## Reference
 
-### `/architecture` - System Design Documentation
+- [CONFIGURATION](./reference/CONFIGURATION.md) — `stentorosaur.config.js` + plugin options
+- [DATA_PLANE](./reference/DATA_PLANE.md) — the `status/v1` contract, CLI, workflows, incident lifecycle
+- [NOTIFICATIONS](./reference/NOTIFICATIONS.md) — the atom feed and its consumers
+- [Workflow templates](../packages/docusaurus-plugin-stentorosaur/templates/workflows/README.md) — serving options, Cloudflare Worker probe, quota math
 
-Understanding how the plugin works internally:
+## Architecture
 
-- [ARCHITECTURE-INDEX.md](./architecture/ARCHITECTURE-INDEX.md) - Overview of architectural documentation
-- [ARCHITECTURE-SUMMARY.md](./architecture/ARCHITECTURE-SUMMARY.md) - High-level system design
-- [ARCHITECTURE-ANALYSIS.md](./architecture/ARCHITECTURE-ANALYSIS.md) - Detailed technical analysis
+- [ADR-005](./adrs/ADR-005-decoupled-data-plane-and-package-split.md) — the v1 architecture (data plane, package split, trust models). Earlier ADRs in [adrs/](./adrs/).
 
-**When to read:** Understanding internal design, making architectural decisions, or contributing significant features.
+## Maintainers
 
-### `/setup` - Advanced Setup Guides
+- [RELEASE_1.0_RUNBOOK](./setup/RELEASE_1.0_RUNBOOK.md) — release steps, npm trusted publishing, 0.x deprecation schedule
+- [PUBLISHING](./setup/PUBLISHING.md) / [TRUSTED_PUBLISHING_SETUP](./setup/TRUSTED_PUBLISHING_SETUP.md)
 
-Step-by-step guides for specific deployment scenarios:
+## Archive
 
-- [ORPHANED_BRANCH_SETUP.md](./setup/ORPHANED_BRANCH_SETUP.md) - Upptime-style status-data branch configuration
-- [TRUSTED_PUBLISHING_SETUP.md](./setup/TRUSTED_PUBLISHING_SETUP.md) - npm OIDC publishing configuration
-- [PUBLISHING.md](./setup/PUBLISHING.md) - Release and publishing workflow
-
-**When to read:** Setting up production deployments, configuring CI/CD, or preparing for release.
-
-### `/reference` - Feature Documentation
-
-Detailed documentation for specific features:
-
-- [CONFIGURATION.md](./reference/CONFIGURATION.md) - Complete configuration options reference
-- [TESTING.md](./reference/TESTING.md) - Testing strategy and guidelines
-- [MONITORING_SYSTEM.md](./reference/MONITORING_SYSTEM.md) - Automated monitoring architecture
-- [NOTIFICATIONS.md](./reference/NOTIFICATIONS.md) - Real-time notification system (Slack, Telegram, Email, Discord)
-
-**When to read:** Implementing specific features, configuring advanced options, or troubleshooting.
-
-### `/archive` - Historical Documentation
-
-Legacy documentation preserved for reference:
-
-- [CODE-REFERENCE-GUIDE.md](./archive/CODE-REFERENCE-GUIDE.md) - Legacy code navigation guide
-- [PROJECT_SUMMARY.md](./archive/PROJECT_SUMMARY.md) - Original project summary (superseded by README)
-- [NOTIFICATION-SYSTEM-SUMMARY.md](./archive/NOTIFICATION-SYSTEM-SUMMARY.md) - Notification implementation notes
-- [UPPTIME_CONFIGURATION_COMPARISON.md](./archive/UPPTIME_CONFIGURATION_COMPARISON.md) - Upptime vs Stentorosaur comparison
-
-**When to read:** Historical context, understanding legacy design decisions, or migration reference.
-
-## Documentation by Use Case
-
-### I want to...
-
-**Get started quickly**
-→ [QUICKSTART.md](../QUICKSTART.md)
-
-**Understand what the plugin does**
-→ [README.md](../README.md)
-
-**Configure all available options**
-→ [docs/reference/CONFIGURATION.md](./reference/CONFIGURATION.md)
-
-**Set up automated monitoring**
-→ [docs/reference/MONITORING_SYSTEM.md](./reference/MONITORING_SYSTEM.md)
-
-**Add notification alerts**
-→ [docs/reference/NOTIFICATIONS.md](./reference/NOTIFICATIONS.md)
-
-**Deploy to production with GitHub Pages**
-→ [README.md#github-actions-setup](../README.md#github-actions-setup)
-
-**Use an orphaned branch for status data**
-→ [docs/setup/ORPHANED_BRANCH_SETUP.md](./setup/ORPHANED_BRANCH_SETUP.md)
-
-**Contribute to the project**
-→ [CONTRIBUTING.md](../CONTRIBUTING.md)
-
-**Understand the architecture**
-→ [docs/architecture/ARCHITECTURE-INDEX.md](./architecture/ARCHITECTURE-INDEX.md)
-
-**Write tests**
-→ [docs/reference/TESTING.md](./reference/TESTING.md)
-
-**Publish a new version**
-→ [docs/setup/PUBLISHING.md](./setup/PUBLISHING.md)
-
-## Maintenance
-
-### Keeping Documentation Current
-
-Documentation should be updated whenever:
-- ✅ New features are added
-- ✅ Configuration options change
-- ✅ Workflows are modified
-- ✅ Breaking changes occur
-- ✅ Best practices evolve
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on updating documentation.
-
-### Documentation Standards
-
-All documentation in this repository follows these standards:
-
-1. **Markdown Format** - GitHub-flavored markdown
-2. **Clear Headers** - Hierarchical structure with descriptive titles
-3. **Code Examples** - Working examples for all features
-4. **Cross-References** - Links to related documentation
-5. **Version Context** - Note when features were added (e.g., "v0.5.0+")
-6. **Current State** - Reflect the actual implementation, not future plans
-
-## Need Help?
-
-- **Issues**: [GitHub Issues](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/amiable-dev/docusaurus-plugin-stentorosaur/discussions)
-- **Support**: See [SUPPORT.md](../SUPPORT.md)
+Historical 0.x documentation lives in [archive/](./archive/) — it
+describes machinery deleted at the v1.0 cutover and is kept for
+reference only.

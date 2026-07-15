@@ -1,3 +1,6 @@
+> **⚠️ ARCHIVED — describes 0.x machinery deleted at the v1.0 cutover (ADR-005).**
+> Current docs: [docs/README.md](../README.md)
+
 # Monitoring System Documentation
 
 This document describes the monitoring and status tracking architecture implemented across issues #7, #19, and #33.

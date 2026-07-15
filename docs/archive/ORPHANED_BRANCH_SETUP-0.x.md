@@ -1,3 +1,6 @@
+> **⚠️ ARCHIVED — describes 0.x machinery deleted at the v1.0 cutover (ADR-005).**
+> Current docs: [docs/README.md](../README.md)
+
 # Orphaned Branch Setup Guide
 
 **As of v0.7.0, all workflow templates use the orphaned branch pattern by default.**
