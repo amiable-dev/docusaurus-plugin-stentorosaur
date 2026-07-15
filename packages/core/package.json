@@ -47,12 +47,19 @@
     "./server": {
       "types": "./lib/server.d.ts",
       "default": "./lib/server.js"
+    },
+    "./summary": {
+      "types": "./lib/summary.d.ts",
+      "default": "./lib/summary.js"
     }
   },
   "typesVersions": {
     "*": {
       "server": [
         "lib/server.d.ts"
+      ],
+      "summary": [
+        "lib/summary.d.ts"
       ]
     }
   }

@@ -274,3 +274,24 @@ model for a long-lived write credential in Worker secrets — acceptable
 for some, but not the default (ADR-005 §6). If you choose it, reuse the
 same token scope as step 2 and write via `stentorosaur probe` in any
 git-capable runtime instead of the Worker.
+
+### Profile C: R2 object storage (ADR-006 — zero-Actions monitoring)
+
+For the full escape from per-job Actions billing, the Worker writes
+`status/v1` directly to an R2 bucket via a binding (no GitHub
+credentials at all) and a serving route publishes it with proper
+`Cache-Control`/`ETag`/CORS — see `../worker/wrangler-r2.toml`.
+
+- **Custom domain REQUIRED** for serving (council condition): on
+  workers.dev every client poll invokes the Worker against the ~100k
+  req/day free cap; behind a custom domain the CDN absorbs polls.
+- Budget formula: R2 class-A writes/month ≈
+  `runs_per_day × (N_entities + 3) × 30` — unchanged entity details
+  are skipped automatically (content-hash guard).
+- Set `dataPlane: {kind: 'r2', …}` in `stentorosaur.config.js`; the
+  CLI writers (incl. `status-update-v1.yml`'s incident sync) then
+  target the bucket via the S3 API using `R2_ACCESS_KEY_ID` /
+  `R2_SECRET_ACCESS_KEY` secrets.
+- Incident sync stays on Actions in all profiles (jsdom sanitizer,
+  ADR-006 §4) — its per-event cost is a few minutes/month.
+- History compaction for the batch objects ships with ticket #101.
