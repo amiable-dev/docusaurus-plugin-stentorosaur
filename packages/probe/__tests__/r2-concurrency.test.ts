@@ -276,6 +276,29 @@ describe('compaction racing probe writes (council case B)', () => {
   });
 });
 
+describe('batch-key collision (Council PR #110 r=1)', () => {
+  it('retries under a suffixed run id instead of crashing or overwriting', async () => {
+    const store = new MemoryObjectStore();
+    const T = '2026-07-15T10:00:00.000Z';
+    const first = [reading('alpha', T, 1)];
+    const second = [reading('alpha', T, 2)];
+
+    const key1 = await writeReadingsBatch(store, first, T, 'dup');
+    const key2 = await writeReadingsBatch(store, second, T, 'dup'); // collides
+    expect(key2).not.toBe(key1);
+    expect(key2).toContain('dup-c1');
+    // Neither batch was lost or overwritten.
+    expect(JSON.parse((await store.get(key1))!.body)[0].lat).toBe(1);
+    expect(JSON.parse((await store.get(key2))!.body)[0].lat).toBe(2);
+
+    // A THIRD collision on the same id still fails loudly — collisions
+    // are retried once, never absorbed silently forever.
+    await expect(writeReadingsBatch(store, second, T, 'dup')).rejects.toThrow(
+      /precondition failed/
+    );
+  });
+});
+
 describe('compaction backlog at volume (carried from PR #108 council PASS)', () => {
   it('5 days x 288 runs x 3 entities compacts completely and losslessly', async () => {
     const store = new MemoryObjectStore(); // volume: no yielding overhead

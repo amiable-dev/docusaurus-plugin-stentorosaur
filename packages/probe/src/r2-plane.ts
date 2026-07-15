@@ -63,16 +63,27 @@ function archiveKey(date: string): string {
   return `${V1}/archives/${y}/${m}/history-${date}.jsonl`;
 }
 
-/** One immutable batch object per run — the probe's only reading write. */
+/** One immutable batch object per run — the probe's only reading write.
+ * A key collision (same millisecond AND same run id) is retried once
+ * under a suffixed id rather than crashing the cycle or silently
+ * adopting a foreign object (Council PR #110 r=1) — readings are never
+ * lost to a collision, and a persistent collision still throws. */
 export async function writeReadingsBatch(
   store: ObjectStore,
   readings: CompactReading[],
   generatedAt: string,
   runId: string
 ): Promise<string> {
-  const key = `${V1}/readings/${generatedAt.replace(/[:.]/g, '-')}-${runId}.json`;
-  await store.put(key, JSON.stringify(readings), {ifNoneMatch: '*'});
-  return key;
+  const keyFor = (id: string) => `${V1}/readings/${generatedAt.replace(/[:.]/g, '-')}-${id}.json`;
+  try {
+    await store.put(keyFor(runId), JSON.stringify(readings), {ifNoneMatch: '*'});
+    return keyFor(runId);
+  } catch (error) {
+    if (!(error instanceof PreconditionFailedError)) throw error;
+    const retryKey = keyFor(`${runId}-c1`);
+    await store.put(retryKey, JSON.stringify(readings), {ifNoneMatch: '*'});
+    return retryKey;
+  }
 }
 
 async function readJsonOr<T>(
