@@ -27,6 +27,8 @@ import {reRenderFromRaw} from './regenerate-from-raw';
 import {fetchStatusIssues, transformIssueInputs, writeIssueInputs} from './update-incidents';
 import {migrateHistoricalData, planMigration} from './migrate';
 import type {MigrationReport} from './migrate';
+import {migrateGitToR2, migrateR2ToGit} from './plane-migrate';
+import type {PlaneMigrationReport} from './plane-migrate';
 import {R2ObjectStore, normalizeBaseUrl} from './object-store';
 import type {ObjectStore} from './object-store';
 import {compactionStateSchema} from './r2-compaction';
@@ -44,6 +46,8 @@ interface CliOptions {
   from: string;
   /** migrate: plan only, write nothing */
   dryRun: boolean;
+  /** migrate: plane portability target ('r2' | 'git', ADR-006 §6) */
+  to?: string;
   /** ingest: path to the repository_dispatch client_payload JSON */
   payload?: string;
 }
@@ -83,6 +87,9 @@ function parseArgs(argv: string[]): {command: string; options: CliOptions} {
         break;
       case '--dry-run':
         options.dryRun = true;
+        break;
+      case '--to':
+        options.to = takeValue('--to', ++i);
         break;
       case '--payload':
         options.payload = takeValue('--payload', ++i);
@@ -526,7 +533,66 @@ function monitorrcToConfigSource(monitorrcPath: string): string {
   );
 }
 
+/** Plane portability (ADR-006 §6): migrate --to r2 / --to git. */
+async function cmdMigratePlane(options: CliOptions): Promise<number> {
+  if (options.to !== 'r2' && options.to !== 'git') {
+    console.error(`--to must be 'r2' or 'git', got '${options.to}'`);
+    return 1;
+  }
+  const config = await loadConfig(options.config);
+  if (config.dataPlane.kind !== 'r2') {
+    console.error(
+      "plane migration needs dataPlane {kind: 'r2', …} in the config — it names the bucket to copy to/from (ADR-006 §6)"
+    );
+    return 1;
+  }
+  const store = objectStoreFactory(config);
+  const onWarn = (message: string) => console.warn(`  ⚠ ${message}`);
+  const printReport = (direction: string, report: PlaneMigrationReport) => {
+    const verb = options.dryRun ? 'would ' : '';
+    console.log(`${options.dryRun ? 'dry run — nothing written. ' : ''}${direction}:`);
+    console.log(`  ${verb}create ${report.created.length}, merge ${report.merged.length}, skip ${report.skipped.length} (identical)`);
+    for (const key of report.created) console.log(`    + ${key}`);
+    for (const key of report.merged) console.log(`    ~ ${key}`);
+    if (report.foldedBatches > 0) console.log(`  ${verb}fold ${report.foldedBatches} readings batch(es) into day archives`);
+    if (report.corruptLines > 0) console.log(`  ${report.corruptLines} corrupt line(s) skipped`);
+  };
+
+  if (options.to === 'r2') {
+    // Source of truth: the git data-branch tree at --workdir.
+    if (!fs.existsSync(path.join(options.workdir, 'status', 'v1'))) {
+      console.error(`no status/v1 tree at ${options.workdir} — point --workdir at a data-branch checkout`);
+      return 1;
+    }
+    const report = await migrateGitToR2(options.workdir, store, {dryRun: options.dryRun, onWarn});
+    printReport('git → r2', report);
+    if (!options.dryRun) {
+      await regenerateDerivedR2(store, {
+        ...regenOptions(config, new Date().toISOString()),
+        generatedBy: 'stentorosaur-migrate',
+        onWarn,
+      });
+      console.log('derived objects regenerated on r2 (§3 write order)');
+    }
+    return 0;
+  }
+
+  // --to git: bucket → data branch commit (withDataBranch regenerates).
+  if (options.dryRun) {
+    const report = await migrateR2ToGit(store, options.workdir, {dryRun: true, onWarn});
+    printReport('r2 → git', report);
+    return 0;
+  }
+  let report: PlaneMigrationReport | null = null;
+  await withDataBranch(options, config, 'migrate: r2 → git data branch (ADR-006 §6)', async dir => {
+    report = await migrateR2ToGit(store, dir, {onWarn});
+  });
+  if (report) printReport('r2 → git', report);
+  return 0;
+}
+
 async function cmdMigrate(options: CliOptions): Promise<number> {
+  if (options.to !== undefined) return cmdMigratePlane(options);
   const legacyDir = path.resolve(options.from);
 
   // Config detection must respect --config, which typically points at
@@ -622,7 +688,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       case 'ingest':
         return await cmdIngest(options);
       default:
-        console.log('usage: stentorosaur <init|doctor|probe|update-incidents|regenerate|migrate|ingest> [--config <file-or-dir>] [--workdir <dir>] [--branch <name>] [--no-push] [--from <legacy-dir>] [--dry-run] [--payload <file>]');
+        console.log('usage: stentorosaur <init|doctor|probe|update-incidents|regenerate|migrate|ingest> [--config <file-or-dir>] [--workdir <dir>] [--branch <name>] [--no-push] [--from <legacy-dir>] [--to <r2|git>] [--dry-run] [--payload <file>]');
         return command === 'help' ? 0 : 1;
     }
   } catch (error) {

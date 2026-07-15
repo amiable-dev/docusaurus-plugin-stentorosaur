@@ -11,7 +11,8 @@ import {parseSummary} from '@stentorosaur/core';
 import {loadConfig} from '../src/config-loader';
 import {reRenderFromRaw} from '../src/regenerate-from-raw';
 import {writeIncidentInputs, writeRawIssueBody, readIncidentInputs} from '../src/inputs';
-import {main} from '../src/cli';
+import {MemoryObjectStore} from '../src/object-store';
+import {main, setObjectStoreFactory} from '../src/cli';
 
 let tmp: string;
 beforeEach(() => {
@@ -223,6 +224,63 @@ describe('stentorosaur doctor (r2 mode, ticket #101)', () => {
       expect(warnSpy.mock.calls.flat().join(' ')).toMatch(/no compaction-state\.json yet/);
     } finally {
       warnSpy.mockRestore();
+    }
+  });
+});
+
+describe('stentorosaur migrate --to (plane portability, ticket #102)', () => {
+  const R2_CONFIG = `module.exports = {owner: 'o', repo: 'r',
+    entities: [{name: 'api', type: 'system'}],
+    dataPlane: {kind: 'r2', bucket: 'status',
+      endpoint: 'https://acc.r2.cloudflarestorage.com',
+      publicBaseUrl: 'https://status.example.com'}};`;
+
+  it('rejects an unknown --to target', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), R2_CONFIG);
+    expect(await main(['migrate', '--config', tmp, '--to', 'ftp'])).toBe(1);
+  });
+
+  it('refuses plane migration on a git-only config', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), VALID_CONFIG);
+    expect(await main(['migrate', '--config', tmp, '--to', 'r2'])).toBe(1);
+  });
+
+  it('--to r2 --dry-run plans against the store without writing', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), R2_CONFIG);
+    const archiveDir = path.join(tmp, 'status', 'v1', 'archives', '2026', '07');
+    fs.mkdirSync(archiveDir, {recursive: true});
+    fs.writeFileSync(
+      path.join(archiveDir, 'history-2026-07-01.jsonl'),
+      '{"t":1782900000000,"svc":"api","state":"up","code":200,"lat":5}\n'
+    );
+    const store = new MemoryObjectStore();
+    setObjectStoreFactory(() => store);
+    try {
+      expect(
+        await main(['migrate', '--config', tmp, '--workdir', tmp, '--to', 'r2', '--dry-run'])
+      ).toBe(0);
+      expect(store.keys()).toEqual([]); // nothing written
+    } finally {
+      setObjectStoreFactory(() => {
+        throw new Error('factory reset');
+      });
+    }
+  });
+
+  it('--to git --dry-run reports the plan and leaves the workdir untouched', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), R2_CONFIG);
+    const store = new MemoryObjectStore();
+    await store.put('status/v1/inputs/incidents.json', '[]');
+    setObjectStoreFactory(() => store);
+    try {
+      expect(
+        await main(['migrate', '--config', tmp, '--workdir', tmp, '--to', 'git', '--dry-run'])
+      ).toBe(0);
+      expect(fs.existsSync(path.join(tmp, 'status'))).toBe(false); // nothing written
+    } finally {
+      setObjectStoreFactory(() => {
+        throw new Error('factory reset');
+      });
     }
   });
 });
