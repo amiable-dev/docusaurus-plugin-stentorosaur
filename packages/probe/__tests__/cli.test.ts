@@ -266,6 +266,23 @@ describe('stentorosaur migrate --to (plane portability, ticket #102)', () => {
       });
     }
   });
+
+  it('--to git --dry-run reports the plan and leaves the workdir untouched', async () => {
+    fs.writeFileSync(path.join(tmp, 'stentorosaur.config.js'), R2_CONFIG);
+    const store = new MemoryObjectStore();
+    await store.put('status/v1/inputs/incidents.json', '[]');
+    setObjectStoreFactory(() => store);
+    try {
+      expect(
+        await main(['migrate', '--config', tmp, '--workdir', tmp, '--to', 'git', '--dry-run'])
+      ).toBe(0);
+      expect(fs.existsSync(path.join(tmp, 'status'))).toBe(false); // nothing written
+    } finally {
+      setObjectStoreFactory(() => {
+        throw new Error('factory reset');
+      });
+    }
+  });
 });
 
 describe('stentorosaur probe --no-push (local pipeline)', () => {
