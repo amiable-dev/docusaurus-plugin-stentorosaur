@@ -1,0 +1,46 @@
+# Cloudflare Worker probe — Profile C: direct R2 writes + serving route
+# (ADR-006 §2; see ../workflows/README.md for the full profile chooser).
+#
+# The Worker holds ONLY a bucket binding — no GitHub credentials, no
+# repository_dispatch, zero GitHub Actions in the monitoring loop.
+#
+# Setup:
+#   1. Create the bucket:   wrangler r2 bucket create status
+#   2. Copy worker.mjs + this file; npm i @stentorosaur/probe
+#   3. wrangler deploy
+#   4. Point the plugin's dataUrl at
+#      https://<your-custom-domain>/status/v1/summary.json
+
+name = "stentorosaur-probe-r2"
+main = "worker.mjs"
+compatibility_date = "2025-01-01"
+
+[triggers]
+# Zero Actions billing in this profile — 1-minute resolution is a
+# config change. Watch the R2 class-A budget formula in the README:
+# writes/month ≈ runs_per_day × (N_entities + 3) × 30.
+crons = ["*/5 * * * *"]
+
+[[r2_buckets]]
+binding = "STATUS_BUCKET"
+bucket_name = "status"
+
+# ── REQUIRED: serve through a Cloudflare CUSTOM DOMAIN ──────────────
+# On workers.dev every client poll invokes the Worker and the free plan
+# caps Workers at ~100k requests/day (ADR-006 council condition 4).
+# Behind a custom domain the CDN cache absorbs polls within max-age.
+# Do NOT ship a workers.dev dataUrl.
+[[routes]]
+pattern = "status.example.com/status/v1/*"
+custom_domain = true
+
+[vars]
+TARGETS = '[{"system":"api","url":"https://api.example.com/health","expectedCodes":[200]}]'
+# Optional display metadata for the summary (defaults derived from TARGETS):
+# ENTITIES = '[{"name":"api","type":"system","displayName":"API"}]'
+SITE_TITLE = "System Status"
+SITE_URL = "https://example.com"
+
+# NOTE: incident sync stays on GitHub Actions in ALL profiles (the
+# jsdom sanitizer does not run in Workers — ADR-006 §4). Install
+# status-update-v1.yml and run it with --data-plane r2.

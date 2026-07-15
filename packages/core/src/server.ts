@@ -7,6 +7,6 @@
  */
 
 export * from './render';
-export * from './maintenance';
-export * from './build-summary';
-export * from './atom';
+// The Workers-safe half lives in './summary' (ticket #100); re-exported
+// here so existing server-side imports keep working unchanged.
+export * from './summary';

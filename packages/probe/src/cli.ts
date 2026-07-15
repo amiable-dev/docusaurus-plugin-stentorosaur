@@ -29,7 +29,8 @@ import {migrateHistoricalData, planMigration} from './migrate';
 import type {MigrationReport} from './migrate';
 import {R2ObjectStore} from './object-store';
 import type {ObjectStore} from './object-store';
-import {V1, regenerateDerivedR2, reRenderFromRawR2, writeReadingsBatch} from './r2-plane';
+import {V1, regenerateDerivedR2, writeReadingsBatch} from './r2-plane';
+import {reRenderFromRawR2} from './r2-raw-rerender';
 import {parseProbeDispatch, parseSummary} from '@stentorosaur/core';
 import type {CompactReading, StentorosaurConfig} from '@stentorosaur/core';
 

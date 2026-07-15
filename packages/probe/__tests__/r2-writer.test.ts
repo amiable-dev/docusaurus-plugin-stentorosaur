@@ -13,7 +13,8 @@
 import {parseSummary} from '@stentorosaur/core';
 import type {CompactReading} from '@stentorosaur/core';
 import {MemoryObjectStore, PreconditionFailedError, normalizeBaseUrl} from '../src/object-store';
-import {regenerateDerivedR2, reRenderFromRawR2, writeReadingsBatch} from '../src/r2-plane';
+import {regenerateDerivedR2, writeReadingsBatch} from '../src/r2-plane';
+import {reRenderFromRawR2} from '../src/r2-raw-rerender';
 
 const NOW = Date.parse('2026-07-15T12:00:00.000Z');
 const GENERATED_AT = new Date(NOW).toISOString();
