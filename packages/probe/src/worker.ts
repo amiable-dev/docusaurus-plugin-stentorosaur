@@ -202,10 +202,15 @@ function entitiesOf(env: WorkerEnv, targets: CheckTarget[]): EntityRef[] {
     let parsed: unknown;
     try {
       parsed = JSON.parse(env.ENTITIES);
-    } catch {
-      throw new Error('ENTITIES must be a JSON array of {name, type, displayName?}');
+    } catch (err) {
+      throw new Error(
+        `ENTITIES must be a JSON array of {name, type, displayName?}: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
-    if (!Array.isArray(parsed) || (parsed as EntityRef[]).some(e => !e?.name || !e?.type)) {
+    if (
+      !Array.isArray(parsed) ||
+      (parsed as unknown[]).some(e => !(e as EntityRef)?.name || !(e as EntityRef)?.type)
+    ) {
       throw new Error('ENTITIES must be a JSON array of {name, type, displayName?}');
     }
     return parsed as EntityRef[];
