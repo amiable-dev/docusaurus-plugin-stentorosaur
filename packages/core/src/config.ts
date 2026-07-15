@@ -41,8 +41,8 @@ export const dataPlaneSchema = z
         kind: z.literal('r2'),
         /** R2 bucket name */
         bucket: z.string().min(1),
-        /** S3-compatible API endpoint (CLI writes) — https only:
-         * R2 credentials travel over it (Copilot PR #105 r=1) */
+        /** S3-compatible API endpoint (CLI writes) — https only (ADR-006 §2):
+         * R2 credentials travel over it */
         endpoint: z
           .string()
           .url()
