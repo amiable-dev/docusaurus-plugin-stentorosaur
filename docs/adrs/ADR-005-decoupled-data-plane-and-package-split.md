@@ -5,6 +5,10 @@
 **IMPLEMENTED** - 2026-07-13 (epic #63: tickets #64–#77; approved with
 council conditions 2026-07-12, all conditions honored in implementation)
 
+Extended by [ADR-006](./ADR-006-low-cost-data-plane-profiles.md)
+(proposed): optional object-storage/zero-Actions deployment profiles;
+no change to this ADR's defaults or contract.
+
 ## Council Review
 
 Reviewed by LLM Council (2026-07-12, high confidence tier).
