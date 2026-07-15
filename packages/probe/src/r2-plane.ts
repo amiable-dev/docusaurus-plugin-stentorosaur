@@ -38,7 +38,7 @@ import {entitySlug} from './files';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CURRENT_WINDOW_DAYS = 14;
-const V1 = 'status/v1';
+export const V1 = 'status/v1';
 
 const readingsArraySchema = z.array(compactReadingSchema);
 const incidentsFileSchema = z.array(incidentSchema);
@@ -101,7 +101,15 @@ async function readAllReadings(
   nowMs: number,
   onWarn: (message: string) => void
 ): Promise<CompactReading[]> {
-  const readings: CompactReading[] = [];
+  // Deduped by (svc, t): during the compaction window a reading exists
+  // in BOTH the day archive and its not-yet-deleted batch — without
+  // dedupe the rollups would double-count that window (Copilot PR #106
+  // r=1). Same identity rule as the migration merge.
+  const byKey = new Map<string, CompactReading>();
+  const add = (r: CompactReading) => {
+    const k = `${r.svc}|${r.t}`;
+    if (!byKey.has(k)) byKey.set(k, r);
+  };
   for (let d = 0; d < windowDays; d++) {
     const date = utcDateOf(nowMs - d * DAY_MS);
     const object = await store.get(archiveKey(date));
@@ -110,7 +118,7 @@ async function readAllReadings(
       if (!line.trim()) continue;
       try {
         const parsed = compactReadingSchema.safeParse(JSON.parse(line));
-        if (parsed.success) readings.push(parsed.data);
+        if (parsed.success) add(parsed.data);
       } catch {
         // One corrupt line must not lose the day (same rule as git plane).
       }
@@ -124,12 +132,12 @@ async function readAllReadings(
     if (!object) continue;
     const parsed = readingsArraySchema.safeParse(JSON.parse(object.body));
     if (parsed.success) {
-      readings.push(...parsed.data);
+      parsed.data.forEach(add);
     } else {
       onWarn(`malformed batch ${key} skipped`);
     }
   }
-  return readings;
+  return [...byKey.values()];
 }
 
 const textHash = (s: string): string => {
@@ -168,6 +176,8 @@ export async function regenerateDerivedR2(
   }
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // Reset per attempt (Copilot PR #106 r=1): the returned count must
+    // describe the attempt that actually committed, not the sum.
     let entityWritesSkipped = 0;
     // ── read the full input set (fresh each attempt, §5 purity) ──
     const summaryBefore = await store.get(`${V1}/summary.json`);

@@ -193,6 +193,21 @@ describe('regenerateDerivedR2 — §3 write-order consistency (council condition
     expect(api.days.length).toBeGreaterThanOrEqual(2); // both days present
   });
 
+  it('dedupes readings present in BOTH an archive and an uncompacted batch (compaction window)', async () => {
+    const store = new MemoryObjectStore();
+    const r = reading('api', 1000);
+    const today = new Date(NOW).toISOString().split('T')[0];
+    const [y, m] = today.split('-');
+    // Same reading in the day archive AND still in a batch (compaction
+    // wrote the archive but hasn't deleted the batch yet).
+    await store.put(`status/v1/archives/${y}/${m}/history-${today}.jsonl`, JSON.stringify(r));
+    await seedBatch(store, [r]);
+
+    await regenerateDerivedR2(store, REGEN_OPTS);
+    const detail = JSON.parse((await store.get('status/v1/entities/api.json'))!.body);
+    expect(detail.readings).toHaveLength(1); // counted once, not twice
+  });
+
   it('reads incident/maintenance inputs and reflects them in the summary', async () => {
     const store = new MemoryObjectStore();
     await seedBatch(store, [reading('api', 1000)]);

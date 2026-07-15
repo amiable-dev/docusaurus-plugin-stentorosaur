@@ -29,7 +29,7 @@ import {migrateHistoricalData, planMigration} from './migrate';
 import type {MigrationReport} from './migrate';
 import {R2ObjectStore} from './object-store';
 import type {ObjectStore} from './object-store';
-import {regenerateDerivedR2, reRenderFromRawR2, writeReadingsBatch} from './r2-plane';
+import {V1, regenerateDerivedR2, reRenderFromRawR2, writeReadingsBatch} from './r2-plane';
 import {parseProbeDispatch, parseSummary} from '@stentorosaur/core';
 import type {CompactReading, StentorosaurConfig} from '@stentorosaur/core';
 
@@ -106,8 +106,9 @@ function regenOptions(config: StentorosaurConfig, generatedAt: string) {
   };
 }
 
-/** Test seam: cli tests inject a MemoryObjectStore here. */
-export let makeObjectStore = (config: StentorosaurConfig): ObjectStore => {
+/** Test seam: module-private factory, swapped only via
+ * setObjectStoreFactory (Copilot PR #106 r=1 — no exported mutable let). */
+let objectStoreFactory = (config: StentorosaurConfig): ObjectStore => {
   const plane = config.dataPlane;
   if (plane.kind !== 'r2') throw new Error('makeObjectStore called for a non-r2 data plane');
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -125,8 +126,8 @@ export let makeObjectStore = (config: StentorosaurConfig): ObjectStore => {
   });
 };
 
-export function setObjectStoreFactory(factory: typeof makeObjectStore): void {
-  makeObjectStore = factory;
+export function setObjectStoreFactory(factory: typeof objectStoreFactory): void {
+  objectStoreFactory = factory;
 }
 
 /** The r2-plane counterpart of withDataBranch: one clock read, batch
@@ -135,7 +136,7 @@ async function withR2Plane(
   config: StentorosaurConfig,
   writeInputs: (store: ObjectStore, generatedAt: string) => Promise<void>
 ): Promise<void> {
-  const store = makeObjectStore(config);
+  const store = objectStoreFactory(config);
   const generatedAt = new Date().toISOString();
   await writeInputs(store, generatedAt);
   const result = await regenerateDerivedR2(store, {
@@ -350,10 +351,10 @@ async function cmdUpdateIncidents(options: CliOptions): Promise<number> {
         now: new Date(generatedAt),
       });
       for (const raw of transformed.raws) {
-        await store.put(`status/v1/raw/${raw.issueNumber}.json`, JSON.stringify(raw));
+        await store.put(`${V1}/raw/${raw.issueNumber}.json`, JSON.stringify(raw));
       }
-      await store.put('status/v1/inputs/incidents.json', JSON.stringify(transformed.incidents));
-      await store.put('status/v1/inputs/maintenance.json', JSON.stringify(transformed.maintenance));
+      await store.put(`${V1}/inputs/incidents.json`, JSON.stringify(transformed.incidents));
+      await store.put(`${V1}/inputs/maintenance.json`, JSON.stringify(transformed.maintenance));
       counts = {
         incidents: transformed.incidents.length,
         maintenance: transformed.maintenance.length,
