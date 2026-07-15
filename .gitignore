@@ -22,3 +22,5 @@ fixtures/site/.docusaurus/
 playwright-report/
 test-results/
 .epic-loop/
+fixtures/site/.packed/
+fixtures/site/.r2-bucket.json

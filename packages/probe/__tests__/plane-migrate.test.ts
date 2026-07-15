@@ -150,7 +150,9 @@ describe('--dry-run writes nothing (acceptance criterion 3)', () => {
     await writeReadingsBatch(store, [reading('api', '2026-07-02T10:00:00.000Z')], '2026-07-02T10:00:00.000Z', 'r1');
     const backDir = path.join(tmp, 'back');
     const report = await migrateR2ToGit(store, backDir, {dryRun: true});
-    expect(report.created).toHaveLength(1);
+    // The copied archive AND the fold-only day both report as creates
+    // (fold-only-day labeling — Council PR #109 polish).
+    expect(report.created).toHaveLength(2);
     expect(report.foldedBatches).toBe(1);
     expect(fs.existsSync(path.join(backDir, 'status'))).toBe(false);
   });

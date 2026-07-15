@@ -32,7 +32,10 @@ const config = {
         showIncidents: false,
         // ADR-005 §4: client-side live refresh from the self-served v1
         // summary (relative URL — build-time fetch only applies to http(s)).
-        dataUrl: '/status-data/status/v1/summary.json',
+        // The r2 e2e leg (ticket #103) overrides this with the live
+        // serving-route URL so both the build-time fetch and the client
+        // SWR hit the real serveStatusV1 route.
+        dataUrl: process.env.STENTOROSAUR_E2E_DATA_URL ?? '/status-data/status/v1/summary.json',
       },
     ],
   ],

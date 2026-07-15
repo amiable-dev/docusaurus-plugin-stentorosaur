@@ -17,7 +17,8 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
-    "test:e2e": "node e2e/run-pipeline.mjs && playwright test"
+    "test:e2e": "node e2e/run-pipeline.mjs && playwright test",
+    "test:e2e:r2": "PROFILE=r2 node e2e/run-pipeline.mjs && playwright test --config playwright.r2.config.ts"
   },
   "engines": {
     "node": ">=20.0"

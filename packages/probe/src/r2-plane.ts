@@ -108,30 +108,20 @@ async function readAllReadings(
     const k = `${r.svc}|${r.t}`;
     if (!byKey.has(k)) byKey.set(k, r);
   };
-  for (let d = 0; d < windowDays; d++) {
-    const date = utcDateOf(nowMs - d * DAY_MS);
-    const object = await store.get(archiveKey(date));
-    if (!object) continue;
-    for (const line of object.body.split('\n')) {
-      if (!line.trim()) continue;
-      try {
-        const parsed = compactReadingSchema.safeParse(JSON.parse(line));
-        if (parsed.success) add(parsed.data);
-      } catch {
-        // One corrupt line must not lose the day (same rule as git plane).
-      }
-    }
-  }
-  // Batches not yet compacted (today, plus yesterday inside the
-  // compaction buffer). The read set is BOUNDED explicitly: batch keys
-  // embed their run timestamp, so anything older than the rollup window
-  // (e.g. compaction-orphaned strays) is skipped without a GET.
-  const batchKeys = await store.list(`${V1}/readings/`);
+
+  // ── BATCHES FIRST, archives second (ticket #103 concurrency fix).
+  // Compaction deletes a batch only AFTER its day archive is written
+  // and verified, so reading in this order can never miss a reading:
+  // if a batch is already gone by the time we list, its archive is
+  // durably readable below. The archive-first order had a torn window
+  // (batches deleted after our archive read, before our list) where a
+  // whole day vanished from one regenerate cycle.
+  //
   // Batches only exist inside the compaction buffer (today + yesterday
   // + the 1h fence, ticket #101); anything older is a compaction
   // orphan whose day is already archived — skip without a GET. This is
-  // the ≤-one-day-of-runs bound from the header, NOT windowDays
-  // (Council r=2).
+  // the ≤-one-day-of-runs bound, NOT windowDays (Council r=2).
+  const batchKeys = await store.list(`${V1}/readings/`);
   const batchCutoffMs = nowMs - 2 * DAY_MS;
   for (const key of batchKeys) {
     const stamp = key.match(/readings\/(\d{4}-\d{2}-\d{2})T/)?.[1];
@@ -144,7 +134,7 @@ async function readAllReadings(
     }
     if (Date.parse(`${stamp}T00:00:00Z`) < batchCutoffMs) continue;
     const object = await store.get(key);
-    if (!object) continue;
+    if (!object) continue; // compacted between list and get — archive has it
     try {
       const parsed = readingsArraySchema.safeParse(JSON.parse(object.body));
       if (parsed.success) {
@@ -155,6 +145,21 @@ async function readAllReadings(
     } catch (error) {
       // A corrupt object must not crash the regenerator (Council r=1).
       onWarn(`unparseable batch ${key} skipped: ${String(error)}`);
+    }
+  }
+
+  for (let d = 0; d < windowDays; d++) {
+    const date = utcDateOf(nowMs - d * DAY_MS);
+    const object = await store.get(archiveKey(date));
+    if (!object) continue;
+    for (const line of object.body.split('\n')) {
+      if (!line.trim()) continue;
+      try {
+        const parsed = compactReadingSchema.safeParse(JSON.parse(line));
+        if (parsed.success) add(parsed.data);
+      } catch {
+        // One corrupt line must not lose the day (same rule as git plane).
+      }
     }
   }
   return [...byKey.values()];
