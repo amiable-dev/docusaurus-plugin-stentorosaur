@@ -2,9 +2,28 @@
 
 ## Status
 
-**APPROVED (council conditions incorporated)** — 2026-07-15. Extends
-ADR-005 (IMPLEMENTED); changes no default behavior. Everything here is
-an **optional deployment profile**. Implementation not yet scheduled.
+**IMPLEMENTED** — 2026-07-15 (epic #97: tickets #98–#104; approved with
+council conditions the same day, all five honored in implementation).
+Extends ADR-005 (IMPLEMENTED); changes no default behavior. Everything
+here is an **optional deployment profile**.
+
+Implementation map: `dataPlane` config (#98, PR #105) · R2 object store
++ §3 write-order writer (#99, PR #106) · Worker R2-writer mode +
+serving route + Workers-safe core split (#100, PR #107) · §5 compaction
+cron + lifecycle guardrails + doctor health (#101, PR #108) ·
+`migrate --to r2` / `--to git` (#102, PR #109) · Profile C e2e leg +
+condition-5 concurrency tests (#103, PR #110) · docs + this closeout
+(#104).
+
+Two corrections the implementation fed back into the design, both found
+by the condition-5 concurrency tests (PR #110):
+- the bounded read set must consume **batches before archives** — the
+  reverse order had a torn window against a concurrent compactor (a
+  freshly-archived day could vanish from one regenerate cycle); §3's
+  consistency argument now rests on compaction's delete-after-verify
+  ordering, which makes batch-first structurally lossless;
+- immutable batch creates retry once under a suffixed run id on a key
+  collision instead of failing the probe cycle.
 
 ## Council Review
 

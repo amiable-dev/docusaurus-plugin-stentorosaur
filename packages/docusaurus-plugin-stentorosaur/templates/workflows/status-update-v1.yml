@@ -39,6 +39,10 @@ jobs:
       - name: Update incidents on the data branch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Only used when stentorosaur.config.js sets dataPlane
+          # {kind: 'r2'} (ADR-006 Profile C) — empty otherwise.
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           # PINNED version (supply-chain: this workflow holds
           # contents:write). Bump deliberately when upgrading the plugin.

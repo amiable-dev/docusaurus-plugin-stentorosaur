@@ -2,7 +2,18 @@
 
 This directory contains GitHub Actions workflow templates for monitoring your services and updating your status page.
 
-## Architecture Overview
+> ⚠️ **Start here on plugin ≥ 0.22** (the current release is 1.0+):
+> skip straight to [status/v1 templates](#statusv1-templates-adr-005--plugin--022)
+> below. Everything between here and that section describes the
+> **legacy pre-ADR-005 architecture** (`monitor-systems.yml`,
+> `current.json`, `.monitorrc.json`) — kept only for historical
+> reference and for anyone still mid-migration from an older release.
+> It is superseded by ADR-005 (the single `status/v1` contract) and,
+> for zero-Actions deployments, by ADR-006 Profile C below. New setups
+> should use the `*-v1.yml` templates and `stentorosaur.config.js`,
+> not the workflows described immediately below.
+
+## Architecture Overview (legacy, pre-1.0)
 
 The optimized architecture decouples **data collection** from **site builds**, enabling 5-minute monitoring at low cost:
 
@@ -305,3 +316,40 @@ credentials at all) and a serving route publishes it with proper
 - Any R2 lifecycle expiry on `readings/` is a **backstop, never the
   mechanism**, and must be ≥ 3 days (see the comments in
   `wrangler-r2.toml`).
+
+#### Profile C setup, end to end
+
+1. **Bucket:** `wrangler r2 bucket create status`.
+2. **Worker:** copy `../worker/wrangler-r2.toml` + `worker.mjs` into a
+   Worker project, `npm i @stentorosaur/probe`, fill in `TARGETS` /
+   `SITE_TITLE` / `SITE_URL` (and optional `ENTITIES` display
+   metadata). Keep `COMPACTION_CRON` equal to the second `[triggers]`
+   cron. `wrangler deploy`.
+3. **Custom domain (REQUIRED):** attach a Cloudflare custom domain to
+   the Worker route (`[[routes]]` in the template) — e.g.
+   `status.example.com/status/v1/*`. Do NOT serve from workers.dev.
+4. **Site config:** in `stentorosaur.config.js` set
+   `dataPlane: {kind: 'r2', bucket, endpoint, publicBaseUrl}` (see
+   docs/reference/CONFIGURATION.md), and point the plugin's `dataUrl`
+   at `https://<custom-domain>/status/v1/summary.json`.
+5. **Incident sync (stays on Actions):** install
+   `status-update-v1.yml` as usual, then create an R2 API token —
+   Cloudflare dashboard → R2 → Manage API Tokens → **Object Read &
+   Write scoped to the one status bucket** — and add its credentials
+   as the `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` repo secrets
+   (the template forwards them; the CLI routes to the bucket because
+   of `dataPlane.kind`). Remove/skip `probe-v1.yml` and
+   `compact-data-branch-v1.yml` — the Worker probes and compacts.
+6. **Migrating existing history:** from a data-branch checkout,
+   `stentorosaur migrate --to r2 --config <site> --workdir <data
+   worktree>` copies archives + inputs + raw into the bucket
+   (verbatim; merge-by-content on divergence) and regenerates the
+   derived objects. `--dry-run` prints the plan first. `--to git`
+   is the inverse (bucket → branch commit) if you ever move back.
+7. **Optional lifecycle backstop:**
+   `wrangler r2 bucket lifecycle add status --prefix status/v1/readings/ --expire-days 3`
+   (≥ 3 days — shorter races the compaction fence). Archive expiry is
+   a pure retention choice.
+8. **Verify:** `npx stentorosaur doctor` — checks the summary at
+   `publicBaseUrl`, warns when the last compaction success is >48h
+   old or quarantined batches accumulate.
