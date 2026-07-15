@@ -19,11 +19,27 @@ compatibility_date = "2025-01-01"
 # Zero Actions billing in this profile — 1-minute resolution is a
 # config change. Watch the R2 class-A budget formula in the README:
 # writes/month ≈ runs_per_day × (N_entities + 3) × 30.
-crons = ["*/5 * * * *"]
+#
+# The SECOND cron is the daily compaction pass (ADR-006 §5): it folds
+# closed-day readings/ batches into archives/ JSONL with a
+# verify-before-delete contract. It MUST match COMPACTION_CRON in
+# [vars] — that equality is how scheduled() tells the passes apart.
+crons = ["*/5 * * * *", "17 1 * * *"]
 
 [[r2_buckets]]
 binding = "STATUS_BUCKET"
 bucket_name = "status"
+
+# ── Lifecycle rules (council condition 3): BACKSTOP, never mechanism ─
+# Compaction is the mechanism that empties readings/; an R2 lifecycle
+# expiry rule is only a backstop against a silently-dead cron. If you
+# add one on the readings/ prefix it MUST be >= 3 days — shorter would
+# race the compactor's day-boundary + 1h fence and DELETE DATA:
+#   wrangler r2 bucket lifecycle add status --prefix status/v1/readings/ --expire-days 3
+# Expiry on archives/ is optional and purely a retention choice
+# (e.g. 400 days keeps ~13 months of day archives).
+# `stentorosaur doctor` warns when the last compaction success is >48h
+# old — run it in CI so a dead cron surfaces before the backstop fires.
 
 # ── REQUIRED: serve through a Cloudflare CUSTOM DOMAIN ──────────────
 # On workers.dev every client poll invokes the Worker and the free plan
@@ -36,6 +52,8 @@ custom_domain = true
 
 [vars]
 TARGETS = '[{"system":"api","url":"https://api.example.com/health","expectedCodes":[200]}]'
+# Selects the compaction pass — MUST equal the second [triggers] cron.
+COMPACTION_CRON = "17 1 * * *"
 # Optional display metadata for the summary (defaults derived from TARGETS):
 # ENTITIES = '[{"name":"api","type":"system","displayName":"API"}]'
 SITE_TITLE = "System Status"

@@ -294,4 +294,14 @@ credentials at all) and a serving route publishes it with proper
   `R2_SECRET_ACCESS_KEY` secrets.
 - Incident sync stays on Actions in all profiles (jsdom sanitizer,
   ADR-006 §4) — its per-event cost is a few minutes/month.
-- History compaction for the batch objects ships with ticket #101.
+- **Daily compaction** (ADR-006 §5): the second cron in
+  `wrangler-r2.toml` folds closed-day `readings/` batches into
+  `archives/YYYY/MM/history-*.jsonl`. Safety contract: a day is only
+  touched after it has ended plus a 1-hour fence; the archive is
+  written, read back, and byte-verified BEFORE any batch is deleted;
+  a crashed run simply re-runs and converges. Health is recorded in
+  `status/v1/compaction-state.json` — `stentorosaur doctor` warns when
+  the last success is older than 48 hours.
+- Any R2 lifecycle expiry on `readings/` is a **backstop, never the
+  mechanism**, and must be ≥ 3 days (see the comments in
+  `wrangler-r2.toml`).

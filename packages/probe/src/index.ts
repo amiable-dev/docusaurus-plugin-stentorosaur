@@ -17,5 +17,6 @@ export * from './regenerate-from-raw';
 export * from './migrate';
 export * from './object-store';
 export * from './r2-plane';
+export * from './r2-compaction';
 export * from './r2-raw-rerender';
 export * from './cli';

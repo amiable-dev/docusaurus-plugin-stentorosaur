@@ -22,7 +22,8 @@ const maintenanceFileSchema = z.array(maintenanceWindowSchema);
 export async function reRenderFromRawR2(
   store: ObjectStore,
   now: Date,
-  maxRetries = 3
+  maxRetries = 3,
+  onWarn: (message: string) => void = () => {}
 ): Promise<{incidents: number; maintenance: number}> {
   const rawKeys = await store.list(`${V1}/raw/`);
   const raws = new Map<number, string>();
@@ -94,6 +95,9 @@ export async function reRenderFromRawR2(
       return {incidents: incidentCount, maintenance: maintenanceCount};
     } catch (error) {
       if (!(error instanceof PreconditionFailedError)) throw error;
+      // Surface every lost race, not just exhaustion (Council PR #106
+      // polish): a busy plane shows up in the operator's logs early.
+      onWarn(`re-render commit lost a race (attempt ${attempt}), retrying`);
     }
   }
   throw new Error(
