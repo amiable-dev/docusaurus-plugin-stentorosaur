@@ -2,12 +2,42 @@
 
 ## Status
 
-**PROPOSED** — 2026-07-15. Extends ADR-005 (IMPLEMENTED); changes no
-default behavior. Everything here is an **optional deployment profile**.
+**APPROVED (council conditions incorporated)** — 2026-07-15. Extends
+ADR-005 (IMPLEMENTED); changes no default behavior. Everything here is
+an **optional deployment profile**. Implementation not yet scheduled.
+
+## Council Review
+
+Reviewed by LLM Council (2026-07-15, high tier). Verdict: approval with
+required revisions — "exceptionally pragmatic, well-reasoned, and
+contract-disciplined", but the draft "overstated its equivalence to
+git-backed semantics and underspecified operational boundary
+conditions". Conditions, all incorporated in this revision:
+
+1. **Multi-object consistency model** — git commits were multi-file
+   atomic; R2 `If-Match` protects single objects only. The draft's
+   equivalence claim was wrong. → §3 now defines the write-order
+   consistency model (summary-last commit point) and names the manifest
+   pattern as the upgrade path.
+2. **Compaction safety and idempotence** — fencing against late batch
+   writes; delete only after verified archive write. → §5.
+3. **Lifecycle expiry windows strictly longer than compaction lag +
+   alerting window** (≥ 3 days) so a failed cron cannot cause silent
+   data destruction. → §5.
+4. **Parameterized cost model** — include entity count N and class-B
+   (read/list) ops; mandate a Cloudflare custom domain so the CDN cache
+   shields the Workers 100k req/day free ceiling. → §1–§2.
+5. **Concurrency e2e tests** in the miniflare/wrangler leg (probe
+   overlap with incident regenerate; compaction across a day
+   boundary). → Implementation sketch.
+
+The council also required the trade-offs section to state the loss of
+write atomicity, the move from one metered ceiling to two, and the
+clock-boundary trust between probe and compaction crons — added.
 
 ## Date
 
-2026-07-15
+2026-07-15 (drafted and council-reviewed)
 
 ## Context
 
@@ -94,18 +124,39 @@ standard `archives/` JSONL file and deletes the batches — the archive
 format stays identical, so `stentorosaur migrate` (in either direction)
 and all core readers keep working.
 
-Budget check at 5-minute cadence: 288 batch writes + 1 summary + N
-entity details per run ≈ ~2,000 class-A ops/day ≈ 60k/month — 6% of the
-free tier. At 1-minute cadence: ~300k/month, still inside it.
+Budget model (council condition 4 — parameterized, not point
+estimates). Per probe run: `1` batch write + `1` summary + `1` atom +
+`N` entity details = `N + 3` class-A writes, plus `~1` list + `~R`
+reads (class B) for the regenerate step, where `R` is the archive
+window actually re-read (bounded by day-file count, ≤ 90):
+
+- class A/month ≈ `runs_per_day × (N + 3) × 30`
+- class B/month ≈ `runs_per_day × (R_list + R_get) × 30`
+
+At 5-min cadence with N=10 entities: ~112k class-A/month (11% of the
+1M free tier); at 1-min cadence with N=10: ~562k (56%) — inside, but
+**N and cadence multiply**: 1-min with N=25 breaches the tier. The
+implementation must therefore skip unchanged entity-detail writes
+(content-hash guard) and document the formula in the profile chooser.
+Class-B stays comfortably inside 10M/month in all realistic shapes,
+but the regenerate step must read day archives, not raw batches, to
+keep `R` bounded.
 
 ### 2. Serving: a Worker route, not r2.dev
 
-`summary.json` is served by a small Worker route bound to the bucket
-(custom domain or `workers.dev`), setting `Cache-Control: max-age=60`,
-`ETag`, and CORS. The §4 client protocol (SWR, `If-None-Match`,
-backoff) was designed for exactly this and needs no changes. r2.dev
-public buckets are explicitly not the serving path (no cache-control
-authority, hard rate limits).
+`summary.json` is served by a small Worker route bound to the bucket,
+setting `Cache-Control: max-age=60`, `ETag`, and CORS. The §4 client
+protocol (SWR, `If-None-Match`, backoff) was designed for exactly this
+and needs no changes. r2.dev public buckets are explicitly not the
+serving path (no cache-control authority, hard rate limits).
+
+**A Cloudflare custom domain is REQUIRED, not optional** (council
+condition 4): on `workers.dev` every client poll invokes the Worker,
+and the free plan caps Workers at ~100k requests/day — a public status
+page polled by many browsers can exhaust it. Behind a custom domain the
+CDN cache tier absorbs polls within `max-age`, so Worker invocations
+scale with cache misses, not clients. The template refuses to document
+a `workers.dev` serving setup.
 
 **This solves the private-repo freshness gap**: the repo stays private;
 the *status endpoint* is public (status data is public-by-intent — the
@@ -114,15 +165,33 @@ URL and get live updates with zero deploys and zero Actions.
 
 ### 3. Concurrency: same purity rule, simpler writer set
 
-§5's insight carries over unchanged: `summary.json` is a pure function
-of the stored inputs. In Profile C the writer set shrinks to one
-scheduled Worker (readings) plus rare incident writes. Writes of
-distinct objects never conflict; the regenerate step lists inputs and
-rewrites derived files, so concurrent regenerates converge on the same
-bytes. R2 conditional puts (`If-Match` on ETag) provide the
-retry-on-race guard where the branch used non-fast-forward rejection.
-No Durable Object lock is required at these write rates; one may be
-added later without contract changes.
+§5's purity insight carries over — `summary.json` is a pure function
+of the stored inputs — but the atomicity does NOT (council condition
+1): a git push committed summary + entity details + atom as one
+snapshot; R2 writes them as individual objects, and `If-Match` guards
+only single objects. A reader could observe a torn state between
+objects of the same regenerate.
+
+**Consistency model (write-order, Option A):** derived objects are
+written in dependency order with **`summary.json` written LAST — it is
+the commit point**. Clients (per the §4 protocol) always read the
+summary first and treat entity details as enhancement-only, so the
+worst observable skew is a drill-down chart one cycle staler than the
+summary — the same staleness the CDN already permits. Each derived
+object embeds the shared `generatedAt`, so skew is detectable. The
+readings batch is immutable input, written before any derived object.
+
+`If-Match` conditional puts remain the per-object race guard for the
+rare concurrent-regenerate case (probe overlapping incident sync):
+lose the race → re-list inputs → regenerate → retry, mirroring §5.
+Writer set: one scheduled probe Worker + rare incident writes; no
+Durable Object lock is required at these rates.
+
+**Upgrade path (Option B, not now):** if torn reads ever matter,
+switch to generation-prefixed derived objects plus a single atomically
+swapped manifest pointer resolved by the serving Worker. This is a
+serving-Worker change only — the contract and clients are unaffected —
+which is why Option A is acceptable today.
 
 ### 4. Incidents: hybrid on purpose (the jsdom constraint)
 
@@ -145,11 +214,27 @@ output-equivalence tests against the jsdom pipeline.
 ### 5. History lifecycle replaces git compaction
 
 §10's monthly orphan-reset exists because git accumulates commits. R2
-has no commit history: the daily batch→JSONL compaction (above) plus an
-optional R2 lifecycle rule (expire `readings/` leftovers; optionally
-expire archives beyond N days) replaces `compact-data-branch-v1.yml`
-entirely. Auditability changes shape: from git commits to R2 object
-versioning (optional) — accepted trade-off, stated honestly.
+has no commit history: the daily batch→JSONL compaction plus lifecycle
+rules replace `compact-data-branch-v1.yml`. Council conditions 2–3
+make the compaction contract explicit:
+
+- **Fencing:** compaction only touches batch partitions strictly older
+  than the previous UTC day boundary **plus a 1-hour buffer**, so a
+  delayed probe write can never race the delete phase.
+- **Delete-after-verify:** batch fragments are deleted only after the
+  day's archive JSONL has been written AND read back
+  successfully. The cron is idempotent and crash-safe: a re-run
+  re-lists surviving batches, regenerates the same archive bytes
+  (deterministic input set), and resumes deletion.
+- **Lifecycle expiry is a backstop, never the mechanism:** any R2
+  lifecycle rule on `readings/` must be **≥ 3 days** — strictly longer
+  than the maximum tolerated compaction outage plus the monitoring
+  alerting window — so a broken cron surfaces as an alert, not as
+  silent data destruction. Archive expiry (beyond the 90-day window)
+  stays optional and user-configured.
+
+Auditability changes shape: from git commits to R2 object versioning
+(optional) — accepted trade-off, stated honestly.
 
 ### 6. Configuration and packaging
 
@@ -210,6 +295,17 @@ Actions cost at all.
 
 - One external account and two secrets (R2 keys for the CLI; bucket
   binding for the Worker) — exactly the dependency Profile A avoids
+- **Loss of multi-object write atomicity** (council): git's commit
+  snapshot becomes write-ordered eventual consistency with
+  summary-last as the commit point; torn reads are bounded and
+  detectable (shared `generatedAt`) but possible
+- **One metered ceiling becomes two**: Actions minutes are replaced by
+  R2 operation classes AND Workers request limits — both generous, but
+  both require the parameterized budget in §1 and the custom-domain
+  mandate in §2 to stay free
+- **Clock-boundary trust**: correctness of day partitioning depends on
+  UTC clock agreement between the probe and compaction crons —
+  mitigated by the 1-hour compaction buffer
 - Git-commit auditability replaced by weaker object-versioning
 - Two write backends to maintain in probe (mitigated: shared
   transforms; backends are thin I/O adapters behind the §5 regenerate)
@@ -246,7 +342,10 @@ Actions cost at all.
    golden-tested both directions)
 5. Docs: profile chooser table in the README; runbook updates
 6. Pipeline e2e: Profile C leg using an R2-compatible local emulator
-   (miniflare/wrangler dev) so both profiles stay covered
+   (miniflare/wrangler dev) so both profiles stay covered — MUST
+   include concurrency cases (council condition 5): probe run
+   overlapping an incident regenerate, and compaction racing a
+   day-boundary probe write; assert no torn/lost state
 
 ## References
 
