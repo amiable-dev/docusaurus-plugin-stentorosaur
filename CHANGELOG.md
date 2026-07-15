@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Profile C: R2 object-storage data plane** (ADR-006, epic #97) —
+  optional, zero-Actions monitoring. `dataPlane: {kind: 'r2', …}` in
+  `stentorosaur.config.js` moves the `status/v1` contract into an R2
+  bucket: the Cloudflare Worker probes and writes through a bucket
+  binding (write-order consistency with a summary-last `If-Match`
+  commit point), a serving route publishes it with Cache-Control/ETag/
+  CORS behind a required custom domain, and a daily compaction cron
+  folds probe batches into day archives (fenced, verify-before-delete,
+  crash-safe) with health in `compaction-state.json`. `stentorosaur
+  migrate --to r2 | --to git` moves existing history between profiles
+  losslessly (`--dry-run` plans). `doctor` validates whichever plane
+  the config selects and warns on stale compaction. Defaults are
+  unchanged — git-branch deployments are unaffected.
+- e2e now runs a git + r2 profile matrix asserting identical DOM
+  invariants; new concurrency tests cover regenerate races, compaction
+  races, and torn-state detection (council condition 5).
+
+### Fixed
+
+- `readAllReadings` (r2 plane) reads batches before archives — the
+  reverse order could drop a freshly-compacted day from one regenerate
+  cycle when racing the compaction cron.
+- `StatusHistory` derives its entity-detail URL from the runtime
+  `dataUrl` instead of the hardcoded snapshot path — history pages
+  404'd on deployments without a local snapshot in the build.
+
 ## [1.0.1] - 2026-07-15
 
 ### Fixed

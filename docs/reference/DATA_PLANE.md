@@ -1,8 +1,10 @@
 # The status/v1 Data Plane (v1)
 
 Everything the status page renders comes from ONE schema-validated
-contract on a dedicated git branch (default `status-data`), written by
-`@stentorosaur/probe` and read by the plugin. Full rationale: ADR-005.
+contract — by default on a dedicated git branch (default
+`status-data`), written by `@stentorosaur/probe` and read by the
+plugin. Full rationale: ADR-005. The same contract can live in an R2
+bucket instead (ADR-006 Profile C, below).
 
 ```
 status/v1/
@@ -30,6 +32,7 @@ concurrent writers safe (regenerate-and-retry, ADR-005 §5).
 | `update-incidents` | sync GitHub issues → incidents/maintenance inputs + `raw/`, regenerate, push |
 | `regenerate` | §7 runbook: re-render every body from `raw/` with the current sanitizer |
 | `migrate` | one-time 0.x → v1 conversion (config + full history, zero loss) |
+| `migrate --to r2` / `--to git` | move the whole plane between git and an R2 bucket (verbatim copy, merge-by-content, `--dry-run` plans) |
 | `ingest --payload <file>` | receive a `repository_dispatch` probe payload (schema-gated) |
 
 All data-branch writers accept `--config <site>`, `--workdir <data
@@ -62,3 +65,40 @@ without a write credential in the Worker — ADR-005 §6), and quota math.
 Maintenance windows: issues with a `maintenance` label and a
 `start:`/`end:` frontmatter block (human-friendly dates like
 `@tomorrow 2am UTC` are parsed server-side).
+
+## Profile C: the same contract in an R2 bucket (ADR-006)
+
+Opting into `dataPlane: {kind: 'r2', …}` moves the plane to object
+storage: a Cloudflare Worker probes and writes directly through a
+bucket binding (zero GitHub Actions in the monitoring loop) and a
+serving route publishes `status/v1/*` with `Cache-Control`/ETag/CORS
+behind a **required custom domain**. Two storage-shape differences
+from git — the contract itself is identical:
+
+```
+status/v1/
+├── readings/<ts>-<runid>.json   # ONE immutable batch per probe run
+│                                # (R2 cannot append) — folded into
+│                                # archives/ by the daily compaction
+│                                # cron and then deleted
+└── compaction-state.json        # compaction health (lastRun,
+                                 # lastSuccess, quarantine count) —
+                                 # `stentorosaur doctor` reads it
+```
+
+Write-order consistency (ADR-006 §3): git's multi-file commit is
+replaced by a strict order — entity details → atom → **summary.json
+LAST, `If-Match`-guarded** — so a client never sees a summary newer
+than the inputs it references; the loser of a concurrent write
+re-reads everything and retries. Compaction (§5) is fenced (a day is
+only touched once closed plus 1 hour), verifies the archive byte-wise
+before deleting any batch, and converges on re-run after any crash.
+Both properties are enforced by concurrency tests (epic #97, ticket
+#103) and the r2 leg of the e2e matrix runs the full pipeline —
+Worker probe → compaction → serving route → built site — on every CI
+run.
+
+Setup runbook, budget math, and lifecycle guardrails:
+[templates/workflows/README](../../packages/docusaurus-plugin-stentorosaur/templates/workflows/README.md)
+§"Profile C". Config reference:
+[CONFIGURATION.md](./CONFIGURATION.md) §`dataPlane`.
