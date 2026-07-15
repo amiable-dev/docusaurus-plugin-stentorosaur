@@ -17,6 +17,14 @@ const SITE_DIR = path.resolve(__dirname, '..', 'fixtures', 'site');
 const BUILD_DIR = path.join(SITE_DIR, 'build');
 
 test.describe('status page renders pipeline output', () => {
+  test('hydrates without page errors (client interactivity guard)', async ({page}) => {
+    const errors: string[] = [];
+    page.on('pageerror', e => errors.push(String(e)));
+    await page.goto('/status');
+    await page.waitForLoadState('networkidle');
+    expect(errors).toEqual([]);
+  });
+
   test('shows monitored systems from the v1 summary', async ({page}) => {
     await page.goto('/status');
     await expect(page.getByText('alpha', {exact: false}).first()).toBeVisible();
@@ -50,6 +58,15 @@ test.describe('status page renders pipeline output', () => {
     // claim all systems operational.
     const banner = page.getByText(/all systems operational/i);
     await expect(banner).toHaveCount(0);
+  });
+
+  test('per-entity history page renders charts from v1 entity detail (v1.0.1)', async ({page}) => {
+    await page.goto('/status/history/alpha');
+    await page.waitForLoadState('networkidle');
+    // The page fetches status/v1/entities/alpha.json client-side and
+    // renders the chart layout — never the error state.
+    await expect(page.getByText(/Error Loading Data/i)).toHaveCount(0);
+    await expect(page.locator('main')).toContainText(/alpha/i);
   });
 
   test('renders an uptime bar per configured system (summary day tuples)', async ({page}) => {

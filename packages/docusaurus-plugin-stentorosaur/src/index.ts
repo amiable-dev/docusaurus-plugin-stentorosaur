@@ -23,6 +23,16 @@ export {validateOptions} from './options';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PLUGIN_VERSION: string = require('../package.json').version;
 
+/** Same slug rules the probe uses for entity file names. */
+function entitySlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export function getSwizzleComponentList(): string[] {
   return [
     'StatusPage',
@@ -158,6 +168,18 @@ export default async function pluginStatus(
         modules: {statusData: statusDataId},
         metadata: {lastUpdatedAt: new Date(content.lastUpdated).getTime()},
       });
+
+      // Per-entity history pages (/status/history/<slug>) — deep-linkable
+      // charts over status/v1/entities/<slug>.json. PerformanceMetrics
+      // links here; the routes were dropped by mistake at the #77
+      // cutover (v1.0.1).
+      for (const item of content.items) {
+        addRoute({
+          path: normalizeUrl([baseUrl, 'status', 'history', entitySlug(item.name)]),
+          component: '@theme/StatusHistory',
+          exact: true,
+        });
+      }
     },
 
     async postBuild({outDir}) {

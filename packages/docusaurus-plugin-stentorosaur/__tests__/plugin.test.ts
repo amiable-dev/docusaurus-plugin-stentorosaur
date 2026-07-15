@@ -169,6 +169,21 @@ describe('contentLoaded', () => {
     );
   });
 
+  it('registers a deep-linkable history route per entity (v1.0.1 regression)', async () => {
+    writeLocalSummary();
+    const plugin = await pluginStatusPage(makeContext(), {} as PluginOptions);
+    const content = await plugin.loadContent!();
+    const addRoute = jest.fn();
+    const createData = jest.fn().mockResolvedValue('status-data.json');
+    await plugin.contentLoaded!({content, actions: {addRoute, createData}} as any);
+    expect(addRoute).toHaveBeenCalledWith(
+      expect.objectContaining({path: '/status/history/api', component: '@theme/StatusHistory'})
+    );
+    expect(addRoute).toHaveBeenCalledWith(
+      expect.objectContaining({path: '/status/history/onboarding'})
+    );
+  });
+
   it('uses the upptime layout when statusView=upptime', async () => {
     writeLocalSummary();
     const plugin = await pluginStatusPage(makeContext(), {

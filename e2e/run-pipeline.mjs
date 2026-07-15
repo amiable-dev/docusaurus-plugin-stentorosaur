@@ -101,9 +101,43 @@ async function runPipeline() {
     siteUrl: 'http://127.0.0.1:3999',
   });
 
-  // 5. Build the fixture site with the real plugin (local-snapshot path).
-  execFileSync('npx', ['docusaurus', 'build', SITE, '--out-dir', path.join(SITE, 'build')], {
-    cwd: ROOT,
+  // 5. Install the plugin the way a CONSUMER does: packed tarballs into
+  // the fixture's own node_modules. The workspace symlink's real path
+  // escapes webpack's node_modules babel-exclusion, double-transpiles
+  // the CJS theme, and breaks hydration ('exports is not defined') —
+  // fixture-only, but it hid every client-side behavior from e2e.
+  // Tarball install also makes e2e catch packaging bugs (missing
+  // `files` entries) that a symlink never would.
+  const PACK_DIR = path.join(SITE, '.packed');
+  fs.rmSync(PACK_DIR, {recursive: true, force: true});
+  fs.mkdirSync(PACK_DIR, {recursive: true});
+  const PACKED = [
+    ['packages/core', '@stentorosaur/core'],
+    ['packages/docusaurus-plugin-stentorosaur', '@amiable-dev/docusaurus-plugin-stentorosaur'],
+  ];
+  for (const [pkgDir, pkgName] of PACKED) {
+    const tarball = execFileSync(
+      'npm',
+      ['pack', path.join(ROOT, pkgDir), '--pack-destination', PACK_DIR],
+      {cwd: ROOT, encoding: 'utf8'}
+    )
+      .trim()
+      .split('\n')
+      .pop();
+    const dest = path.join(SITE, 'node_modules', pkgName);
+    fs.rmSync(dest, {recursive: true, force: true});
+    fs.mkdirSync(dest, {recursive: true});
+    // npm tarballs root everything under package/ — strip it. Their
+    // remaining deps resolve upward to the workspace root install.
+    execFileSync('tar', ['-xzf', path.join(PACK_DIR, tarball), '--strip-components=1', '-C', dest]);
+  }
+
+  // 6. Build the fixture site with the real (packed) plugin. cwd MUST
+  // be the site dir: Docusaurus resolves browserslist from cwd, and
+  // without it babel targets ES5 and injects ESM regenerator helpers
+  // into the CJS theme — killing hydration.
+  execFileSync('npx', ['docusaurus', 'build', '.', '--out-dir', path.join(SITE, 'build')], {
+    cwd: SITE,
     stdio: 'inherit',
     env: {...process.env, CI: process.env.CI ?? ''},
   });

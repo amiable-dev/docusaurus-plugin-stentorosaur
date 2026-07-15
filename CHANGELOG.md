@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-15
+
+### Fixed
+
+- Restored the per-entity history routes (`/status/history/<slug>`) —
+  dropped by mistake at the v1.0 cutover; PerformanceMetrics links and
+  bookmarks 404'd. StatusHistory renders from `status/v1/entities/`.
+- e2e harness now consumes packed tarballs (consumer-faithful packaging
+  coverage) and builds from the site dir so browserslist applies; added
+  a hydration guard spec (a site WITHOUT a browserslist config makes
+  Docusaurus babel target ES5 and inject ESM helpers into the CJS
+  theme, breaking hydration — scaffolded sites always have one).
+
 ## [1.0.0] - 2026-07-13
 
 The ADR-005 hard cutover (epic #63). One data contract (`status/v1/` on

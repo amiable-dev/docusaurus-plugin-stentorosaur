@@ -150,6 +150,14 @@ status-data, path: status-data`) and build with the local snapshot via
 `dataPath` — the page renders the build-time snapshot without a live
 refresh endpoint.
 
+## Troubleshooting
+
+**Status page renders but nothing is clickable / live refresh doesn't
+run** — check that your site's `package.json` has a `browserslist`
+section (every `create-docusaurus` scaffold does). Without one, babel
+targets very old browsers and injects ESM helpers into the plugin's
+theme code, which breaks hydration with `exports is not defined`.
+
 ## Versioning and support
 
 - **v1.x** — active development.
