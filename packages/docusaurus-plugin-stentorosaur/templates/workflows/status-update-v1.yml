@@ -46,5 +46,5 @@ jobs:
         run: |
           # PINNED version (supply-chain: this workflow holds
           # contents:write). Bump deliberately when upgrading the plugin.
-          npx -y -p @stentorosaur/probe@0.2.0 \
+          npx -y -p @stentorosaur/probe@0.2.1 \
             stentorosaur update-incidents --config . --workdir . --branch status-data
