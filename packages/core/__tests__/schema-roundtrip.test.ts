@@ -10,6 +10,7 @@
 import {
   STATUS_SCHEMA_VERSION,
   decodeDayRollups,
+  emptySummary,
   encodeDayRollups,
   parseEntityDetail,
   parseRawIncidentBody,
@@ -164,6 +165,26 @@ describe('summary round-trip', () => {
     expect(() => parseSummary(future)).toThrow(
       /schemaVersion 2.*supports.*1|unsupported.*schemaVersion/i
     );
+  });
+});
+
+describe('emptySummary (site bootstrap / opt-in fallback)', () => {
+  it('parses under the reader schema — a valid, empty, no-entity summary', () => {
+    const summary = emptySummary();
+    expect(parseSummary(JSON.parse(JSON.stringify(summary)))).toEqual(summary);
+    expect(summary.entities).toEqual([]);
+    expect(summary.incidents).toEqual({open: [], recent: []});
+    expect(summary.maintenance).toEqual({upcoming: [], inProgress: []});
+  });
+
+  it('defaults to a placeholder epoch timestamp (deterministic, no clock read)', () => {
+    expect(emptySummary().generatedAt).toBe('1970-01-01T00:00:00.000Z');
+  });
+
+  it('honors injected generatedAt / generatedBy', () => {
+    const summary = emptySummary({generatedAt: '2026-07-16T00:00:00.000Z', generatedBy: 'stentorosaur-init'});
+    expect(summary.generatedAt).toBe('2026-07-16T00:00:00.000Z');
+    expect(summary.generatedBy).toBe('stentorosaur-init');
   });
 });
 

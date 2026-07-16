@@ -64,11 +64,17 @@ issues, embedded directly in your documentation site.
 npm install @amiable-dev/docusaurus-plugin-stentorosaur
 npm install -D @stentorosaur/probe
 
-npx stentorosaur init          # scaffolds stentorosaur.config.js
+npx stentorosaur init          # scaffolds stentorosaur.config.js + seeds an empty summary so the site builds now
 # fill in owner/repo/entities, create the data branch (init prints the commands)
 npx stentorosaur probe         # first readings → status/v1 on the data branch
 npx stentorosaur doctor        # validates config + data plane health
 ```
+
+`init` seeds an empty-but-valid `status-data/status/v1/summary.json` so
+`docusaurus start` works immediately; the first `probe` replaces it. If
+you add the plugin before any data exists (and aren't using `init`'s
+seed), set `allowMissingData: true` to render an empty page instead of
+failing the build — see the options table below.
 
 Serve the `status-data` branch (GitHub Pages → deploy from branch), then
 configure the plugin:
@@ -103,6 +109,7 @@ with `probe-dispatch-v1.yml`.
 |---|---|---|
 | `dataUrl` | – | `status/v1/summary.json` endpoint (absolute http(s), or site-relative for self-served snapshots) |
 | `dataPath` | `status-data` | Local directory holding `status/v1` at build time (private repos / CI checkouts) |
+| `allowMissingData` | `false` | Render an empty page (with a build warning) instead of failing when no data is found — for local bootstrap / CI preview before the first `probe`. Leave `false` in production so a misconfigured `dataUrl` fails loudly |
 | `title`, `description` | `System Status`, … | Page header |
 | `entities` | `[]` | Display metadata (`{name, displayName?, description?}`) layered onto the data plane's entities |
 | `showServices` / `showIncidents` / `showPerformanceMetrics` | `true` | Section toggles |

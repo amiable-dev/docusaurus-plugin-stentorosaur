@@ -132,6 +132,18 @@ export interface PluginOptions {
   /** Local directory holding status/v1 at build time (default 'status-data') */
   dataPath?: string;
 
+  /**
+   * When no status/v1 data can be found (no reachable `dataUrl`, no
+   * local snapshot), render an empty status page with a build warning
+   * instead of failing the build. Default `false` — a missing data
+   * plane is a hard error, so a misconfigured production `dataUrl`
+   * fails loudly rather than silently shipping an empty page (ADR-005
+   * removed the old demo-on-empty behavior for exactly this reason).
+   * Opt in for local bootstrap / CI preview builds before the first
+   * probe has run.
+   */
+  allowMissingData?: boolean;
+
   /** Status page title */
   title?: string;
 

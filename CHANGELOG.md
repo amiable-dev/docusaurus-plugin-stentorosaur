@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **First-run bootstrap**: `stentorosaur init` now seeds an empty-but-valid
+  `status-data/status/v1/summary.json` so a new site builds immediately —
+  before the first `probe`. Adding the plugin no longer hard-fails
+  `docusaurus start` on a fresh repo. The seed is a placeholder (no
+  entities, epoch timestamp) and is replaced by the first real probe;
+  an existing summary is never clobbered.
+- **`allowMissingData` plugin option** (default `false`): render an empty
+  status page with a build warning instead of throwing when no
+  `status/v1` data can be found. For local bootstrap and CI preview
+  builds before monitoring is wired up. Production stays fail-loud by
+  default so a misconfigured `dataUrl` errors rather than silently
+  shipping an empty page (never fabricated demo data — ADR-005 removed
+  demo-on-empty for that reason). The no-data error message now names
+  this escape hatch. Adds `emptySummary()` to `@stentorosaur/core`.
+
 - **Profile C: R2 object-storage data plane** (ADR-006, epic #97) —
   optional, zero-Actions monitoring. `dataPlane: {kind: 'r2', …}` in
   `stentorosaur.config.js` moves the `status/v1` contract into an R2

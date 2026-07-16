@@ -137,6 +137,32 @@ describe('loadContent (v1 single read path)', () => {
     await expect(plugin.loadContent!()).rejects.toThrow(/stentorosaur (init|migrate)/);
   });
 
+  it('the no-data error names the allowMissingData escape hatch', async () => {
+    const plugin = await pluginStatusPage(makeContext(), {} as PluginOptions);
+    await expect(plugin.loadContent!()).rejects.toThrow(/allowMissingData/);
+  });
+
+  it('renders an empty page (not a throw) when allowMissingData is set and no data exists', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const plugin = await pluginStatusPage(makeContext(), {
+      allowMissingData: true,
+    } as PluginOptions);
+    const content = await plugin.loadContent!();
+    expect(content.items).toEqual([]);
+    expect(content.incidents).toEqual([]);
+    expect(content.v1Summary!.entities).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/empty status page/));
+  });
+
+  it('allowMissingData does NOT mask real data — a reachable summary still wins', async () => {
+    writeLocalSummary();
+    const plugin = await pluginStatusPage(makeContext(), {
+      allowMissingData: true,
+    } as PluginOptions);
+    const content = await plugin.loadContent!();
+    expect(content.items.map(i => i.name)).toEqual(['api', 'onboarding']);
+  });
+
   it('rejects an invalid local summary loudly (schema-gated)', async () => {
     writeLocalSummary({schemaVersion: 99, nonsense: true});
     const plugin = await pluginStatusPage(makeContext(), {} as PluginOptions);

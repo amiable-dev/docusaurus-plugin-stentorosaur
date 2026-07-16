@@ -34,7 +34,7 @@ import type {ObjectStore} from './object-store';
 import {compactionStateSchema} from './r2-compaction';
 import {V1, regenerateDerivedR2, writeReadingsBatch} from './r2-plane';
 import {reRenderFromRawR2} from './r2-raw-rerender';
-import {parseProbeDispatch, parseSummary} from '@stentorosaur/core';
+import {emptySummary, parseProbeDispatch, parseSummary} from '@stentorosaur/core';
 import type {CompactReading, StentorosaurConfig} from '@stentorosaur/core';
 
 interface CliOptions {
@@ -197,6 +197,22 @@ async function cmdInit(options: CliOptions): Promise<number> {
   const target = path.join(options.workdir, 'stentorosaur.config.js');
   fs.writeFileSync(target, CONFIG_TEMPLATE);
   console.log(`wrote ${target}`);
+
+  // Seed an empty-but-valid summary so the site BUILDS before the first
+  // probe. Without it, adding the plugin makes `docusaurus start` fail
+  // hard until the whole data plane is stood up — a new user can't see
+  // their site to iterate on it. The seed is a placeholder (epoch
+  // timestamp, no entities), overwritten by the first real `probe`; we
+  // never clobber existing data.
+  const seedPath = path.join(options.workdir, 'status-data', 'status', 'v1', 'summary.json');
+  if (fs.existsSync(seedPath)) {
+    console.log(`\nleft existing ${path.relative(options.workdir, seedPath)} untouched`);
+  } else {
+    fs.mkdirSync(path.dirname(seedPath), {recursive: true});
+    fs.writeFileSync(seedPath, JSON.stringify(emptySummary({generatedBy: 'stentorosaur-init'}), null, 2) + '\n');
+    console.log(`seeded ${path.relative(options.workdir, seedPath)} (empty placeholder — the site builds now; the first \`probe\` replaces it)`);
+  }
+
   console.log('\nNext steps:');
   console.log('  1. Fill in owner/repo/entities.');
   console.log("  2. Create the data branch: git switch --orphan status-data && git commit --allow-empty -m init && git push -u origin status-data && git switch -");
