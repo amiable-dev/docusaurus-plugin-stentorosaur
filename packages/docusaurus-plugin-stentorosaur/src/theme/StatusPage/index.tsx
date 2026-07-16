@@ -13,7 +13,7 @@ import StatusBoard from '../StatusBoard';
 import IncidentHistory from '../IncidentHistory';
 import MaintenanceList from '../Maintenance/MaintenanceList';
 import PerformanceMetrics from '../PerformanceMetrics';
-import {SystemCard, SystemCardDetails, SystemCardUptimeBar} from '../SystemCard';
+import {SystemCard, SystemCardCharts, SystemCardDetails, SystemCardUptimeBar} from '../SystemCard';
 import {StatusDataProvider} from '../../context/StatusDataProvider';
 import type {StatusData, SystemStatusFile} from '../../types';
 import {parseEntityDetail} from '@stentorosaur/core';
@@ -191,9 +191,16 @@ function StatusPageInner({
               displayName={item.displayName}
               status={item.status}
               expandable
+              // Accordion controlled by activeSystem: expanding a card
+              // makes it the single active one so its charts render
+              // inline below its 90-day bar (others collapse).
+              expanded={showPerformanceMetrics ? activeSystem === item.name : undefined}
               onExpandChange={
                 showPerformanceMetrics
-                  ? expanded => expanded && handleSystemClick(item.name)
+                  ? expanded => {
+                      setActiveSystem(expanded ? item.name : null);
+                      if (expanded) void loadEntityDetail(item.name);
+                    }
                   : undefined
               }
             >
@@ -203,6 +210,23 @@ function StatusPageInner({
                   <p>{item.description}</p>
                 </SystemCardDetails>
               )}
+              {showPerformanceMetrics &&
+                activeSystem === item.name &&
+                systemFiles.get(item.name) && (
+                  <SystemCardCharts>
+                    {/* Stop clicks inside the charts (period buttons,
+                        enlarge) from bubbling to the card's toggle. */}
+                    <div onClick={e => e.stopPropagation()}>
+                      <PerformanceMetrics
+                        systemFile={systemFiles.get(item.name)!}
+                        incidents={incidents}
+                        maintenance={maintenance}
+                        isVisible={true}
+                        onClose={() => setActiveSystem(null)}
+                      />
+                    </div>
+                  </SystemCardCharts>
+                )}
             </SystemCard>
           ))
         )}
@@ -230,7 +254,10 @@ function StatusPageInner({
             (statusCardLayout === 'minimal' ? renderMinimalLayout() : renderDetailedLayout())}
         </StatusDataProvider>
 
-        {showPerformanceMetrics && activeFile && (
+        {/* Minimal layout renders each system's charts INLINE under its
+            card (above). The detailed layout keeps the single
+            board-level panel below the board. */}
+        {statusCardLayout !== 'minimal' && showPerformanceMetrics && activeFile && (
           <PerformanceMetrics
             systemFile={activeFile}
             incidents={incidents}

@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import {fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import StatusPage, {deriveV1BaseUrl, entitySlug, detailToSystemFile} from '../src/theme/StatusPage';
 import {makeSummary, makeStatusData} from './helpers/v1-fixtures';
@@ -152,6 +152,56 @@ describe('StatusPage (v1)', () => {
         expect.anything()
       )
     );
+  });
+
+  it('renders the charts INLINE under the expanded card (minimal layout), not at board bottom', async () => {
+    const summary = makeSummary({entities: [{name: 'api', status: 'up'}]});
+    (global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schemaVersion: 1,
+          generatedAt: summary.generatedAt,
+          name: 'api',
+          readings: [{t: Date.parse(summary.generatedAt), svc: 'api', state: 'up', code: 200, lat: 50}],
+        }),
+    });
+
+    render(<StatusPage statusData={makeStatusData(summary, {dataUrl: '/status-data/status/v1/summary.json'})} />);
+    fireEvent.click(screen.getByRole('button', {name: /Toggle api/i}));
+
+    const panel = await screen.findByText(/Performance Metrics - api/i);
+    // Exactly one metrics panel, and it lives INSIDE the api card's
+    // <article> (proves inline placement, not the board-bottom panel).
+    expect(screen.getAllByText(/Performance Metrics - api/i)).toHaveLength(1);
+    const article = panel.closest('article');
+    expect(article).not.toBeNull();
+    expect(within(article!).getByRole('heading', {name: 'api'})).toBeInTheDocument();
+  });
+
+  it('a click inside the inline charts does not collapse the card', async () => {
+    const summary = makeSummary({entities: [{name: 'api', status: 'up'}]});
+    (global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schemaVersion: 1,
+          generatedAt: summary.generatedAt,
+          name: 'api',
+          readings: [{t: Date.parse(summary.generatedAt), svc: 'api', state: 'up', code: 200, lat: 50}],
+        }),
+    });
+
+    render(<StatusPage statusData={makeStatusData(summary, {dataUrl: '/status-data/status/v1/summary.json'})} />);
+    fireEvent.click(screen.getByRole('button', {name: /Toggle api/i}));
+    const panel = await screen.findByText(/Performance Metrics - api/i);
+
+    // Click within the charts panel — must not toggle the card shut.
+    fireEvent.click(panel);
+    expect(screen.getByText(/Performance Metrics - api/i)).toBeInTheDocument();
+    expect(panel.closest('article')).toHaveAttribute('aria-expanded', 'true');
   });
 });
 
