@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-16
+
+Accompanied by `@stentorosaur/probe` 0.2.1 (the entity-detail rebuild is
+in the probe's `regenerateDerived`). `@stentorosaur/core` is unchanged at
+0.2.0. The v1 workflow templates pin `@stentorosaur/probe@0.2.1`.
+
 ### Fixed
 
 - Drill-down charts (Performance Metrics modal + per-entity history page)

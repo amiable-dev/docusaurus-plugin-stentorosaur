@@ -1,6 +1,6 @@
 {
   "name": "@stentorosaur/probe",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Monitoring engine and I/O for Stentorosaur (ADR-005 §1). All fetching (HTTP checks, GitHub API, git writes) lives here; transforms live in @stentorosaur/core.",
   "license": "MIT",
   "author": "Amiable Development <dev@amiable.dev>",
