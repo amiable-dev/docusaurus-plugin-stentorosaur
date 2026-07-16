@@ -1,6 +1,6 @@
 {
   "name": "@stentorosaur/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pure schemas and aggregation logic for Stentorosaur status monitoring (ADR-005). No I/O.",
   "license": "MIT",
   "author": "Amiable Development <dev@amiable.dev>",

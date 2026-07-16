@@ -1,6 +1,6 @@
 {
   "name": "@stentorosaur/probe",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Monitoring engine and I/O for Stentorosaur (ADR-005 §1). All fetching (HTTP checks, GitHub API, git writes) lives here; transforms live in @stentorosaur/core.",
   "license": "MIT",
   "author": "Amiable Development <dev@amiable.dev>",
@@ -39,7 +39,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@stentorosaur/core": "^0.1.0",
+    "@stentorosaur/core": "^0.2.0",
     "jiti": "^2.4.0",
     "aws4fetch": "^1.0.20",
     "zod": "^4.1.12"
