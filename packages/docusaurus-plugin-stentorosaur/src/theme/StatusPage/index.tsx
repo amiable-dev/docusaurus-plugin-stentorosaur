@@ -131,7 +131,13 @@ function StatusPageInner({
       });
       if (!response.ok) return;
       const detail = parseEntityDetail(JSON.parse(await response.text()));
-      setSystemFiles(prev => new Map(prev).set(name, detailToSystemFile(detail)));
+      const file = detailToSystemFile(detail);
+      // Carry the entity's 90-day daily rollups (already on the adapted
+      // item) so the modal's long-range Uptime/SLI fill from them, like
+      // the history page (#119).
+      const days = items.find(i => i.name === name)?.days;
+      if (days?.length) file.days = days;
+      setSystemFiles(prev => new Map(prev).set(name, file));
     } catch {
       // Detail data is enhancement-only; the card still renders.
     }

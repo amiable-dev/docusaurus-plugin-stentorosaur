@@ -5,10 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import ResponseTimeChart from '../ResponseTimeChart';
 import UptimeChart from '../UptimeChart';
 import SLIChart from '../SLIChart';
+import { mergeDaysIntoHistory } from '../StatusPage/mergeDays';
 import type { SystemStatusFile, StatusIncident, ScheduledMaintenance } from '../../types';
 import styles from './styles.module.css';
 
@@ -41,6 +42,15 @@ export default function PerformanceMetrics({
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('7d');
   const [fullscreenChart, setFullscreenChart] = useState<ChartType | null>(null);
   const [uptimeChartType, setUptimeChartType] = useState<'bar' | 'heatmap'>('bar');
+
+  // Long-range Uptime/SLI fill from the 90-day daily series (#114/#119),
+  // same as the history page. Response Time keeps the raw per-check
+  // readings (daily rollups carry no latency). Empty days → history
+  // passes through unchanged.
+  const uptimeHistory = useMemo(
+    () => mergeDaysIntoHistory(systemFile.history, systemFile.days ?? [], 90),
+    [systemFile]
+  );
 
   const handleChartClick = useCallback((chartType: ChartType) => {
     setFullscreenChart(chartType);
@@ -132,7 +142,7 @@ export default function PerformanceMetrics({
             </div>
             <UptimeChart
               name={systemFile.name}
-              history={systemFile.history}
+              history={uptimeHistory}
               incidents={incidents}
               maintenance={maintenance}
               chartType={uptimeChartType}
@@ -148,7 +158,7 @@ export default function PerformanceMetrics({
             </div>
             <SLIChart
               name={systemFile.name}
-              history={systemFile.history}
+              history={uptimeHistory}
               period={selectedPeriod}
               height={280}
               showPeriodSelector={false}
@@ -163,7 +173,7 @@ export default function PerformanceMetrics({
             </div>
             <SLIChart
               name={systemFile.name}
-              history={systemFile.history}
+              history={uptimeHistory}
               period={selectedPeriod}
               height={280}
               showPeriodSelector={false}
@@ -216,7 +226,7 @@ export default function PerformanceMetrics({
                   <h2>Uptime - {systemFile.name}</h2>
                   <UptimeChart
                     name={systemFile.name}
-                    history={systemFile.history}
+                    history={uptimeHistory}
                     incidents={incidents}
                     maintenance={maintenance}
                     chartType={uptimeChartType}
@@ -230,7 +240,7 @@ export default function PerformanceMetrics({
                   <h2>SLI/SLO Compliance - {systemFile.name}</h2>
                   <SLIChart
                     name={systemFile.name}
-                    history={systemFile.history}
+                    history={uptimeHistory}
                     period={selectedPeriod}
                     height={600}
                     showPeriodSelector={false}
@@ -243,7 +253,7 @@ export default function PerformanceMetrics({
                   <h2>Error Budget - {systemFile.name}</h2>
                   <SLIChart
                     name={systemFile.name}
-                    history={systemFile.history}
+                    history={uptimeHistory}
                     period={selectedPeriod}
                     height={600}
                     showPeriodSelector={false}
