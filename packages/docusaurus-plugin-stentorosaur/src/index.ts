@@ -12,7 +12,7 @@
 import path from 'path';
 import fs from 'fs-extra';
 import {normalizeUrl} from '@docusaurus/utils';
-import {parseSummary} from '@stentorosaur/core';
+import {emptySummary, parseSummary} from '@stentorosaur/core';
 import type {StatusSummary} from '@stentorosaur/core';
 import type {LoadContext, Plugin} from '@docusaurus/types';
 import type {PluginOptions, StatusData} from './types';
@@ -51,7 +51,8 @@ export function getSwizzleComponentList(): string[] {
 async function loadV1Summary(
   siteDir: string,
   dataPath: string,
-  dataUrl: string | undefined
+  dataUrl: string | undefined,
+  allowMissingData: boolean
 ): Promise<StatusSummary> {
   if (dataUrl && /^https?:\/\//.test(dataUrl)) {
     try {
@@ -79,13 +80,25 @@ async function loadV1Summary(
     return summary;
   }
 
+  if (allowMissingData) {
+    console.warn(
+      '[docusaurus-plugin-stentorosaur] No status/v1 data found — rendering an ' +
+        'empty status page (allowMissingData: true). Run `stentorosaur probe` to ' +
+        'populate it; unset allowMissingData in production so a misconfigured ' +
+        'dataUrl fails the build instead of shipping an empty page.'
+    );
+    return emptySummary({generatedBy: 'plugin-empty-fallback'});
+  }
+
   throw new Error(
     '[docusaurus-plugin-stentorosaur] No status/v1 data found. Either set the ' +
       "plugin's `dataUrl` to your served summary.json (see the migration " +
       'guide), or check out the data branch so ' +
       `${dataPath}/status/v1/summary.json exists at build time. New site? ` +
       "Run `npx -p @stentorosaur/probe stentorosaur init`, then `probe`. " +
-      'Upgrading from 0.x? Run `stentorosaur migrate`.'
+      'Upgrading from 0.x? Run `stentorosaur migrate`. To build without data ' +
+      'yet (local bootstrap / CI preview), set the plugin option ' +
+      '`allowMissingData: true`.'
   );
 }
 
@@ -121,7 +134,12 @@ export default async function pluginStatus(
     },
 
     async loadContent() {
-      const summary = await loadV1Summary(siteDir, dataPath, options.dataUrl);
+      const summary = await loadV1Summary(
+        siteDir,
+        dataPath,
+        options.dataUrl,
+        options.allowMissingData ?? false
+      );
       const repoUrl = owner && repo ? `https://github.com/${owner}/${repo}` : '';
       const runtimeDataUrl = options.dataUrl
         ? /^https?:\/\//.test(options.dataUrl)

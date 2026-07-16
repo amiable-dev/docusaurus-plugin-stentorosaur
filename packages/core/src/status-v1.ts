@@ -241,6 +241,26 @@ export function parseSummary(input: unknown): StatusSummary {
   return parseWith(summarySchema, input, 'summary.json');
 }
 
+/**
+ * A schema-valid summary with no entities, incidents, or maintenance.
+ * The honest pre-data state (there is no `unknown`/`pending` entity
+ * status — an empty board, never fabricated green). Used to seed a
+ * new site (`stentorosaur init`) and as the plugin's opt-in
+ * missing-data fallback, so a site can build before its first probe.
+ */
+export function emptySummary(
+  opts: {generatedAt?: string; generatedBy?: string} = {}
+): StatusSummary {
+  return {
+    schemaVersion: STATUS_SCHEMA_VERSION,
+    generatedAt: opts.generatedAt ?? new Date(0).toISOString(),
+    generatedBy: opts.generatedBy ?? 'stentorosaur',
+    entities: [],
+    incidents: {open: [], recent: []},
+    maintenance: {upcoming: [], inProgress: []},
+  };
+}
+
 export function parseEntityDetail(input: unknown): EntityDetail {
   return parseWith(entityDetailSchema, input, 'entity detail');
 }

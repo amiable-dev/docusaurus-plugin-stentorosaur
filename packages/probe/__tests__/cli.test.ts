@@ -94,6 +94,23 @@ describe('stentorosaur init', () => {
     const config = await loadConfig(tmp);
     expect(config.entities.length).toBeGreaterThan(0);
   });
+
+  it('seeds an empty-but-valid summary so the site builds before the first probe', async () => {
+    await main(['init', '--workdir', tmp]);
+    const seed = path.join(tmp, 'status-data', 'status', 'v1', 'summary.json');
+    expect(fs.existsSync(seed)).toBe(true);
+    const summary = parseSummary(JSON.parse(fs.readFileSync(seed, 'utf8')));
+    expect(summary.entities).toEqual([]);
+    expect(summary.generatedBy).toBe('stentorosaur-init');
+  });
+
+  it('never clobbers an existing summary when re-seeding', async () => {
+    const seed = path.join(tmp, 'status-data', 'status', 'v1', 'summary.json');
+    fs.mkdirSync(path.dirname(seed), {recursive: true});
+    fs.writeFileSync(seed, JSON.stringify({real: 'data'}));
+    await main(['init', '--workdir', tmp]);
+    expect(JSON.parse(fs.readFileSync(seed, 'utf8'))).toEqual({real: 'data'});
+  });
 });
 
 describe('stentorosaur doctor', () => {

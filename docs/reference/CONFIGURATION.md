@@ -100,6 +100,7 @@ plugins: [
 |---|---|---|
 | `dataUrl` | – | `status/v1/summary.json` endpoint. Absolute `http(s)` URLs are fetched at build time (SSG snapshot) **and** polled by the client; site-relative paths (`/…`) are client-only (self-served snapshot). |
 | `dataPath` | `'status-data'` | Local directory containing `status/v1/` at build time — used when `dataUrl` is unset/unreachable. Private repos check the data branch out here in CI (ADR-005 §9). |
+| `allowMissingData` | `false` | When no data is found anywhere, render an empty page with a build warning instead of throwing. For local bootstrap / CI preview before the first `probe`. Keep `false` in production — a missing data plane is a hard error so a misconfigured `dataUrl` fails loudly (ADR-005 removed the old demo-on-empty behavior). `stentorosaur init` seeds an empty summary, so a fresh site usually doesn't need this. |
 | `title` / `description` | `'System Status'` / … | Page header. |
 | `entities` | `[]` | Display metadata (`{name, displayName?, description?}`) layered onto the data plane's entities. `name` must match the config entity name. |
 | `showServices` | `true` | Status board section. |
