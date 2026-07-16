@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {parseSummary} from '@stentorosaur/core';
 import type {IssuePayload} from '@stentorosaur/core';
-import {writeEntityDetail} from '../src/files';
+import {appendArchive, writeEntityDetail} from '../src/files';
 import {pushWithRegenerateRetry} from '../src/git-writer';
 import {readIncidentInputs} from '../src/inputs';
 import {regenerateDerived} from '../src/regenerate';
@@ -117,7 +117,12 @@ describe('probe-vs-issue-event race (§5)', () => {
       branch: 'status-data',
       commitMessage: 'probe: api readings',
       writeInputs: async dir => {
-        writeEntityDetail(dir, 'api', [{t: Date.parse(NOW) - 60_000, svc: 'api', state: 'up', code: 200, lat: 50}], NOW);
+        // Mirror the real probe (writeReadings): readings land in the
+        // append-only archives; regenerateDerived rebuilds the entity
+        // detail + summary window from there (#119).
+        const r = {t: Date.parse(NOW) - 60_000, svc: 'api', state: 'up' as const, code: 200, lat: 50};
+        appendArchive(dir, r);
+        writeEntityDetail(dir, 'api', [r], NOW);
       },
       regenerate: async dir => regenerateDerived(dir, REGEN),
       sleep: async () => {},

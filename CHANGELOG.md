@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Drill-down charts (Performance Metrics modal + per-entity history page)
+  no longer render only a single "Data Points: 1" reading (#119, follow-up
+  to #114). Root cause: on the **git data plane** the probe overwrites each
+  entity detail with only its latest batch, and `regenerateDerived` never
+  rebuilt it — so the drill-down window collapsed to one point after the
+  first probe cycle (the R2 plane already rebuilt it every cycle). Now the
+  git-plane `regenerateDerived` **rebuilds each entity detail from the
+  recent 14-day archive window every cycle**, symmetric with the R2 plane
+  and self-healing on the next probe. The archives are the append-only
+  source of truth and are never modified — **no monitoring data is lost**.
+  Response Time and short-range Uptime/SLI now render real history in both
+  the modal and the history page.
+- The Performance Metrics modal's long-range Uptime/SLI now fill from the
+  90-day daily series (via the shared `mergeDaysIntoHistory`), matching the
+  history page. Response Time stays on per-check readings (daily rollups
+  carry no latency).
+
 ## [1.1.0] - 2026-07-16
 
 Accompanied by `@stentorosaur/core` 0.2.0 and `@stentorosaur/probe`
