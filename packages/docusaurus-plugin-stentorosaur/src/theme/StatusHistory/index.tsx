@@ -5,14 +5,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Layout from '@theme/Layout';
 import ResponseTimeChart from '../ResponseTimeChart';
 import UptimeChart from '../UptimeChart';
 import SLIChart from '../SLIChart';
 import type { SystemStatusFile } from '../../types';
-import { parseEntityDetail } from '@stentorosaur/core';
-import { detailToSystemFile, deriveV1BaseUrl } from '../StatusPage';
+import { decodeDayRollups, parseEntityDetail, parseSummary } from '@stentorosaur/core';
+import { detailToSystemFile, deriveV1BaseUrl, entitySlug } from '../StatusPage';
+import { mergeDaysIntoHistory } from '../StatusPage/mergeDays';
 import styles from './styles.module.css';
 
 export interface Props {
@@ -53,7 +54,27 @@ export default function StatusHistory({
           throw new Error(`Failed to load data: ${response.statusText}`);
         }
         const detail = parseEntityDetail(await response.json());
-        setSystemData(detailToSystemFile(detail));
+        const system = detailToSystemFile(detail);
+
+        // Also pull the 90-day daily series from the summary so the
+        // long-range uptime/SLI charts fill their window (issue #114) —
+        // the entity-detail readings are only a short rolling window.
+        // Optional: if the summary is unavailable the page still renders
+        // from readings (short ranges), unchanged.
+        try {
+          const summaryResponse = await fetch(`${v1Base}/summary.json`);
+          if (summaryResponse.ok) {
+            const summary = parseSummary(await summaryResponse.json());
+            const entity = summary.entities.find(e => entitySlug(e.name) === systemName);
+            if (entity) {
+              system.days = decodeDayRollups(entity);
+            }
+          }
+        } catch {
+          // Summary is an enhancement, not a requirement — keep the
+          // readings-only view rather than failing the page.
+        }
+        setSystemData(system);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load system data');
       } finally {
@@ -63,6 +84,14 @@ export default function StatusHistory({
 
     loadSystemData();
   }, [dataPath, config]);
+
+  // Merge the 90-day daily series into the history the long-range
+  // uptime/SLI charts read (issue #114). No daily series (summary
+  // missing) → the raw readings pass through unchanged.
+  const chartHistory = useMemo(
+    () => (systemData ? mergeDaysIntoHistory(systemData.history, systemData.days ?? [], 90) : []),
+    [systemData]
+  );
 
   if (loading) {
     return (
@@ -191,7 +220,7 @@ export default function StatusHistory({
           </div>
           <UptimeChart
             name={systemData.name}
-            history={systemData.history}
+            history={chartHistory}
             chartType={chartType}
             showPeriodSelector={true}
           />
@@ -201,7 +230,7 @@ export default function StatusHistory({
           <h2>SLI/SLO Compliance</h2>
           <SLIChart
             name={systemData.name}
-            history={systemData.history}
+            history={chartHistory}
             showPeriodSelector={true}
             sloTarget={systemData.sloTarget || 99.9}
           />
@@ -211,7 +240,7 @@ export default function StatusHistory({
           <h2>Error Budget Tracking</h2>
           <SLIChart
             name={systemData.name}
-            history={systemData.history}
+            history={chartHistory}
             showPeriodSelector={true}
             showErrorBudget={true}
             sloTarget={systemData.sloTarget || 99.9}
@@ -221,8 +250,11 @@ export default function StatusHistory({
         <section className={styles.dataSection}>
           <h2>Historical Data</h2>
           <p className={styles.dataInfo}>
-            Showing {systemData.history.length} data points collected over the past 30 days.
-            Data is updated every 5 minutes.
+            Showing {systemData.history.length} recent checks
+            {systemData.days?.length
+              ? `; uptime and SLI history spans up to ${Math.min(systemData.days.length, 90)} days from the daily summary`
+              : ''}
+            . Data is updated every 5 minutes.
           </p>
         </section>
       </main>

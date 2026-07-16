@@ -7,6 +7,7 @@
 
 import React, { useMemo } from 'react';
 import type {StatusItem as StatusItemType, StatusIncident, ScheduledMaintenance, StatusCheckHistory} from '../../types';
+import {mergeDaysIntoHistory} from '../StatusPage/mergeDays';
 import MiniHeatmap from './MiniHeatmap';
 import styles from './styles.module.css';
 
@@ -66,40 +67,13 @@ export default function StatusItem({
   const daysToShow = heatmapDays ?? (item.days?.length ? 90 : 14);
 
   // v1 (ADR-005): day rollups arrive ON the item — no runtime fetch.
-  const enhancedHistory = useMemo((): StatusCheckHistory[] => {
-    const existingHistory = item.history || [];
-    const days = (item.days ?? []).slice(-daysToShow);
-    if (days.length === 0) {
-      return existingHistory;
-    }
-
-    // Each day becomes a single representative "check".
-    const summaryAsHistory: StatusCheckHistory[] = days.map(day => ({
-      timestamp: `${day.date}T12:00:00Z`,
-      status: day.worst,
-      code: day.uptime > 0 ? 200 : 500,
-      responseTime: day.avgMs || 0,
-    }));
-
-    // Merge: prefer existing history for recent days, use summary for older days
-    const existingDates = new Set(
-      existingHistory.map(h => h.timestamp.split('T')[0])
-    );
-
-    // Add summary entries for dates not in existing history
-    const combined = [...existingHistory];
-    for (const entry of summaryAsHistory) {
-      const dateKey = entry.timestamp.split('T')[0];
-      if (!existingDates.has(dateKey)) {
-        combined.push(entry);
-      }
-    }
-
-    // Sort by timestamp descending (most recent first)
-    return combined.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-  }, [item.history, item.days, daysToShow]);
+  // Shared with the history-page charts (issue #114): recent readings
+  // win, older days are filled from the daily rollups.
+  const enhancedHistory = useMemo(
+    (): StatusCheckHistory[] =>
+      mergeDaysIntoHistory(item.history || [], item.days ?? [], daysToShow),
+    [item.history, item.days, daysToShow]
+  );
 
   return (
     <div 

@@ -30,6 +30,10 @@ export interface SystemStatusFile {
   uptimeMonth?: string;
   uptime?: string;
   sloTarget?: number;
+  /** 90-day daily rollups from the summary (issue #114) — lets the
+   * long-range charts fill their window from the daily aggregate
+   * rather than the short entity-detail readings window. */
+  days?: DayRollup[];
 }
 
 export interface StatusItem {

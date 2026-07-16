@@ -43,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Per-entity history page (`/status/history/<entity>`): the Uptime
+  Overview "Last 90 Days" bar chart (and the SLI/SLO + error-budget
+  charts) now fill their full window from the summary's 90-day daily
+  series instead of the short entity-detail `readings` window, which
+  only populated ~13-30 columns and padded the rest grey (#114). The
+  day-rollup → history merge that the `/status` heatmap already used is
+  now a shared `mergeDaysIntoHistory` helper used by both views;
+  Response Time keeps sub-daily readings. Degrades to readings-only if
+  the summary is unavailable.
 - `readAllReadings` (r2 plane) reads batches before archives — the
   reverse order could drop a freshly-compacted day from one regenerate
   cycle when racing the compaction cron.
