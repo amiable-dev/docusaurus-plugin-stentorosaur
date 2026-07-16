@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-16
+
+Accompanied by `@stentorosaur/core` 0.2.0 and `@stentorosaur/probe`
+0.2.0 (Profile C data plane, `migrate --to`, compaction, and the
+`init` seed all live in the probe/core packages). The v1 workflow
+templates now pin `@stentorosaur/probe@0.2.0`.
+
 ### Added
 
 - **First-run bootstrap**: `stentorosaur init` now seeds an empty-but-valid
