@@ -184,7 +184,14 @@ function StatusPageInner({
             <p>No systems configured for monitoring.</p>
           </div>
         ) : (
-          items.map(item => (
+          items.map(item => {
+            // Resolved once: the loaded detail for THIS card while it is
+            // the expanded one (undefined otherwise).
+            const inlineFile =
+              showPerformanceMetrics && activeSystem === item.name
+                ? systemFiles.get(item.name)
+                : undefined;
+            return (
             <SystemCard
               key={item.name}
               name={item.name}
@@ -210,25 +217,24 @@ function StatusPageInner({
                   <p>{item.description}</p>
                 </SystemCardDetails>
               )}
-              {showPerformanceMetrics &&
-                activeSystem === item.name &&
-                systemFiles.get(item.name) && (
-                  <SystemCardCharts>
-                    {/* Stop clicks inside the charts (period buttons,
-                        enlarge) from bubbling to the card's toggle. */}
-                    <div onClick={e => e.stopPropagation()}>
-                      <PerformanceMetrics
-                        systemFile={systemFiles.get(item.name)!}
-                        incidents={incidents}
-                        maintenance={maintenance}
-                        isVisible={true}
-                        onClose={() => setActiveSystem(null)}
-                      />
-                    </div>
-                  </SystemCardCharts>
-                )}
+              {inlineFile && (
+                <SystemCardCharts>
+                  {/* Stop clicks inside the charts (period buttons,
+                      enlarge) from bubbling to the card's toggle. */}
+                  <div onClick={e => e.stopPropagation()}>
+                    <PerformanceMetrics
+                      systemFile={inlineFile}
+                      incidents={incidents}
+                      maintenance={maintenance}
+                      isVisible={true}
+                      onClose={() => setActiveSystem(null)}
+                    />
+                  </div>
+                </SystemCardCharts>
+              )}
             </SystemCard>
-          ))
+            );
+          })
         )}
       </div>
     </div>

@@ -180,6 +180,38 @@ describe('StatusPage (v1)', () => {
     expect(within(article!).getByRole('heading', {name: 'api'})).toBeInTheDocument();
   });
 
+  it('expanding another card collapses the first (accordion: one open at a time)', async () => {
+    const summary = makeSummary({
+      entities: [
+        {name: 'api', status: 'up'},
+        {name: 'web', status: 'up'},
+      ],
+    });
+    (global as any).fetch = jest.fn().mockImplementation(async (url: string) => ({
+      ok: true,
+      status: 200,
+      text: async () => {
+        const name = url.includes('/web.json') ? 'web' : 'api';
+        return JSON.stringify({
+          schemaVersion: 1,
+          generatedAt: summary.generatedAt,
+          name,
+          readings: [{t: Date.parse(summary.generatedAt), svc: name, state: 'up', code: 200, lat: 50}],
+        });
+      },
+    }));
+
+    render(<StatusPage statusData={makeStatusData(summary, {dataUrl: '/status-data/status/v1/summary.json'})} />);
+
+    fireEvent.click(screen.getByRole('button', {name: /Toggle api/i}));
+    await screen.findByText(/Performance Metrics - api/i);
+
+    // Expanding 'web' must collapse 'api' — only one panel at a time.
+    fireEvent.click(screen.getByRole('button', {name: /Toggle web/i}));
+    await screen.findByText(/Performance Metrics - web/i);
+    expect(screen.queryByText(/Performance Metrics - api/i)).not.toBeInTheDocument();
+  });
+
   it('a click inside the inline charts does not collapse the card', async () => {
     const summary = makeSummary({entities: [{name: 'api', status: 'up'}]});
     (global as any).fetch = jest.fn().mockResolvedValue({
