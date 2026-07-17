@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Minimal status board: a system's performance charts now render
+  inline directly under that card's 90-day bar when the card is
+  expanded**, instead of in a single panel at the bottom of the board.
+  Expanding a card is now an accordion (one open at a time) and its
+  Response Time / Uptime / SLI / Error Budget charts appear in place —
+  clicks inside the charts no longer collapse the card. The `upptime`
+  view and the `detailed` card layout are unchanged (the detailed
+  layout keeps the board-level panel). Consumers who swizzled the
+  status page purely to inline the charts can drop that customization.
+
 ## [1.1.1] - 2026-07-16
 
 Accompanied by `@stentorosaur/probe` 0.2.1 (the entity-detail rebuild is
