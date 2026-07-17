@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-17
+
+`@stentorosaur/core` (0.2.0) and `@stentorosaur/probe` (0.2.1) are
+unchanged — this release is plugin-only.
+
 ### Changed
 
 - **Minimal status board: a system's performance charts now render
